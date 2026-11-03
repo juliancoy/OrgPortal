@@ -24,7 +24,7 @@ export const presentationApplicationSchema = presentationTargetSchema.extend({
 
 // In-process adapters reuse the browser handlers with a server-verified MCP actor.
 // No tokens, scopes, actor IDs or permissions are taken from tool arguments.
-export async function runPresentationOperation(env:Env, identity:{userId:string;scopes:string[]}, operation:'list'|'save', input:unknown) {
+export async function runPresentationOperation(env:Env, identity:{userId:string;scopes:string[]}, operation:'form'|'list'|'save', input:unknown) {
  const scopes=operation==='save'?['org:events.read','org:events.write','org:portal.read','org:portal.write']:['org:events.read'];
  if(scopes.some(scope=>!identity.scopes.includes(scope)))throw new EventIntegrationError(403,'Missing presentation scope');
  const args=operation==='save'?presentationApplicationSchema.parse(input):presentationTargetSchema.parse(input);
@@ -39,6 +39,18 @@ export async function runPresentationOperation(env:Env, identity:{userId:string;
   return data;
  }
  const path=`https://internal.invalid/${encodeURIComponent(args.eventId)}/presentations`;
+ if(operation==='form') {
+  const settings=await responseJson(await routes.fetch(new Request(`${path}/public`),env));
+  return {
+   organizationId:args.organizationId,eventId:args.eventId,
+   enabled:settings.enabled,closed:settings.closed,acceptingApplications:settings.enabled===true&&settings.closed===false,
+   applicationSchema:z.toJSONSchema(presentationApplicationSchema.omit({previewId:true,confirm:true}),{io:'input'}),
+   requiredSubmissionScopes:['org:events.read','org:events.write','org:portal.read','org:portal.write'],
+   requirements:{teamManagementRequired:true,minimumTeammates:1,publicSubmission:true},
+   tools:{preview:'preview_presentation_application',apply:'apply_presentation_application',status:'list_presentation_applications',receipt:'get_event_operation'},
+   instructions:'Use the event host organizationId and a teamOrganizationId you manage. Generate submissionId once and reuse it for retries and edits. Preview first, show the public title, summary and invitation recipients to the user, then apply only after approval with the matching previewId and confirm=true. After an uncertain result inspect the operation receipt and application before retrying. Existing applications may be edited after intake closes until expiry.',
+  };
+ }
  if(operation==='list')return responseJson(await routes.fetch(new Request(path),env));
  const changes=presentationApplicationSchema.parse(args);
  await authorizeOrganization(env.DB,actor,'manage',changes.teamOrganizationId);

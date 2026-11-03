@@ -13,6 +13,39 @@ It does not change the legacy Python backend or the PIdP submodule. The existing
 external authoritative events. Native tools write OrgPortal's D1 event directory
 directly for portal-owned events and are the preferred path when retiring Luma.
 
+## Presentation applications for humans and agents
+
+Human application pages retain their existing labeled form controls. Authenticated
+MCP tools reuse the team submission handlers and existing application storage.
+For LifeTech events, read live intake settings rather than assuming an event is open.
+
+1. Resolve the native event ID and host organization ID through event discovery.
+2. Call `get_presentation_application_form` with `organizationId` (the event host)
+   and `eventId`. It returns enabled/closed status, the input JSON Schema generated
+   from the submission validator, required scopes, visibility and workflow tools.
+   Discovery requires `org:events.read` and writes no application or invitation.
+3. Select a team the signed-in account manages. OAuth consent grants no team role.
+   Creating a team remains a separate reviewed operation requiring ownership intent.
+4. Generate one UUID `submissionId`. Supply `teamOrganizationId`, `title`, `summary`
+   and at least one teammate reference (`userId`, `invitationId`, or invitation
+   `email`) to `preview_presentation_application`. Submission requires all four
+   scopes: `org:events.read`, `org:events.write`, `org:portal.read`, `org:portal.write`.
+5. Show the public application text and invitation recipients to the user. After
+   approval, call `apply_presentation_application` with the same fields, its
+   matching one-use `previewId`, and `confirm=true`.
+6. Inspect saved status with `list_presentation_applications`. After an uncertain
+   apply, inspect `get_event_operation` using the preview ID before retrying; some
+   invitation work may have persisted. Reuse the submission ID to avoid duplicates.
+
+Team applications are public. Guest applications retain the separate private web
+intake, and attachments use the existing signed-in browser upload flow. Existing
+applications can be edited after intake closes until expiry using their original
+submission ID. Existing retention and deletion rules apply; discovery adds no store
+or migration.
+
+The discovery tool requires a backend release and refreshed MCP tool discovery.
+Local tests do not establish production availability or current event intake status.
+
 ## Tools and provider contract
 
 Organization setup uses the same browser OAuth connection and existing PIdP
