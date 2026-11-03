@@ -4,7 +4,7 @@ import type { NativeChatApi } from '../../../chat/nativeChatApi'
 
 export function ChatEncryptionBadge({ mode }: { mode: ChatEncryptionMode }) {
   const descriptor = CHAT_ENCRYPTION_LABELS[mode]
-  const level = mode === 'none' ? 'Not encrypted' : mode === 'rsa' ? 'RSA encryption' : 'RSA + ML-KEM (Kyber)'
+  const level = descriptor.label
   return <span className={`chat-encryption-badge chat-encryption-${descriptor.color}`}
     role="img" aria-label={`Encryption: ${level}`} title={level} tabIndex={0} />
 }
@@ -97,9 +97,9 @@ export function ChatSecurityControls({ api, conversationId, initialMode = 'none'
       <div className="chat-security-settings">
         {security?.can_manage ? <label>Encryption for new messages
           <select aria-label="Encryption for new messages" value={choice} onChange={event => choose(event.target.value as ChatEncryptionMode)}>
-            <option value="none">Blue · Not end-to-end encrypted</option>
-            <option value="rsa">Green · RSA encryption</option>
-            <option value="rsa-mlkem">Purple · RSA + ML-KEM (Kyber)</option>
+            <option value="none">Blue · {CHAT_ENCRYPTION_LABELS.none.label}</option>
+            <option value="rsa">Green · {CHAT_ENCRYPTION_LABELS.rsa.label}</option>
+            <option value="rsa-mlkem">Purple · {CHAT_ENCRYPTION_LABELS['rsa-mlkem'].label}</option>
           </select>
         </label> : <p>Only a current chat administrator can change this setting.</p>}
         <p>{CHAT_ENCRYPTION_LABELS[mode].description}</p>
