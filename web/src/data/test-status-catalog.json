@@ -765,6 +765,20 @@
       "cwd": "org-worker"
     },
     {
+      "id": "suite-org-worker-test-event-recommendations-test-ts",
+      "label": "org-worker/test/event-recommendations.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-recommendations.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-recommendations.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-event-registrations-test-ts",
       "label": "org-worker/test/event-registrations.test.ts",
       "category": "Events and services",
@@ -971,6 +985,20 @@
         {
           "id": "suite",
           "label": "lifetech-brand-contrast.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-lifetech-event-discovery-test-ts",
+      "label": "org-worker/test/lifetech-event-discovery.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/lifetech-event-discovery.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "lifetech-event-discovery.test.ts"
         }
       ]
     },
@@ -1819,6 +1847,20 @@
         {
           "id": "suite",
           "label": "public-event-comments.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-public-event-pagination-test-ts",
+      "label": "org-worker/test/public-event-pagination.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/public-event-pagination.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "public-event-pagination.test.ts"
         }
       ]
     },
@@ -4567,6 +4609,20 @@
       ]
     },
     {
+      "id": "suite-web-src-ui-views-public-eventFeed-test-ts",
+      "label": "web/src/ui/views/public/eventFeed.test.ts",
+      "category": "Events and services",
+      "source": "web/src/ui/views/public/eventFeed.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "eventFeed.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-ui-views-public-organizationEvents-test-ts",
       "label": "web/src/ui/views/public/organizationEvents.test.ts",
       "category": "Events and services",
@@ -4633,6 +4689,20 @@
         {
           "id": "suite",
           "label": "email-sender.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-event-pagination-spec-ts",
+      "label": "web/tests/e2e/event-pagination.spec.ts",
+      "category": "Events and services",
+      "source": "web/tests/e2e/event-pagination.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-pagination.spec.ts"
         }
       ]
     },
