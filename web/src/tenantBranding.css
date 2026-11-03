@@ -78,3 +78,5 @@
 .organization-brand-editor input,
 .organization-brand-editor select { min-width: 0; max-width: 100%; width: 100%; }
 .organization-brand-editor [role="status"] { margin-top: 1rem; font-weight: 600; }
+
+.organization-brand-image > img.transparent-logo { width: 130px; height: 130px; justify-self: center; }

@@ -1,3 +1,6 @@
+import { defaultLogoAppearance, logoAppearanceVariables, type LogoAppearance } from '../../../../shared/logoAppearance'
+import { useTransparentLogo } from './media/transparentLogo'
+import type { CSSProperties } from 'react'
 import { useAuth } from '../../app/AppProviders'
 import { compressUploadImage } from './compressUploadImage'
 import { invalidatePublicOrganizationData } from '../../data/publicOrganization/cache'
@@ -12,11 +15,15 @@ type Organization={id:string;slug:string;name:string;description?:string|null;im
 type Props={organization:Organization;canManage?:boolean;onSaved?:()=>void;onPreview?:(site:GroupSite,avatar:string)=>void;embedded?:boolean}
 const roles=['icon','avatar','background'] as const
 const emptyFiles={icon:null,avatar:null,background:null}
-type Draft={tagline:string;accent:string;themeId:string;imagery:OrganizationThemeImagery;files:Record<keyof OrganizationThemeImagery,File|null>}
+type Draft={logoAppearance:LogoAppearance;tagline:string;accent:string;themeId:string;imagery:OrganizationThemeImagery;files:Record<keyof OrganizationThemeImagery,File|null>}
 export function OrganizationBranding(props:Props){return <BrandingEditor key={`${props.organization.id}:${props.organization.slug}`} {...props}/>}
+function LogoPreview({src,role}:{src:string;role:typeof roles[number]}) {
+ const logo=useTransparentLogo()
+ return <img onLoad={logo.inspect} className={role!=='background'&&logo.isTransparent(src)?'transparent-logo':undefined} src={src} alt={`${role} preview`}/>
+}
 function BrandingEditor({organization,canManage=false,onSaved,onPreview,embedded=false}:Props) {
  const {token}=useAuth()
- const [draft,setDraft]=useState<Draft>({tagline:'',accent:'#155e59',themeId:standardOrganizationThemes[0].id,imagery:standardOrganizationThemes[0].imagery!,files:emptyFiles})
+ const [draft,setDraft]=useState<Draft>({logoAppearance:defaultLogoAppearance(organization.slug),tagline:'',accent:'#155e59',themeId:standardOrganizationThemes[0].id,imagery:standardOrganizationThemes[0].imagery!,files:emptyFiles})
  const [busy,setBusy]=useState(false),[message,setMessage]=useState(''),[failed,setFailed]=useState(false)
  const [result,setResult]=useState<{site:GroupSite|null}|null>(null),[error,setError]=useState(''),[revision,setRevision]=useState(0),[retry,setRetry]=useState(0)
  const version=useRef(0),savedVersion=useRef(0),attemptedVersion=useRef(0),mounted=useRef(true)
@@ -36,7 +43,7 @@ function BrandingEditor({organization,canManage=false,onSaved,onPreview,embedded
    if(!controller.signal.aborted){
     const config=parseOrganizationThemes(site?.feature_config?.brandThemes),theme=config?.themes.find(item=>item.id===config.defaultTheme)||standardOrganizationThemes[0]
     const images=theme.imagery||standardOrganizationThemes[0].imagery!
-    setDraft({tagline:site?.tagline??'',accent:site?.accent_color||theme.light.primary,themeId:theme.id,imagery:{icon:site?.brand_image_path||images.icon,avatar:(config?theme.imagery?.avatar:null)||organization.image_url||images.avatar,background:site?.home_image_url||images.background},files:emptyFiles})
+    setDraft({logoAppearance:theme.logoAppearance||defaultLogoAppearance(organization.slug),tagline:site?.tagline??'',accent:site?.accent_color||theme.light.primary,themeId:theme.id,imagery:{icon:site?.brand_image_path||images.icon,avatar:(config?theme.imagery?.avatar:null)||organization.image_url||images.avatar,background:site?.home_image_url||images.background},files:emptyFiles})
     version.current=0;savedVersion.current=0;attemptedVersion.current=0;setResult({site})
    }
   }).catch(reason=>{if(!controller.signal.aborted)setError(reason.message)})
@@ -47,9 +54,9 @@ function BrandingEditor({organization,canManage=false,onSaved,onPreview,embedded
  const baseSite:GroupSite=result?.site||{id:organization.id,organization_id:organization.id,slug:organization.slug,hostname:window.location.hostname,name:organization.name,tagline:'',accent_color:'#155e59',brand_image_path:organization.image_url||'/images/org-placeholder.svg',home_url:new URL(`/orgs/${encodeURIComponent(organization.slug)}`,window.location.origin).href}
  function buildSite(images:OrganizationThemeImagery):GroupSite{
   const selected=themes.find(theme=>theme.id===draft.themeId)!
-  return {...baseSite,tagline:draft.tagline,accent_color:draft.accent,brand_image_path:images.icon,home_image_url:images.background,feature_config:{...baseSite.feature_config,brandThemes:{defaultTheme:draft.themeId,themes:themes.map(theme=>theme.id===draft.themeId?{...selected,light:{...selected.light,primary:draft.accent},imagery:images}:theme)}}}
+  return {...baseSite,tagline:draft.tagline,accent_color:draft.accent,brand_image_path:images.icon,home_image_url:images.background,feature_config:{...baseSite.feature_config,brandThemes:{defaultTheme:draft.themeId,themes:themes.map(theme=>theme.id===draft.themeId?{...selected,logoAppearance:draft.logoAppearance,light:{...selected.light,primary:draft.accent},imagery:images}:theme)}}}
  }
- function changeTheme(id:string){const theme=themes.find(item=>item.id===id)!;change({themeId:theme.id,accent:theme.light.primary,imagery:theme.imagery||standardOrganizationThemes[0].imagery!,files:emptyFiles})}
+ function changeTheme(id:string){const theme=themes.find(item=>item.id===id)!;change({logoAppearance:theme.logoAppearance||defaultLogoAppearance(organization.slug),themeId:theme.id,accent:theme.light.primary,imagery:theme.imagery||standardOrganizationThemes[0].imagery!,files:emptyFiles})}
  const previewSite=useMemo(()=>result?(canManage&&token?{...buildSite(draft.imagery),brand_image_path:previews.icon||draft.imagery.icon,home_image_url:previews.background||draft.imagery.background}:baseSite):null,[draft,previews,result,canManage,token])
  useEffect(()=>{
   if(!previewSite||!canManage||!token)return
@@ -113,8 +120,15 @@ function BrandingEditor({organization,canManage=false,onSaved,onPreview,embedded
  <label>Organization theme<select aria-label="Organization theme" value={draft.themeId} onChange={event=>changeTheme(event.target.value)}>{themes.map(theme=><option value={theme.id} key={theme.id}>{theme.name}</option>)}</select></label>
  <label>Tagline<input maxLength={180} value={draft.tagline} onChange={event=>change({tagline:event.target.value})}/></label>
  <label>Brand color<input type="color" value={draft.accent} onChange={event=>change({accent:event.target.value})}/></label>
- <div className="organization-brand-imagery">{roles.map(role=><div className={`organization-brand-image organization-brand-image-${role}`} key={role}>
- <img src={previews[role]||draft.imagery[role]} alt={`${role} preview`}/>
+ <fieldset><legend>Transparent logo appearance</legend>
+ <p>Applies behind transparent logos. Logos stay contained inside the selected shape.</p>
+ <label>Logo background<select aria-label="Logo background" value={draft.logoAppearance.background} onChange={event=>change({logoAppearance:{...draft.logoAppearance,background:event.target.value as LogoAppearance['background']}})}><option value="transparent">Transparent</option><option value="solid">One color</option><option value="gradient">Two-color gradient</option></select></label>
+ {draft.logoAppearance.background!=='transparent'&&<label>Logo background color<input type="color" value={draft.logoAppearance.color} onChange={event=>change({logoAppearance:{...draft.logoAppearance,color:event.target.value}})}/></label>}
+ {draft.logoAppearance.background==='gradient'&&<label>Second logo background color<input type="color" value={draft.logoAppearance.secondaryColor} onChange={event=>change({logoAppearance:{...draft.logoAppearance,secondaryColor:event.target.value}})}/></label>}
+ <label>Logo shape<select aria-label="Logo shape" value={draft.logoAppearance.shape} onChange={event=>change({logoAppearance:{...draft.logoAppearance,shape:event.target.value as LogoAppearance['shape']}})}><option value="circle">Circle</option><option value="rounded">Rounded square</option></select></label>
+ </fieldset>
+ <div className="organization-brand-imagery" style={logoAppearanceVariables(draft.logoAppearance) as CSSProperties}>{roles.map(role=><div className={`organization-brand-image organization-brand-image-${role}`} key={role}>
+ <LogoPreview src={previews[role]||draft.imagery[role]} role={role}/>
  <label>{role[0].toUpperCase()+role.slice(1)} image<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={event=>change({files:{...draft.files,[role]:event.target.files?.[0]||null}})}/></label>
  <small>{role==='icon'?'Navigation and favicon':role==='avatar'?'Organization profile and directory':'Organization cover and standard backdrop'}</small>
  </div>)}</div>

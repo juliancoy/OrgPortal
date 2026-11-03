@@ -104,3 +104,17 @@ it('uses the configured compact brand mark ahead of a stale directory image with
  expect(organizationPageLogo(site('plain'),'https://company.test/profile.png')).toBe('https://company.test/profile.png')
  expect(organizationPageLogo(null,null)).toBeNull()
 })
+
+
+it('contains transparent logos on scoped backgrounds and lets saved settings override the FormedInsight default',async()=>{
+ const {organizationPageTheme}=await import('./organizationThemes')
+ const formed={...site('formedinsight'),slug:'formedinsight'}
+ expect(organizationPageTheme(formed)).toContain('--logo-background:#F7F5EF')
+ expect(organizationPageTheme(formed)).toContain('--logo-radius:50%')
+ const logoAppearance={background:'gradient' as const,color:'#F7F5EF',secondaryColor:'#DDEEFF',shape:'rounded' as const}
+ const config={...themes,themes:themes.themes.map(theme=>({...theme,logoAppearance}))}
+ expect(parseOrganizationThemes(config)).not.toBeNull()
+ expect(organizationPageTheme({...formed,feature_config:{brandThemes:config}})).toContain('--logo-background:linear-gradient(135deg, #F7F5EF, #DDEEFF)')
+ for(const bad of [{...logoAppearance,color:'url(https://invalid.test)'},{...logoAppearance,background:'image'},{...logoAppearance,shape:'fill'}])expect(parseOrganizationThemes({...themes,themes:[{...themes.themes[0],logoAppearance:bad}]})).toBeNull()
+ expect(organizationPageTheme({...formed,feature_config:{brandThemes:{...themes,themes:themes.themes.map(theme=>({...theme,logoAppearance:{...logoAppearance,background:'transparent'}}))}}})).toContain('--logo-background:transparent')
+})
