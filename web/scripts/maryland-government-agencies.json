@@ -1,0 +1,619 @@
+[
+  {
+    "code": "A15",
+    "name": "Payments to Civil Divisions of the State:A15",
+    "id": "md-budget-agency:A15",
+    "classification": "budget_heading",
+    "principalDepartment": false
+  },
+  {
+    "code": "B75",
+    "name": "Legislative Branch",
+    "id": "md-budget-agency:B75",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "C00",
+    "name": "Judiciary",
+    "id": "source-label:maryland_comptroller:agency:f4bb14c69313f5c3b66b340a499abf32",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "judiciary"
+  },
+  {
+    "code": "C80",
+    "name": "Office of the Public Defender",
+    "id": "source-label:maryland_comptroller:agency:011f8ca46e8bece8984093b5527094d9",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "office of the public defender (previously pubdef)"
+  },
+  {
+    "code": "C81",
+    "name": "Office of the Attorney General",
+    "id": "source-label:maryland_comptroller:agency:c348a350a76b85d157312c8d06c32a26",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "office of the attorney general"
+  },
+  {
+    "code": "C82",
+    "name": "Office of the State Prosecutor",
+    "id": "source-label:maryland_comptroller:agency:bfc972eb0b0bdb2d5d6a3e1ceb31f6e0",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "office of the state prosecutor (previously omsp)"
+  },
+  {
+    "code": "C85",
+    "name": "Maryland Tax Court",
+    "id": "md-budget-agency:C85",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "C90",
+    "name": "Public Service Commission",
+    "id": "source-label:maryland_comptroller:agency:7f600a305395de1ad7d72c028b8c8b10",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland public service commission (previously psc)"
+  },
+  {
+    "code": "C91",
+    "name": "Office of People's Counsel",
+    "id": "source-label:maryland_comptroller:agency:909d61bc6915594c4ded53101b92f259",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "office of the people's counsel"
+  },
+  {
+    "code": "C94",
+    "name": "Subsequent Injury Fund",
+    "id": "md-budget-agency:C94",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "C96",
+    "name": "Uninsured Employers' Fund",
+    "id": "md-budget-agency:C96",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "C98",
+    "name": "Workers' Compensation Commission",
+    "id": "source-label:maryland_comptroller:agency:7a349d460cea1dbdbdf51dd98bd71a4a",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland workers' compensation commission"
+  },
+  {
+    "code": "D05",
+    "name": "Board of Public Works",
+    "id": "source-label:maryland_comptroller:agency:b3ef2b2438244219ebc2abdf09e8256e",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "board of public works"
+  },
+  {
+    "code": "D10",
+    "name": "Executive Department - Governor",
+    "id": "source-label:maryland_comptroller:agency:315c6653e007acb2585fd9cd9dccbb3a",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "office of the governor"
+  },
+  {
+    "code": "D11",
+    "name": "Office of the Deaf and Hard of Hearing",
+    "id": "md-budget-agency:D11",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "D12",
+    "name": "Department of Disabilities",
+    "id": "source-label:maryland_comptroller:agency:15dccb033e1cf118e03a24efa985a093",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "maryland department of disabilities (previously mdd)"
+  },
+  {
+    "code": "D13",
+    "name": "Maryland Energy Administration",
+    "id": "source-label:maryland_comptroller:agency:388392ac682740f2586c69b4141459dd",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland energy administration"
+  },
+  {
+    "code": "D15",
+    "name": "Executive Department-Boards, Commissions and Offices",
+    "id": "md-budget-agency:D15",
+    "classification": "budget_heading",
+    "principalDepartment": false
+  },
+  {
+    "code": "D16",
+    "name": "Secretary of State",
+    "id": "source-label:maryland_comptroller:agency:3a3895b1b9132a6564c9acb7c493c9bb",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "secretary of state"
+  },
+  {
+    "code": "D17",
+    "name": "Historic St. Mary's City Commission",
+    "id": "source-label:maryland_comptroller:agency:88c405097853af21756690851fbc78ba",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "historic st. mary's city commission"
+  },
+  {
+    "code": "D18",
+    "name": "Governor's Office for Children",
+    "id": "md-budget-agency:D18",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "D21",
+    "name": "Governor's Office of Crime Prevention and Policy",
+    "id": "md-budget-agency:D21",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "D22",
+    "name": "Maryland Commission on African American History and Culture",
+    "id": "md-budget-agency:D22",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "D23",
+    "name": "Maryland Cannabis Administration",
+    "id": "source-label:maryland_comptroller:agency:d33deb282c367200a17c3b38dce33aad",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland cannabis administration"
+  },
+  {
+    "code": "D24",
+    "name": "Department of Social and Economic Mobility",
+    "id": "md-budget-agency:D24",
+    "classification": "department",
+    "principalDepartment": true
+  },
+  {
+    "code": "D25",
+    "name": "Interagency Commission On School Construction",
+    "id": "source-label:maryland_comptroller:agency:1ef4817c6fff1fab6246cc7a68a52693",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "interagency commission on school construction"
+  },
+  {
+    "code": "D26",
+    "name": "Department of Aging",
+    "id": "source-label:maryland_comptroller:agency:d57d38a372d23cc8d5a93f48609cd9df",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "maryland department of aging"
+  },
+  {
+    "code": "D27",
+    "name": "Maryland Commission On Civil Rights",
+    "id": "source-label:maryland_comptroller:agency:7a3b09ad2ba6c1adf67ac14eefe1b610",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "commission on civil rights"
+  },
+  {
+    "code": "D28",
+    "name": "Maryland Stadium Authority",
+    "id": "source-label:maryland_comptroller:agency:d78877392dab92b45677347a4d9123a4",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland stadium authority"
+  },
+  {
+    "code": "D38",
+    "name": "State Board of Elections",
+    "id": "source-label:maryland_comptroller:agency:8544ec1a1d13dce5be61a3b59c622ea0",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "state board of elections"
+  },
+  {
+    "code": "D40",
+    "name": "Department of Planning",
+    "id": "source-label:maryland_comptroller:agency:116493a2ef6ab9bba41aa723895914e5",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "maryland department of planning"
+  },
+  {
+    "code": "D50",
+    "name": "Military Department",
+    "id": "source-label:maryland_comptroller:agency:a1055954684363b3ffce2d9682a673af",
+    "classification": "department",
+    "principalDepartment": false,
+    "comptrollerLabel": "military department"
+  },
+  {
+    "code": "D52",
+    "name": "Maryland Department of Emergency Management",
+    "id": "source-label:maryland_comptroller:agency:0480d818b13ae8e27462f70f0a1edf41",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of emergency management"
+  },
+  {
+    "code": "D53",
+    "name": "Maryland Institute for Emergency Medical Services Systems",
+    "id": "source-label:maryland_comptroller:agency:61536f3d0ccca0cd1eda1450921e4b2a",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland institute for emergency medical services systems"
+  },
+  {
+    "code": "D55",
+    "name": "Department of Veterans and Military Families",
+    "id": "source-label:maryland_comptroller:agency:1a5f45eb9ed091e9ef932ed456a4740f",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of veterans and military families (previously the department of veterans affairs, 1999 - 2024; dva)"
+  },
+  {
+    "code": "D60",
+    "name": "State Archives",
+    "id": "source-label:maryland_comptroller:agency:039ccbbcaef532eb6d01f7f1b53c3209",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland state archives"
+  },
+  {
+    "code": "D73",
+    "name": "Office of the Inspector General for Education",
+    "id": "md-budget-agency:D73",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "D74",
+    "name": "Office of the Correctional Ombudsman",
+    "id": "source-label:maryland_comptroller:agency:87e4641ed222dd02668bb9f0c9e4c191",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "office of the correctional ombudsman"
+  },
+  {
+    "code": "D76",
+    "name": "Maryland Office of the Inspector General for Health",
+    "id": "md-budget-agency:D76",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "D77",
+    "name": "Prescription Drug Affordability Board",
+    "id": "md-budget-agency:D77",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "D78",
+    "name": "Maryland Health Benefit Exchange",
+    "id": "source-label:maryland_comptroller:agency:4ffff36c0463290c44507b9a6995c417",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland health benefit exchange"
+  },
+  {
+    "code": "D80",
+    "name": "Maryland Insurance Administration",
+    "id": "source-label:maryland_comptroller:agency:7be68ec0293daaa88b8741354f914d93",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland insurance administration"
+  },
+  {
+    "code": "D90",
+    "name": "Canal Place Preservation and Development Authority",
+    "id": "source-label:maryland_comptroller:agency:7c1f8d20a87451796ee32e1854d5ce75",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "canal place preservation & development authority"
+  },
+  {
+    "code": "D91",
+    "name": "West North Avenue Development Authority",
+    "id": "md-budget-agency:D91",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "D99",
+    "name": "Office of Administrative Hearings",
+    "id": "source-label:maryland_comptroller:agency:37c5758dab41eb84b1c958621467f362",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "office of administrative hearings"
+  },
+  {
+    "code": "E00",
+    "name": "Comptroller of Maryland",
+    "id": "source-label:maryland_comptroller:agency:48f492397cccbc6623346999a79f812a",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "comptroller of maryland"
+  },
+  {
+    "code": "E17",
+    "name": "Alcohol, Tobacco, and Cannabis Commission",
+    "id": "source-label:maryland_comptroller:agency:b6d1570ef46588800540ac7f8c879b83",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "alcohol, tobacco, & cannabis commission"
+  },
+  {
+    "code": "E20",
+    "name": "State Treasurer's Office",
+    "id": "source-label:maryland_comptroller:agency:00f123c8f5aabe41dfd11ddc7c9df853",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "state treasurer's office"
+  },
+  {
+    "code": "E50",
+    "name": "State Department of Assessments and Taxation",
+    "id": "source-label:maryland_comptroller:agency:358dff1bc0ee7f263ba777f170c07891",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "state department of assessments & taxation"
+  },
+  {
+    "code": "E75",
+    "name": "Maryland Lottery and Gaming Control Agency",
+    "id": "source-label:maryland_comptroller:agency:1835caa17b416caefb16b6a48d3aed82",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland lottery and gaming control agency"
+  },
+  {
+    "code": "E80",
+    "name": "Property Tax Assessment Appeals Boards",
+    "id": "md-budget-agency:E80",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "F10",
+    "name": "Department of Budget and Management",
+    "id": "source-label:maryland_comptroller:agency:2c14d9d7e3e975a0666b6a99f262de2c",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of budget & management"
+  },
+  {
+    "code": "F50",
+    "name": "Department of Information Technology",
+    "id": "source-label:maryland_comptroller:agency:b251b3c2039390fb3329189e922bb8ae",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of information technology"
+  },
+  {
+    "code": "G20",
+    "name": "Maryland State Retirement and Pension Systems",
+    "id": "md-budget-agency:G20",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "G50",
+    "name": "Maryland State Employees Supplemental Retirement Plans",
+    "id": "md-budget-agency:G50",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "H00",
+    "name": "Department of General Services",
+    "id": "source-label:maryland_comptroller:agency:14aa88b77dfd301a1a96d03621dbdb9e",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of general services"
+  },
+  {
+    "code": "I00",
+    "name": "Department of Service and Civic Innovation",
+    "id": "source-label:maryland_comptroller:agency:37d09f8e4ec5be4ee7bd31c6cba908e7",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of service & civic innovation"
+  },
+  {
+    "code": "J00",
+    "name": "Department of Transportation",
+    "id": "source-label:maryland_comptroller:agency:0172c4fbb4a4c344eb39d3f3642cd4f8",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "maryland department of transportation"
+  },
+  {
+    "code": "K00",
+    "name": "Department of Natural Resources",
+    "id": "source-label:maryland_comptroller:agency:8f8537e8e957b891e676579d58861aa1",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of natural resources"
+  },
+  {
+    "code": "L00",
+    "name": "Department of Agriculture",
+    "id": "source-label:maryland_comptroller:agency:6f5271c543164419e502c7e01566919d",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "maryland department of agriculture"
+  },
+  {
+    "code": "M00",
+    "name": "Maryland Department of Health",
+    "id": "source-label:maryland_comptroller:agency:c19db136784d475bcde2d2366a148356",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "maryland department of health"
+  },
+  {
+    "code": "N00",
+    "name": "Department of Human Services",
+    "id": "source-label:maryland_comptroller:agency:4e0191faa04bdec2e1842dbf42d0699a",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of human services"
+  },
+  {
+    "code": "P00",
+    "name": "Maryland Department of Labor",
+    "id": "source-label:maryland_comptroller:agency:daad63c61ffc08fd2dbd634a2322f85c",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "maryland department of labor"
+  },
+  {
+    "code": "Q00",
+    "name": "Department of Public Safety and Correctional Services",
+    "id": "source-label:maryland_comptroller:agency:a6970a6d3312856b04ef4e2f821a86d8",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of public safety & correctional services"
+  },
+  {
+    "code": "R00",
+    "name": "State Department of Education",
+    "id": "source-label:maryland_comptroller:agency:643da21c5caf0d426df312aa9358d4d0",
+    "classification": "department",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland state department of education"
+  },
+  {
+    "code": "R11",
+    "name": "Maryland State Library Agency",
+    "id": "source-label:maryland_comptroller:agency:6895917b4b9a570bf419252c04c36f10",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland state library agency (previously msl)"
+  },
+  {
+    "code": "R12",
+    "name": "Accountability and Implementation Board",
+    "id": "source-label:maryland_comptroller:agency:43c4551b63cbc4fc152c4c5a6045667d",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland accountability and implementation board"
+  },
+  {
+    "code": "R15",
+    "name": "Maryland Public Broadcasting Commission",
+    "id": "md-budget-agency:R15",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "R62",
+    "name": "Maryland Higher Education Commission",
+    "id": "source-label:maryland_comptroller:agency:8f2d1dff6bd780516d2aa92ee18add3b",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland higher education commission"
+  },
+  {
+    "code": "R75",
+    "name": "Support for State Operated Institutions of Higher Education",
+    "id": "md-budget-agency:R75",
+    "classification": "budget_heading",
+    "principalDepartment": false
+  },
+  {
+    "code": "R99",
+    "name": "Maryland School for the Deaf",
+    "id": "source-label:maryland_comptroller:agency:a6c99db8f8b8d2d01b58c32a6ab27879",
+    "classification": "agency",
+    "principalDepartment": false,
+    "comptrollerLabel": "maryland school for the deaf"
+  },
+  {
+    "code": "S00",
+    "name": "Department of Housing and Community Development",
+    "id": "source-label:maryland_comptroller:agency:4d8dd1e934535ab80e79f4f52ea96ad9",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of housing & community development"
+  },
+  {
+    "code": "S50",
+    "name": "Maryland African American Museum Corporation",
+    "id": "md-budget-agency:S50",
+    "classification": "agency",
+    "principalDepartment": false
+  },
+  {
+    "code": "T00",
+    "name": "Department of Commerce",
+    "id": "source-label:maryland_comptroller:agency:3a18fde8041c14574ccae4b29289a9c3",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "maryland department of commerce"
+  },
+  {
+    "code": "T50",
+    "name": "Maryland Technology Development Corporation",
+    "id": "org-tedco",
+    "classification": "agency",
+    "principalDepartment": false,
+    "sourceIdentityUrl": "https://www.tedcomd.com/"
+  },
+  {
+    "code": "U00",
+    "name": "Department of the Environment",
+    "id": "source-label:maryland_comptroller:agency:da58a9d131cae084f7badee86bc331c4",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of the environment"
+  },
+  {
+    "code": "V00",
+    "name": "Department of Juvenile Services",
+    "id": "source-label:maryland_comptroller:agency:5cbf5255b6eac4db6518ec1aed5f799e",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "department of juvenile services"
+  },
+  {
+    "code": "W00",
+    "name": "Department of State Police",
+    "id": "source-label:maryland_comptroller:agency:8f2786c1b9ca3abca2eded332f13f38e",
+    "classification": "department",
+    "principalDepartment": true,
+    "comptrollerLabel": "maryland state police"
+  },
+  {
+    "code": "X00",
+    "name": "Public Debt",
+    "id": "md-budget-agency:X00",
+    "classification": "budget_heading",
+    "principalDepartment": false
+  },
+  {
+    "code": "Y01",
+    "name": "State Reserve Fund",
+    "id": "md-budget-agency:Y01",
+    "classification": "budget_heading",
+    "principalDepartment": false
+  }
+]
