@@ -404,10 +404,10 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
         </div>
 
         {isOwner && <div className="inline-profile-contacts">
-          <InlineProfileField label="Profile visibility" options={[{ value: 'public', label: 'Public' }, { value: 'private', label: 'Private' }]} value={page.enabled ? 'public' : 'private'} onSave={value => {
+          <InlineProfileField label="Contact visibility" options={[{ value: 'public', label: 'Public' }, { value: 'private', label: 'Private' }]} value={page.enabled ? 'public' : 'private'} onSave={value => {
             if (!['public', 'private'].includes(value.trim().toLowerCase())) return Promise.reject(new Error('Enter public or private.'))
             return saveField('enabled', value.trim().toLowerCase() === 'public')
-          }}><span>Profile is {page.enabled ? 'public' : 'private'}</span></InlineProfileField>
+          }}><span>Contact information is {page.enabled ? 'public' : 'private'}</span></InlineProfileField>
           <InlineProfileField label="Profile URL" value={page.slug} onSave={value => value.trim() ? saveField('slug', value.trim()) : Promise.reject(new Error('Enter a profile URL name.'))}><span>{shareUrl}</span></InlineProfileField>
           {([
             ['email_public', 'Public email', 'email'], ['phone_public', 'Public phone', 'tel'],
@@ -500,7 +500,7 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
           <label><input type="checkbox" checked={favorites?.public ?? false} disabled={savingFavorites || !favorites}
             onChange={event => void saveFavoriteSharing(event.target.checked)} /> Show on my public page</label>
           <p className="muted">Companies selected in favorites ballots. Choices remain available for 90 days after voting closes.</p>
-          {!page.enabled && favorites?.public && <p className="muted">Make your profile public to share this list.</p>}
+          {!page.enabled && favorites?.public && <p className="muted">Enable public sharing to share this list.</p>}
         </>}
         {favorites ? favorites.companies.length ? <ul className="favorite-company-grid">{favorites.companies.map(company =>
           <li key={company.id}>

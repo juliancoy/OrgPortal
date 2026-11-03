@@ -277,8 +277,8 @@ class FakeD1 {
         .sort((a,b) => String(a.user_name).toLowerCase().localeCompare(String(b.user_name).toLowerCase()) || String(a.user_id).localeCompare(String(b.user_id)))
         .slice(Number(params.at(-1)), Number(params.at(-1)) + Number(params.at(-2)))
         .map(row => ({user_id:row.user_id,user_name:row.user_name,photo_url:row.photo_url ?? null,
-          contact_slug:row.enabled ? row.slug : null,contact_enabled:row.enabled,
-          headline:row.enabled ? row.headline ?? null : null})) as T[];
+          contact_slug:row.slug || row.user_id,contact_enabled:row.enabled,
+          headline:row.headline ?? null})) as T[];
     }
     if (sql.includes("FROM user_contact_pages")) {
       const enabledOnly = sql.includes("WHERE enabled = 1");
@@ -1200,7 +1200,7 @@ test("public contact route requires exact slug matches", async () => {
   assert.equal(res.status, 404);
 });
 
-test("disabled public contact route is visible only to the exact owner", async () => {
+test("profiles remain public while unshared contact details are visible only to the exact owner", async () => {
   const db = new FakeD1();
   db.contacts.push({
     id: "contact-1",
@@ -1226,7 +1226,14 @@ test("disabled public contact route is visible only to the exact owner", async (
   });
 
   const unauthenticated = await app.request("https://org.example.test/api/network/users/public/julian-coy-2", {}, env(db));
-  assert.equal(unauthenticated.status, 404);
+  assert.equal(unauthenticated.status, 200);
+  const publicProfile = await unauthenticated.json() as Row;
+  assert.equal(publicProfile.user_name, 'Julian Coy');
+  assert.equal(publicProfile.headline, 'Organizer');
+  assert.equal(unauthenticated.headers.get("cache-control"), "no-store");
+  assert.equal(publicProfile.email_public, null);
+  assert.equal(publicProfile.phone_public, null);
+  assert.deepEqual(publicProfile.links, []);
 
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () =>
@@ -1241,9 +1248,10 @@ test("disabled public contact route is visible only to the exact owner", async (
       env(db),
     );
     assert.equal(owner.status, 200);
-    const contact = (await owner.json()) as { slug: string; enabled: boolean };
+    const contact = (await owner.json()) as { slug: string; enabled: boolean; email_public: string };
     assert.equal(contact.slug, "julian-coy-2");
     assert.equal(contact.enabled, false);
+    assert.equal(contact.email_public, "julian@example.test");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -2325,7 +2333,7 @@ test("People directories show known names while withholding unpublished contact 
   const people=await publicResponse.json() as Row[];
   assert.deepEqual(people.map(row=>row.user_id),['robot','private','person']);
   assert.ok(people.every(row => !('email' in row) && !('user_email' in row)));
-  assert.ok(people.filter(row=>!row.contact_enabled).every(row=>row.contact_slug===null && row.headline===null));
+  assert.ok(people.filter(row=>!row.contact_enabled).every(row=>row.contact_slug===row.slug || Boolean(row.contact_slug)));
   await withPidpUser({id:'viewer',email:'viewer@example.test'},async () => {
     const options = {headers:{authorization:'Bearer viewer-token'}};
     const response = await app.request('https://org.example.test/api/network/users',options,env(db));

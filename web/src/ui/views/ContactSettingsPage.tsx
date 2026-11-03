@@ -412,7 +412,7 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
         <div>
           <h2 style={{ margin: 0, fontSize: '1rem' }}>Public Profile</h2>
           <p className="muted" style={{ margin: '0.25rem 0 0' }}>
-            {page.enabled ? 'Your public profile is enabled.' : 'Your public profile is disabled.'}
+            {page.enabled ? 'Your profile is public. Contact sharing is enabled.' : 'Your profile is public. Contact information is hidden.'}
           </p>
           <p className={`contact-autosave-status ${saveState}`} role="status">
             {saveLabel()}
@@ -423,11 +423,11 @@ export function ContactSettingsPage({ embedded = false, hideQr = false, hideProf
           className={`contact-public-profile-toggle ${page.enabled ? 'is-disable' : 'is-enable'} ${fieldStateClass('enabled')}`}
           onClick={() => setField('enabled', !page.enabled)}
         >
-          {page.enabled ? 'Disable' : 'Enable'}
+          {page.enabled ? 'Hide contact information' : 'Share contact information'}
         </button>
 
         {!embedded ? <div className="contact-settings-actions">
-          {page.enabled && publicUrl ? (
+          {publicUrl ? (
             <a className="contact-public-page-bubble" href={publicUrl} target="_blank" rel="noreferrer">
               Open
             </a>

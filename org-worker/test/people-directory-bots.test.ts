@@ -22,8 +22,8 @@ test('People excludes verified bots before search and pagination, including rena
   assert.deepEqual((await directoryRows(env, '', 2, 0)).map(row => row.user_id), ['human', 'member']);
   const page = await directoryRows(env, '', 2, 2);
   assert.deepEqual(page.map(row => row.user_id), ['private']);
-  assert.equal(page[0].contact_slug, null);
-  assert.equal(page[0].headline, null);
+  assert.equal(page[0].contact_slug, 'private');
+  assert.equal(page[0].headline, 'Private headline');
   assert.deepEqual(await directoryRows(env, 'service', 40, 0), []);
   assert.deepEqual((await directoryRows(env, 'robot', 40, 0)).map(row => row.user_id), ['human']);
 });

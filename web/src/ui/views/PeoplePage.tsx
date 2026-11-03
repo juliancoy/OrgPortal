@@ -149,22 +149,18 @@ export function PeoplePage() {
             </h2>
             <ul className="people-directory-grid">{users.map((person) => {
               const isSelf = Boolean(user?.id && user.id === person.user_id)
-              const contactSlug = person.contact_slug || person.slug
-              const contactEnabled = person.contact_enabled ?? person.enabled ?? true
-              const profilePath = contactSlug && (contactEnabled || isSelf)
-                ? `/users/${encodeURIComponent(contactSlug)}${organizationScope ? `?org=${encodeURIComponent(organizationScope)}` : ''}`
-                : isSelf ? '/profile' : null
+              const contactSlug = person.contact_slug || person.slug || person.user_id
+              const profilePath = `/users/${encodeURIComponent(contactSlug)}${organizationScope ? `?org=${encodeURIComponent(organizationScope)}` : ''}`
               const summary = <>
                 <OrganizationAvatar className="people-directory-photo" name={person.user_name} src={person.photo_url} status={personnelFor(person.user_id)} />
                 <div className="people-directory-copy">
                   <h3>{person.user_name}</h3>
                   {adminView && <>
                     <p>{person.email || 'No email recorded'}</p>
-                    <p>{person.contact_enabled ? 'Published profile' : 'Unpublished profile'}</p>
+                    <p>{person.contact_enabled ? 'Contact sharing enabled' : 'Contact details hidden'}</p>
                     <p>Last portal activity: {person.last_active_at ? new Date(person.last_active_at).toLocaleString() : 'Not recorded'}</p>
                   </>}
                   {person.headline && <p>{person.headline}</p>}
-                  {!profilePath && <p>Contact details are private</p>}
                 </div>
               </>
               return <li key={person.user_id}>
