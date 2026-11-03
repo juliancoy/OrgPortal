@@ -1,3 +1,4 @@
+import {notApplicableOrganization,isNotApplicableLabel,isNotApplicableNode} from '../src/features/ecosystem/node-classes.js';
 // A public, database-backed graph projection shared by every dimensional renderer.
 import {createHash} from 'node:crypto';
 const hash=value=>createHash('sha256').update(value).digest('hex');
@@ -6,6 +7,12 @@ const collections=['organizations','relationships','financing','events','nonprof
 export function projectNativeEvidence(input,records,directory=[]){
  const data=structuredClone(input),orgs=new Map(data.organizations.map(o=>[o.id,o]));
  const slugs=new Map(),aliases=new Map()
+ // Reclassify legacy placeholder nodes without changing source labels or records.
+ for(const org of [...orgs.values()])if(isNotApplicableNode(org)){
+  aliases.set(org.id,notApplicableOrganization.id);orgs.delete(org.id);orgs.set(notApplicableOrganization.id,{...notApplicableOrganization});
+ }
+ for(const edge of data.relationships){if(aliases.has(edge.source))edge.source=aliases.get(edge.source);if(aliases.has(edge.target))edge.target=aliases.get(edge.target)}
+ for(const row of data.financing||[])for(const key of ['source','target','funderId','recipientId'])if(aliases.has(row[key]))row[key]=aliases.get(row[key]);
  for(const org of data.organizations)if(org.portalSlug){const candidates=slugs.get(org.portalSlug)||[];candidates.push(org.id);slugs.set(org.portalSlug,candidates)}
  for(const org of directory){
   const candidates=slugs.get(org.slug)||[],id=orgs.has(org.id)?org.id:candidates.length===1?candidates[0]:org.id
@@ -18,6 +25,7 @@ export function projectNativeEvidence(input,records,directory=[]){
  function endpoint(id,label,scope,role,prior){
   if(id&&aliases.has(id))return aliases.get(id);
   if(id&&orgs.has(id))return id;
+  if(!id&&isNotApplicableLabel(label)){orgs.set(notApplicableOrganization.id,{...notApplicableOrganization});return notApplicableOrganization.id;}
   if(!id&&!label)return null;
   const nodeId=id||`source-label:${scope}:${role}:${hash(label).slice(0,32)}`;
   if(!orgs.has(nodeId))orgs.set(nodeId,{id:nodeId,name:label||id,type:id?'Organization':'Source label',category:role==='agency'?'government':'general',entityType:id?'organization':'source_label',identityStatus:id?'source_linked':'unverified_label',directory:false,sourceCategory:scope,relevance:id?'Organization linked by the transactional source record.':'Source-reported counterparty label; not a verified organization identity. May name multiple recipients.'});

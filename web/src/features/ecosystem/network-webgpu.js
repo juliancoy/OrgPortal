@@ -1,4 +1,5 @@
 import {progressiveGraph,nextGraphFrame,retainLayoutNodes} from './progressive-graph.js'
+import {readEvidenceResponse} from './readEvidenceResponse.js'
 import {bundleRenderedEdges,layoutConnections} from './network-edge-bundles.js'
 import {appendNetworkInspection,applyNetworkFinancialSummary} from './network-inspection.js'
 import {analyticalLayout} from './network-layouts.js'
@@ -17,9 +18,8 @@ import { relationshipColor } from './relationship-colors.js'
 import { applyFundHierarchy, foldFundNodes, financialNodePies, pieLabel } from './fund-pies.js'
 import { createNetworkGPU, curvePoints } from './webgpu-renderer.js'
 import { assignEdgeCurvature } from './ecosystem-physics.js'
-import { uniqueNetworkLinks } from './network-links.js'
 import { createNetworkLayout } from './network-layout.js'
-import { organizationPreview, edgeDetails, networkPreviewSummaries } from './ecosystem-view.js'
+import { organizationPreview, edgeBundleDetails, networkPreviewSummaries } from './ecosystem-view.js'
 import { graphRelationships, financialNodeRadius } from './portal-ecosystem.js'
 export function mountEcosystemNetworkGPU(root, {portalPath, renderer: rendererKind = 'webgpu'}) {
 const four=rendererKind==='webgpu4d',spatial=four||rendererKind==='webgpu3d'
@@ -28,7 +28,7 @@ mountNetworkLawDialogs(root,abort.signal)
 const $ = s => root.querySelector(s)
 const rewriteLinks = () => root.querySelectorAll('a[href^="/"]').forEach(a => { const path=a.getAttribute('href'); if(!a.dataset.portalLinked){a.setAttribute('href', portalPath(path));a.dataset.portalLinked='true'} });
 
-const colors = { ecosystem:0x16847d, company:0x357db7, health:0xc76e57, university:0x8564b3, funding:0xad7b26, general:0x77878c, 'federal-government':0x234c8c, 'state-government':0xa54161 }
+const colors = { ecosystem:0x16847d, company:0x357db7, health:0xc76e57, university:0x8564b3, funding:0xad7b26, general:0x77878c, 'not-applicable':0x8b929a, 'federal-government':0x234c8c, 'state-government':0xa54161 }
 const selectedCategories = () => new Set([...root.querySelectorAll('[name=node-category]:checked')].map(c=>c.value))
 const selectedRelationships = () => new Set([...root.querySelectorAll('[name=relationship]:checked')].map(c=>c.value))
 const host = $('#network-canvas'), labels = $('#network-labels'), status = $('#network-status')
@@ -40,14 +40,16 @@ let fittedWidth=1, recordedCounts=new Map()
 let preparedData, previewSummaries, data, selected = null, renderer, canvas, nodes=[], edges=[], labelItems=[], frame=0
 let inspectorKey=null, simulation, fitted=false, geometryDirty=true, visibilityKey=null, visible=new Set(), visibleEdges=new Set(), labelPriority=[]
 const queryControls=document.createElement('section');queryControls.className='eco-view-filters';queryControls.setAttribute('aria-label','Network data scope')
-queryControls.innerHTML='<label>Explore group<select id="network-data-group"><option value="">Network overview</option></select></label><button id="network-data-previous" type="button" disabled>Previous group page</button><button id="network-data-next" type="button" disabled>Next group page</button><p id="network-data-status" role="status"></p>'
+queryControls.innerHTML='<label>Explore group<select id="network-data-group"><option value="">Network overview</option></select></label><button id="network-data-previous" type="button" disabled>Previous group page</button><button id="network-data-next" type="button" disabled>Next group page</button><button id="network-records-previous" type="button" disabled>Previous transaction rows</button><button id="network-records-next" type="button" disabled>Next transaction rows</button><p id="network-data-status" role="status"></p>'
 root.querySelector('.eco-network-controls').prepend(queryControls)
-let graphRequest,searchRequest,searchTimer,geographyTimer,graphScope={},graphOffset=0,graphNext=null,graphSequence=0
+let graphRequest,searchRequest,searchTimer,geographyTimer,graphScope={},graphOffset=0,graphNext=null,graphEdgeOffset=0,graphEdgeNext=null,graphEdgeHistory=[],graphSequence=0
+const requestedNodes=new URL(location.href).searchParams.get('nodes')
+if([...$('#network-node-limit').options].some(option=>option.value===requestedNodes))$('#network-node-limit').value=requestedNodes
 const graphEndpoint=parameters=>portalPath('/api/ecosystem/graph?'+new URLSearchParams(parameters))
 async function loadGraph(scope=graphScope,{keepView=false}={}){
  if(scope.org)scope={...scope,direction:scope.direction||graphScope.direction||'children'}
  graphRequest?.abort();const controller=new AbortController();graphRequest=controller
- const sequence=++graphSequence,parameters={depth:$('#network-hop-depth').value||'1',offset:String(scope.offset||0)}
+ const sequence=++graphSequence,parameters={depth:$('#network-hop-depth').value||'1',offset:String(scope.offset||0),edgeOffset:String(scope.edgeOffset||0),nodeLimit:$('#network-node-limit').value}
  if(data?.version)parameters.version=data.version
  if(scope.org){parameters.org=scope.org;parameters.direction=scope.direction}
  if(scope.group)parameters[scope.group[0]]=scope.group[1]
@@ -56,10 +58,11 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
  if(scope.bbox)parameters.bbox=scope.bbox
  $('#network-data-status').textContent='Loading network scope…'
  try{
-  const response=await fetch(graphEndpoint(parameters),{signal:controller.signal,credentials:'omit'}),next=await response.json()
+  const response=await fetch(graphEndpoint(parameters),{signal:controller.signal,credentials:'omit'}),next=await readEvidenceResponse(response,'Network')
   if(!response.ok)throw Error(next.error||'Network scope unavailable')
   if(disposed||sequence!==graphSequence)return
-  graphScope=scope;if(!scope.org){selected=null;$('#neighbors').checked=false;$('#neighbors').disabled=true;if($('#network-detail-mode').value==='focus')$('#network-detail-mode').value='overview';$('#network-detail').innerHTML='<h2>Select an organization or group</h2>'}graphOffset=next.offset;graphNext=next.nextOffset;data=next
+  if(!scope.edgeOffset)graphEdgeHistory=[]
+  graphScope=scope;if(!scope.org){selected=null;$('#neighbors').checked=false;$('#neighbors').disabled=true;if($('#network-detail-mode').value==='focus')$('#network-detail-mode').value='overview';$('#network-detail').innerHTML='<h2>Select an organization or group</h2>'}graphOffset=next.offset;graphNext=next.nextOffset;graphEdgeOffset=next.edgeOffset||0;graphEdgeNext=next.nextEdgeOffset??null;data=next
   if(!keepView&&!nodes.length)fitted=false
   analysisLayout=null;networkCoordinates.clear()
   const stream=progressiveGraph(next)
@@ -80,7 +83,12 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
   }
   groupSelect.value=scope.group?JSON.stringify(scope.group):''
   $('#network-data-previous').disabled=!graphOffset;$('#network-data-next').disabled=graphNext===null
-  const message=next.communityOverview?`${next.organizations.length} of ${next.total} community markers representing ${next.totalOrganizations} organizations. Select a community to load its organizations and source connections.`:next.clustered?`${next.organizations.length} county aggregate markers from ${next.geography.located} organizations with published Maryland coordinates; ${next.geography.missing} missing or outside Maryland. Select a county or zoom in to load organizations.`:`Loaded ${next.organizations.length} of ${next.total} matching organizations; ${next.totalOrganizations} in the full network. ${next.relationships.length} connection representatives for ${next.matchingEdges} evidence records between these loaded organizations. See Relationships for every source record.${next.truncated?' More evidence is available in Relationships.':''} Financial summaries use the full snapshot.`
+  $('#network-records-previous').disabled=!graphEdgeOffset;$('#network-records-next').disabled=graphEdgeNext===null
+  $('#network-clustering').disabled=!next.communityOverview
+  const focusedName=next.organizations.find(o=>o.id===scope.org)?.name
+  $('#network-ranking').textContent=scope.org?`Relevant to ${focusedName||'the selected organization'}: nearest neighbors, transaction activity, shared counterparties, then overall connectivity. ${next.total} organizations in this ${parameters.depth}-hop neighborhood.`:`Top ${next.organizations.length} relevant connected nodes: start at the most connected organization, then its most connected counterparties. Select a node to rerank around it.`
+  $('#network-show-more').disabled=next.organizations.length>=250||((next.total<=next.organizations.length)&&(!scope.org||Number(parameters.depth)>=3))
+  const message=next.communityOverview?`${next.organizations.length} of ${next.total} community markers representing ${next.totalOrganizations} organizations. Select a community to load its organizations and source connections.`:next.clustered?`${next.organizations.length} county aggregate markers from ${next.geography.located} organizations with published Maryland coordinates; ${next.geography.missing} missing or outside Maryland. Select a county or zoom in to load organizations.`:`Loaded ${next.organizations.length} of ${next.total} matching organizations; ${next.totalOrganizations} in the full network. ${next.relationships.length} transaction rows consolidated into directed edges (${next.matchingEdges} matching rows between these organizations).${next.truncated?' Use transaction row paging to see the remaining edges.':''} Financial summaries use the full snapshot.`
   $('#network-data-status').textContent=stream.pending?`Loading detail: ${data.organizations.length}/${next.organizations.length} organizations in this page; ${next.total} in scope. The graph remains interactive.`:(scope.org?`${scope.direction==='parents'?'Parents (incoming relationships)':'Children (outgoing relationships)'}. `:'')+message
   $('#network-source').textContent='Evidence snapshot built '+new Date(next.generatedAt).toLocaleString()
   previewSummaries=preparedData.summaries
@@ -99,9 +107,20 @@ function scheduleGeography(){
  },250)
 }
 $('#network-data-group').addEventListener('change',()=>{selected=null;void loadGraph({group:$('#network-data-group').value?JSON.parse($('#network-data-group').value):undefined}).catch(()=>{})},{signal:abort.signal})
-$('#network-data-next').addEventListener('click',()=>{selected=null;void loadGraph({...graphScope,offset:graphNext}).catch(()=>{})},{signal:abort.signal})
-$('#network-data-previous').addEventListener('click',()=>{selected=null;void loadGraph({...graphScope,offset:Math.max(0,graphOffset-250)}).catch(()=>{})},{signal:abort.signal})
+$('#network-data-next').addEventListener('click',()=>{selected=null;void loadGraph({...graphScope,offset:graphNext,edgeOffset:0}).catch(()=>{})},{signal:abort.signal})
+$('#network-data-previous').addEventListener('click',()=>{selected=null;void loadGraph({...graphScope,offset:Math.max(0,graphOffset-Number($('#network-node-limit').value)),edgeOffset:0}).catch(()=>{})},{signal:abort.signal})
+$('#network-records-next').addEventListener('click',()=>{const previous=graphEdgeOffset;void loadGraph({...graphScope,edgeOffset:graphEdgeNext},{keepView:true}).then(()=>graphEdgeHistory.push(previous)).catch(()=>{})},{signal:abort.signal})
+$('#network-records-previous').addEventListener('click',()=>{void loadGraph({...graphScope,edgeOffset:graphEdgeHistory.at(-1)||0},{keepView:true}).then(()=>graphEdgeHistory.pop()).catch(()=>{})},{signal:abort.signal})
 const savedPositions=new Map()
+$('#network-node-limit').addEventListener('change',()=>{
+ const url=new URL(location.href);url.searchParams.set('nodes',$('#network-node-limit').value);history.replaceState(history.state,'',url)
+ void loadGraph({...graphScope,offset:0,edgeOffset:0},{keepView:true}).then(()=>{if(!disposed)fit()}).catch(()=>{})
+},{signal:abort.signal})
+$('#network-show-more').addEventListener('click',()=>{
+ const limit=$('#network-node-limit'),more=[...limit.options].find(option=>Number(option.value)>Number(limit.value))
+ if(graphScope.org&&data.total<=data.organizations.length&&Number($('#network-hop-depth').value)<3){$('#network-hop-depth').value=String(Number($('#network-hop-depth').value)+1);$('#network-hop-depth').dispatchEvent(new Event('input',{bubbles:true}));void loadGraph({...graphScope,offset:0,edgeOffset:0},{keepView:true}).then(()=>{if(!disposed)fit()}).catch(()=>{})}
+ else if(more){limit.value=more.value;limit.dispatchEvent(new Event('change',{bubbles:true}))}
+},{signal:abort.signal})
 let defaultPositions={}
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)')
 $('#live-physics').checked=!reducedMotion.matches
@@ -130,7 +149,7 @@ function saveExpanded(){const control=$('#network-expanded-communities');control
 function restoreExpanded(){try{const values=JSON.parse($('#network-expanded-communities').value);if(Array.isArray(values)&&values.length<=analysis.byId.size){const groups=analysis.communities($('#network-grouping').value).clusters;expandedCommunities.clear();for(const id of values)if(typeof id==='string'&&groups.has(id))expandedCommunities.add(id)}}catch{/* Ignore invalid stored expansion IDs. */}}
 function updateDisclosure(){
  if(!analysis)return
- disclosed=disclosure(analysis,edges,{mode:$('#network-detail-mode').value==='overview'&&!$('#network-clustering').checked?'all':$('#network-detail-mode').value,selected,depth:Number($('#network-hop-depth').value),grouping:$('#network-grouping').value,expanded:expandedCommunities})
+ disclosed=disclosure(analysis,edges,{mode:$('#network-detail-mode').value==='overview'&&(!data.communityOverview||!$('#network-clustering').checked)?'all':$('#network-detail-mode').value,selected,depth:Number($('#network-hop-depth').value),grouping:$('#network-grouping').value,expanded:expandedCommunities})
  visibilityKey=null;geometryDirty=true;labelPriority=[];requestRender()
 }
 function updateNodeSizes(){
@@ -195,29 +214,39 @@ function previewNode(org) {
 
  hovered=org.id;labelPriority=[];requestRender()
  if(selected)return
- const geographic=analysisLayout?.geographicGroups?.get(org.id),group=disclosed?.clusters.get(disclosed.membership.get(org.id)),aggregate=geographic||(!analysisLayout&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group?.id)&&group?.members.length>1?group:null)
+ const geographic=analysisLayout?.geographicGroups?.get(org.id),group=disclosed?.clusters.get(disclosed.membership.get(org.id)),aggregate=geographic||(!analysisLayout&&data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group?.id)&&group?.members.length>1?group:null)
  if(aggregate){const panel=$('#network-detail'),heading=document.createElement('h2'),note=document.createElement('p');heading.textContent=`${geographic?.label||'Community'} · ${aggregate.members.length} organizations`;note.textContent=`Click to expand. Organization anchor: ${org.name}. This marker is an aggregate, not an organization balance.`;panel.replaceChildren(heading,note);return}
  const key='node:'+org.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=organizationPreview(org,previewSummaries);if(analysis)applyNetworkFinancialSummary($('#network-detail'),org,analysis);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')&&!root.classList.contains('eco-search-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML=organizationPreview(org,previewSummaries);if(analysis)applyNetworkFinancialSummary($('#network-detail'),org,analysis);rewriteLinks();
 }
 function previewEdge(edge) {
- if(selected)return
  const key='edge:'+edge.id;if(inspectorKey===key)return;inspectorKey=key
- $('#network-detail').innerHTML=edgeDetails(edge,data);if(edge.records?.length>1){const count=document.createElement('p');count.textContent=`${edge.records.length} records share this geometry; select either organization to inspect every record and source.`;$('#network-detail').prepend(count)}rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')&&!root.classList.contains('eco-search-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML=edgeBundleDetails(edge,data);rewriteLinks();
 }
 function bindNodePreview(button,node) {
  button.addEventListener('pointerenter',()=>previewNode(node))
  button.addEventListener('focus',()=>previewNode(node))
 }
-function activateNode(id){if(id===selected){const direction=graphScope.direction==='parents'?'children':'parents';void loadGraph({...graphScope,org:id,direction,offset:0},{keepView:true}).then(()=>{if(!disposed&&graphScope.org===id&&graphScope.direction===direction)select(id)}).catch(()=>{});return}const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
+function activateNode(id){if(id===selected){const direction=graphScope.direction==='parents'?'children':'parents';void loadGraph({...graphScope,org:id,direction,offset:0},{keepView:true}).then(()=>{if(!disposed&&graphScope.org===id&&graphScope.direction===direction)select(id)}).catch(()=>{});return}const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
 function select(id,openInspector=true) {
- if(data?.version&&graphScope.org!==id){void loadGraph({org:id}).then(()=>{if(!disposed&&graphScope.org===id)select(id,openInspector)}).catch(()=>{});return}
+ if(data?.version&&graphScope.org!==id){
+  const org=data.organizations.find(o=>o.id===id)
+  selected=id;inspectorKey='node:'+id
+  if(org)$('#network-detail').innerHTML=organizationPreview(org,previewSummaries)
+  else $('#network-detail').replaceChildren()
+  const pending=document.createElement('p');pending.setAttribute('role','status');pending.textContent='Loading relevant organizations…';$('#network-detail').append(pending)
+  const url=new URL(location.href);url.searchParams.set('org',id);history.replaceState(history.state,'',url)
+  refreshSelection();if(openInspector)selectPanel('inspector')
+  void loadGraph({org:id}).then(()=>{if(!disposed&&graphScope.org===id)select(id,openInspector)}).catch(error=>{
+   if(!disposed&&selected===id){pending.textContent=error.message||'The neighborhood could not load. Select the organization to retry.'}
+  });return
+ }
  let org = data.organizations.find(o=>o.id===id); if (!org) return
  if(org.administratorId){id=org.administratorId;org=data.organizations.find(o=>o.id===id);if(!org)return}
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
  if($('#network-analysis-mode').value==='geography'){const group=$('#network-grouping').value==='county'?org.county:org.municipality||org.city;if(group){expandedCommunities.add(group);saveExpanded();updateAnalysisLayout()}}
  selected = id;$('#network-detail-mode').value='focus';$('#network-detail-mode').dispatchEvent(new Event('input',{bubbles:true})); inspectorKey='node:'+id; $('#neighbors').disabled=false
- $('#network-detail').innerHTML = organizationPreview(org,previewSummaries);if(analysis)appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin);appendEvidenceLink(org);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')&&!root.classList.contains('eco-search-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
+ $('#network-detail').innerHTML = organizationPreview(org,previewSummaries);if(analysis)appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin);appendEvidenceLink(org);rewriteLinks();
  if(openInspector)selectPanel('inspector')
  const u = new URL(location.href); u.searchParams.set('org',id);u.searchParams.set('direction',graphScope.direction||'children'); history.replaceState(history.state,'',u)
  refreshSelection()
@@ -238,10 +267,11 @@ function unpin() {
  if(filtered)rebuild();else refreshSelection()
 }
 function closeDetails() {
- unpin();panelState()
- root.querySelector('[data-panel="inspector"]').focus()
+ const trigger=root.querySelector('[data-panel][aria-selected="true"]')||root.querySelector('[data-panel="inspector"]')
+ selectPanel(null)
+ trigger.focus()
 }
-root.addEventListener('keydown',event=>{if(event.key==='Escape'&&root.classList.contains('eco-inspector-open'))closeDetails()},{signal:abort.signal})
+root.addEventListener('keydown',event=>{if(event.key==='Escape'&&root.classList.contains('eco-panel-open')){event.preventDefault();closeDetails()}},{signal:abort.signal})
 function search() {
  clearTimeout(searchTimer);searchRequest?.abort()
  const q=$('#network-search').value.trim(),result=$('#network-results');result.replaceChildren()
@@ -249,7 +279,7 @@ function search() {
  const controller=new AbortController();searchRequest=controller
  searchTimer=setTimeout(()=>{
   const params=new URLSearchParams({q,limit:q?'20':'5'});if(data?.version)params.set('version',data.version)
-  void fetch(portalPath('/api/ecosystem/organizations?'+params),{signal:controller.signal,credentials:'omit'}).then(async response=>{const payload=await response.json();if(!response.ok)throw Error(payload.error||'Search unavailable');if(disposed||controller.signal.aborted)return
+  void fetch(portalPath('/api/ecosystem/organizations?'+params),{signal:controller.signal,credentials:'omit'}).then(async response=>{const payload=await readEvidenceResponse(response,'Organization search');if(!response.ok)throw Error(payload.error||'Search unavailable');if(disposed||controller.signal.aborted)return
    for(const org of payload.records){const button=document.createElement('button');button.type='button';button.textContent=shortGroupName(org.name);button.setAttribute('aria-label',org.name);button.addEventListener('click',()=>{select(org.id);selectPanel('inspector')});result.append(button)}
    if(!payload.records.length)result.textContent='No matching organization.'
   }).catch(error=>{if(!controller.signal.aborted&&!disposed)result.textContent=error.message})
@@ -270,7 +300,7 @@ function rebuild({incremental=false}={}) {
  let visible=graphData.organizations.filter(n=>cats.has(n.category))
  let visibleIds=new Set(visible.map(n=>n.id))
  const moneyOnly=$('#network-view').value==='money'
- edges=uniqueNetworkLinks(graphRelationships(graphData,{moneyOnly,includeCapitalization:context}).filter(e=>visibleIds.has(e.source) && visibleIds.has(e.target) && (moneyOnly || rels.has(e.relationship))))
+ edges=graphRelationships(graphData,{moneyOnly,includeCapitalization:context}).filter(e=>visibleIds.has(e.source) && visibleIds.has(e.target) && (moneyOnly || rels.has(e.relationship)))
  const focusedId=graphScope.org||selected
  if ($('#neighbors').checked && focusedId) {
   const neighbors=new Set([focusedId]); edges.forEach(e=>{if(e.source===focusedId)neighbors.add(e.target);if(e.target===focusedId)neighbors.add(e.source)})
@@ -278,7 +308,7 @@ function rebuild({incremental=false}={}) {
  }
  if ($('#hide-isolated').checked) {
   const connected=new Set(edges.flatMap(e=>[e.source,e.target]))
-  visible=visible.filter(n=>n.id===graphScope.org||n.serverCommunity||n.serverCluster||connected.has(n.id))
+  visible=visible.filter(n=>n.id===(graphScope.org||selected)||n.serverCommunity||n.serverCluster||n.relevance?.connections>0||n.networkMetrics?.connections>0||connected.has(n.id))
  }
  recordedCounts=new Map(graphData.organizations.map(n=>[n.id,n.networkMetrics?.recordCount||0]))
  const amounts=new Map(graphData.organizations.map(n=>[n.id,n.networkMetrics?.amount||0]))
@@ -329,10 +359,10 @@ function render(time=0) {
  if(visibilityChanged){
  visibilityKey=key
  visible=new Set(nodes.filter(n=>(!analysisLayout||analysisLayout.positions.has(n.id))&&!n.clipped4D&&(n.id===selected||!$('#zoom-sparse').checked||transactionVisibility(recordedCounts.get(n.id)||0,zoom,Number($('#visibility-factor').value)))).map(n=>n.id))
- if(!analysisLayout&&($('#network-detail-mode').value==='overview'&&$('#network-clustering').checked))visible=new Set([...visible].filter(id=>expandedCommunities.has(disclosed.membership.get(id))||disclosed.representatives.has(id)))
+ if(!analysisLayout&&(data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked))visible=new Set([...visible].filter(id=>expandedCommunities.has(disclosed.membership.get(id))||disclosed.representatives.has(id)))
  const edgeVisible=e=>visible.has(analysisLayout?.nodeMapping?.get(endpoint(e.source))||endpoint(e.source))&&visible.has(analysisLayout?.nodeMapping?.get(endpoint(e.target))||endpoint(e.target))
  const drawingEdges=$('#network-detail-mode').value==='all'||$('#network-analysis-mode').value==='funding'?recordEdges:edges
- visibleEdges=new Set($('#show-links').checked?drawingEdges.filter(e=>((($('#network-detail-mode').value==='overview'&&$('#network-clustering').checked)&&!analysisLayout)||edgeVisible(e))&&(analysisLayout?analysisLayout.edgeIds.has(e.id):$('#network-detail-mode').value==='all'||!$('#network-clustering').checked||disclosed?.edgeIds.has(e.id))).map(e=>e.id):[])
+ visibleEdges=new Set($('#show-links').checked?drawingEdges.filter(e=>(((data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked)&&!analysisLayout)||edgeVisible(e))&&(analysisLayout?analysisLayout.edgeIds.has(e.id):(!data.communityOverview&&$('#network-detail-mode').value==='overview')||$('#network-detail-mode').value==='all'||!$('#network-clustering').checked||disclosed?.edgeIds.has(e.id))).map(e=>e.id):[])
  status.textContent=`${visible.size} visible / ${nodes.length} organizations · ${visibleEdges.size} visible links · ${disclosed?.clusters.size||0} groups${$('#network-detail-mode').value==='focus'&&!selected?' · Select an organization to explore':''}`
  }
  if(geometryDirty||visibilityChanged||updated.size){updatePositions(geometryDirty||visibilityChanged?null:updated);geometryDirty=false}
@@ -347,7 +377,7 @@ function render(time=0) {
  // Reuse unchanged label rectangles as collision obstacles between update turns.
  for(let i=0;i<labelPriority.length;i++){const item=labelPriority[i];if(!batch.has(i)&&!item.button.hidden&&item.labelX!==undefined)positions.add(item.labelX,item.labelY,item.width)}
  for(const i of batch) {const item=labelPriority[i];if(!item)continue
-  const geographic=analysisLayout?.geographicGroups?.get(item.n.id),group=disclosed?.clusters.get(disclosed.membership.get(item.n.id)),collapsed=!analysisLayout&&($('#network-detail-mode').value==='overview'&&$('#network-clustering').checked)&&!expandedCommunities.has(group?.id)&&group?.members.length>1
+  const geographic=analysisLayout?.geographicGroups?.get(item.n.id),group=disclosed?.clusters.get(disclosed.membership.get(item.n.id)),collapsed=!analysisLayout&&(data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked)&&!expandedCommunities.has(group?.id)&&group?.members.length>1
   const text=geographic?`${geographic.label} · ${geographic.members.length} organizations`:shortGroupName(item.n.name)+(collapsed?` · ${group.members.length} organizations`:'');if(item.button.textContent!==text){item.button.textContent=text;item.width=Math.min(155,text.length*5.5+10)}
   const important=geographic||collapsed||item.n.id===selected||item.n.id===hovered,labelMode=$('#network-label-mode').value
   const eligible=important||(labelMode!=='hover'&&(labelMode==='all'||(analysis?.adjacency.get(item.n.id)?.size||0)>=Math.max(2,8/Math.max(.2,zoom))))
@@ -375,7 +405,7 @@ function requestRender(){labelsRemaining=labelItems.length;scheduleRender()}
 function updatePositions(updated=null){
  if(!gpuReady)return
  const width=Number($('#link-width').value),opacity=Number($('#network-edge-opacity').value),encoding=$('#network-edge-encoding').value,color=$('#custom-link-color').checked?parseInt($('#link-color').value.slice(1),16):null
- const overview=!analysisLayout&&($('#network-detail-mode').value==='overview'&&$('#network-clustering').checked),nodeById=new Map(nodes.map(n=>[n.id,n])),representative=new Map()
+ const overview=!analysisLayout&&(data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked),nodeById=new Map(nodes.map(n=>[n.id,n])),representative=new Map()
  if(overview)for(const group of disclosed.clusters.values()){
   const rep=group.members.find(id=>disclosed.representatives.has(id));for(const id of group.members)representative.set(id,expandedCommunities.has(group.id)?id:rep)
  }
@@ -389,9 +419,14 @@ function updatePositions(updated=null){
  const graphColors=$('#network-color-metric').value==='community'?Object.fromEntries([...disclosed.clusters.keys()].map((id,i)=>[id,[0x0072b2,0xe69f00,0x009e73,0xcc79a7,0x56b4e9,0xd55e00][i%6]])):colors
  if($('#network-color-metric').value==='community')renderedGraphNodes=renderedGraphNodes.map(n=>({...n,category:disclosed.membership.get(n.id)}))
  const edgeColor=edge=>selected&&disclosed?.focus.has(endpoint(edge.source))&&disclosed?.focus.has(endpoint(edge.target))?0xd55e00:color!==null?color:encoding==='type'?relationshipColor(edge):0x77878c
- if(drawingEdges===recordEdges){renderedGraphEdges=bundleRenderedEdges(renderedGraphEdges,edgeColor);assignEdgeCurvature(renderedGraphEdges);for(const edge of renderedGraphEdges)edge.curveOffset=Math.max(-60,Math.min(60,edge.curveOffset||0))}
+ const exponent=Number($('#network-edge-count-exponent').value)
+ $('#network-edge-count-exponent-value').textContent=String(exponent)
+ renderedGraphEdges=bundleRenderedEdges(renderedGraphEdges,edgeColor,exponent)
+ assignEdgeCurvature(renderedGraphEdges,60)
  status.dataset.renderedBundles=String(renderedGraphEdges.length)
- renderer.update(renderedGraphNodes,renderedGraphEdges,new Set(renderedGraphNodes.map(n=>n.id)),new Set(renderedGraphEdges.map(e=>e.id)),selected,graphColors,edgeColor,overview?null:updated)
+ status.dataset.renderedRecords=String(renderedGraphEdges.reduce((sum,e)=>sum+e.records.length,0))
+ status.textContent=`${visible.size} visible / ${nodes.length} organizations · ${renderedGraphEdges.length} visible links · ${status.dataset.renderedRecords} transaction rows · ${disclosed?.clusters.size||0} groups`
+ renderer.update(renderedGraphNodes,renderedGraphEdges,new Set(renderedGraphNodes.map(n=>n.id)),new Set(renderedGraphEdges.map(e=>e.id)),selected,graphColors,edge=>edge.bundleColor,overview?null:updated)
 }
 function cursorPosition(event) {
  const rect=host.getBoundingClientRect()
@@ -473,7 +508,7 @@ async function start(){
   await loadGraph({org:new URL(location.href).searchParams.get('org')||undefined,direction:new URL(location.href).searchParams.get('direction')==='parents'?'parents':'children'})
   search();if(disposed)return
   root.addEventListener('wheel',event=>{
-   if(!host.contains(event.target))return
+   if(!host.contains(event.target)||event.target.closest('button,select,input,summary,details'))return
    event.preventDefault();event.stopPropagation()
    const pixels=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?host.clientHeight:1)
    const factor=Math.exp(-Math.max(-300,Math.min(300,pixels))*.002)
@@ -481,7 +516,7 @@ async function start(){
   },{passive:false,capture:true,signal:abort.signal})
   $('#network-detail').addEventListener('error',event=>{if(event.target.tagName==='IMG'){event.target.hidden=true;const note=document.createElement('p');note.className='eco-note';note.textContent='Published image is currently unavailable.';event.target.after(note)}},true)
   $('#network-search').addEventListener('input',search,{signal:abort.signal})
-  for(const id of ['network-analysis-mode','network-hop-depth','network-flow-kind','network-flow-category','network-flow-from','network-flow-to'])$('#'+id).addEventListener('change',()=>{void loadGraph(id==='network-analysis-mode'?{offset:0}:{...graphScope,offset:0,bbox:undefined}).catch(()=>{})},{signal:abort.signal})
+  for(const id of ['network-analysis-mode','network-hop-depth','network-flow-kind','network-flow-category','network-flow-from','network-flow-to'])$('#'+id).addEventListener('change',()=>{void loadGraph(id==='network-analysis-mode'?{offset:0}:{...graphScope,offset:0,edgeOffset:0,bbox:undefined}).catch(()=>{})},{signal:abort.signal})
   for(const control of visibilityControls.querySelectorAll('select,input'))control.addEventListener('input',()=>{if(control.id==='network-expanded-communities')restoreExpanded();if(control.id==='network-grouping'){expandedCommunities.clear();saveExpanded();updateCommunityList()}if(control.id==='network-size-metric')updateNodeSizes();if(control.id==='network-theme')applyTheme();if(control.id==='network-camera-mode')renderer.setCameraMode?.(control.value);if(control.id==='network-analysis-mode'||control.id.startsWith('network-flow-')||($('#network-analysis-mode').value==='geography'&&['network-grouping','network-expanded-communities'].includes(control.id))){updateAnalysisLayout();if(control.id!=='network-expanded-communities')fit()}updateDisclosure()},{signal:abort.signal})
   $('#network-home').addEventListener('click',()=>{unpin();fit()},{signal:abort.signal})
   $('#network-focus').addEventListener('click',()=>{const node=nodes.find(n=>n.id===selected);if(node)focusView(node)},{signal:abort.signal})
@@ -538,23 +573,24 @@ async function start(){
  }catch(error){if(disposed)return;status.textContent=error.message || 'WebGPU network unavailable.';host.hidden=true;console.error(error)}
 }
 const panelState=()=>{
- const active=root.classList.contains('eco-search-open')?'search':root.classList.contains('eco-visualization-open')?'visualization':root.classList.contains('eco-controls-open')?'controls':'inspector'
+ const active=root.classList.contains('eco-search-open')?'search':root.classList.contains('eco-visualization-open')?'visualization':root.classList.contains('eco-controls-open')?'controls':root.classList.contains('eco-inspector-open')?'inspector':null
  for(const panel of ['search','visualization','controls','inspector']){
   const button=root.querySelector(`[data-panel="${panel}"]`),open=panel===active
-  button.setAttribute('aria-selected',String(open));button.tabIndex=open?0:-1
+  button.setAttribute('aria-selected',String(open));button.tabIndex=open||(!active&&panel==='search')?0:-1
   $('#'+button.getAttribute('aria-controls')).hidden=!open
  }
 }
-const selectPanel=panel=>{for(const name of ['search','visualization','controls','inspector'])root.classList.toggle('eco-'+name+'-open',name===panel);panelState()}
+const selectPanel=panel=>{root.classList.toggle('eco-panel-open',Boolean(panel));for(const name of ['search','visualization','controls','inspector'])root.classList.toggle('eco-'+name+'-open',name===panel);panelState()}
+$('#network-close-panel').addEventListener('click',closeDetails,{signal:abort.signal})
 const initialPanel=new URL(location.href).searchParams.get('panel')
-selectPanel(['search','visualization','controls','inspector'].includes(initialPanel)?initialPanel:'inspector')
+selectPanel(['search','visualization','controls','inspector'].includes(initialPanel)?initialPanel:null)
 root.querySelectorAll('[data-graph-type]').forEach(link=>{
  if(link.dataset.graphType==='4d')link.textContent='✧ N-D'
  if(link.dataset.graphType===(four?'4d':spatial?'3d':'2d'))link.setAttribute('aria-current','true')
  const org=new URL(location.href).searchParams.get('org');if(org){const url=new URL(link.getAttribute('href'),location.origin);url.searchParams.set('org',org);link.setAttribute('href',url.pathname+url.search)}
 })
 root.querySelectorAll('[data-panel]').forEach(button=>{
- button.addEventListener('click',()=>selectPanel(button.dataset.panel),{signal:abort.signal})
+ button.addEventListener('click',()=>selectPanel(root.classList.contains('eco-'+button.dataset.panel+'-open')?null:button.dataset.panel),{signal:abort.signal})
  button.addEventListener('keydown',event=>{
   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return
   event.preventDefault()

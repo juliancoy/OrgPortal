@@ -33,9 +33,17 @@ export function edgeDetails(edge,data) {
  return `<p class="eco-eyebrow">Relationship preview</p><h2>${e(edge.sourceLabel)} → ${e(edge.targetLabel)}</h2>
  ${safeUrl(edge.imageUrl) ? `<figure class="eco-inspector-picture"><img src="${e(safeUrl(edge.imageUrl))}" alt="Published relationship image" loading="lazy" referrerpolicy="no-referrer"><figcaption>${evidenceLink(edge.sourceUrl,'Image source ↗')}</figcaption></figure>` : organizations.map(org=>`<h3>${e(org.name)}</h3>${organizationPicture(org)}`).join('')}
  <p><strong>${e(edge.type || edge.description || edge.relationship)}</strong></p>
+ <p class="eco-note">Record ID: ${e(edge.transactionRecordId || edge.id)}</p>
  <p>${e(semantics[edge.kind] || edge.relationship)}${edge.amountLabel ? ` · ${e(edge.amountLabel)}` : ''}${edge.date ? ` · ${e(edge.date)}` : ''}</p>
  <p>${e(edge.evidence || 'Evidence description not supplied.')}</p><p>${e(edge.notes || edge.description || '')}</p>
  <p>${evidenceLink(edge.sourceUrl)}</p><p class="eco-note">${e(edge.provenance?.sheet || 'Public evidence')}${edge.provenance?.row ? ` · row ${e(edge.provenance.row)}` : ''}${edge.status ? ` · ${e(edge.status)}` : ''}. Awards and commitments do not establish payment. Organization pictures identify the endpoints, not the transaction.</p>`
+}
+export function edgeBundleDetails(edge,data){
+ const records=edge.records||[edge]
+ if(records.length===1)return edgeDetails(records[0],data)
+ return `<p class="eco-eyebrow">Directed relationship</p><h2>${e(edge.sourceLabel)} → ${e(edge.targetLabel)}</h2>
+ <p>${records.length} transaction rows on the displayed page. Edge thickness scales with this count; amounts retain their individual meaning.</p>
+ <div class="eco-table-scroll"><table class="eco-table"><thead><tr><th>Record ID</th><th>Type / date</th><th>Reported amount</th><th>Source</th></tr></thead><tbody>${records.map(r=>`<tr><th>${e(r.transactionRecordId||r.id)}</th><td>${e(r.type||r.kind)}<br>${e(r.date)}</td><td>${e(r.amountLabel||(Number.isFinite(r.amount)?`${r.currency||''} ${r.amount}`:'—'))}</td><td>${evidenceLink(r.sourceUrl)}${r.evidence||r.notes?`<details><summary>Evidence</summary><p>${e(r.evidence)}</p><p>${e(r.notes)}</p></details>`:''}</td></tr>`).join('')}</tbody></table></div>`
 }
 export function orgDetails(org, data, options = {}) {
   applyFundHierarchy(data)

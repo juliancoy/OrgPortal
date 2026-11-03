@@ -34,7 +34,11 @@ export function createNetworkAnalysis(nodes,edges) {
     // Deterministic asynchronous label propagation, bounded to 20 sweeps.
     const order=[...byId.keys()].sort();order.forEach(id=>membership.set(id,id))
     for(let pass=0;pass<20;pass++){let changed=false
-     for(const id of order){const votes=new Map();for(const neighbor of adjacency.get(id)){const label=membership.get(neighbor);votes.set(label,(votes.get(label)||0)+1)}
+     for(const id of order){
+      // Server community markers already aggregate organizations. Merging them
+      // again makes their summary connections internal and hides those edges.
+      if(byId.get(id).serverCommunity)continue
+      const votes=new Map();for(const neighbor of adjacency.get(id)){const label=membership.get(neighbor);votes.set(label,(votes.get(label)||0)+1)}
       if(!votes.size)continue
       const best=[...votes].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))[0][0]
       if(best!==membership.get(id)){membership.set(id,best);changed=true}

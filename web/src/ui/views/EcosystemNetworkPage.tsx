@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { portalPath } from '../../config/portalBase'
 import markup from '../../features/ecosystem/markup.html?raw'
 import '../../features/ecosystem/network.css'
+import '../../features/ecosystem/network-hierarchy.css'
 import { useNetworkViewport } from '../../features/ecosystem/useNetworkViewport'
 
 type NetworkRenderer = 'canvas' | 'webgpu' | 'webgpu3d' | 'webgpu4d'
@@ -57,7 +58,7 @@ export function EcosystemNetworkPage({ renderer = 'canvas' }: { renderer?: Netwo
     }
     document.title = four ? 'Organization network · N-dimensional relationship network' : spatial ? 'Organization network · 3D WebGPU' : renderer === 'webgpu' ? 'Organization ecosystem network · WebGPU' : 'Organization ecosystem network'
     if (!root.current) return
-    root.current.innerHTML = markup.replace('Organization network</h1>', `Organization network · ${four ? 'N-dimensional relationship network' : spatial ? '3D WebGPU' : renderer === 'webgpu' ? 'WebGPU' : '2D'}</h1>`)
+    root.current.innerHTML = markup.replace('Organization network</h1>', `Organization network</h1><span class="eco-view-label">${four ? 'N-dimensional view' : spatial ? '3D view' : '2D view'}</span>`)
     root.current.querySelector<HTMLInputElement>('#network-search')!.value = search.current
     if (four) {
       const controls = root.current.querySelector('.eco-network-controls')!
@@ -74,5 +75,5 @@ export function EcosystemNetworkPage({ renderer = 'canvas' }: { renderer?: Netwo
     }).catch(() => { if (!disposed) host.textContent = 'The network could not load. Reload to try again.' })
     return () => { disposed = true; search.current = host.querySelector<HTMLInputElement>('#network-search')?.value || ''; cleanup?.() }
   }, [renderer, spatial, four, practice])
-  return <div ref={root} className="portal-ecosystem eco-page" />
+  return <div ref={root} className="portal-ecosystem eco-page eco-graph-workspace" />
 }

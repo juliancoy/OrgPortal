@@ -2,7 +2,7 @@
 export function graphNeighborhood(topology,selected,depth,direction='both'){
  if(!['both','parents','children'].includes(direction))throw Error('Invalid graph direction')
  const nodeId=value=>typeof value==='number'?topology.nodeIds[value]:value
- const nodes=new Set([selected]),edges=direction==='both'?null:new Set()
+ const distances=new Map([[selected,0]]),nodes=new Set([selected]),edges=direction==='both'?null:new Set()
  let frontier=[selected]
  for(let hop=0;hop<depth;hop++){
   const next=[]
@@ -14,10 +14,10 @@ export function graphNeighborhood(topology,selected,depth,direction='both'){
    for(const [neighbor,index] of neighbors){
     if(neighbor===selected)continue
     edges?.add(index)
-    if(!nodes.has(neighbor)){nodes.add(neighbor);next.push(neighbor)}
+    if(!nodes.has(neighbor)){nodes.add(neighbor);distances.set(neighbor,hop+1);next.push(neighbor)}
    }
   }
   frontier=next
  }
- return {nodes,edges}
+ return {nodes,edges,distances}
 }

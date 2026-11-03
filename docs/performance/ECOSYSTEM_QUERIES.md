@@ -36,13 +36,36 @@ Endpoints:
   and an explicit CSV export of all matching companies.
 - `performance`: filtered and sorted evidence pages, comparable cohorts,
   and full-snapshot coverage/exposure summaries.
-- `graph`: at most 250 nodes and 1,000 distinct connection representatives.
-  The overview uses explicitly labeled community aggregate markers. Selecting
+- `graph`: at most 250 nodes and 1,000 individual transaction rows per page.
+  The initial view requests `nodeLimit=25`; visible controls expand the top set
+  to 50, 100 or 250 without replacing earlier ranks. The initial connected view
+  starts at the organization with the most distinct counterparties, then grows
+  through the most connected eligible counterparties, using transaction count
+  to break ties. A disconnected component starts only after the current frontier
+  is exhausted. This avoids a screen of mutually disconnected high-degree agencies.
+  With `org` selected, the anchor stays first, followed by shortest hop distance,
+  transaction count with the anchor, shared counterparties, global degree and
+  row count; IDs break remaining ties deterministically. The response's `ranking`
+  explains the basis and each organization's `relevance` reports its rank and
+  contributing counts. These are connectivity measures, not claims of social
+  importance or financial performance. Expansion preserves the selection and
+  opens the next hop (up to three) if its current neighborhood is exhausted.
+  Nodes connected in the full topology remain visible even when their source
+  rows are on a later transaction page. Transaction pages cover distinct directed
+  pairs before repeated rows from a pair, preserving all record IDs.
+  Source rows retain their IDs, direction, amount and evidence. The renderer
+  consolidates rows by ordered source/destination pair, preserving reverse
+  directions as separate edges. Thickness is base width × row count^exponent
+  (default 0.5; adjustable from 0.1 to 1). Counts cover the displayed transaction
+  page; each edge's inspector lists its underlying rows without summing mixed
+  financial measures. `edgeOffset` and `nextEdgeOffset`
+  page transaction rows independently of organization pages, including when
+  the 2 MiB response budget limits a page. Selecting
   a group or a searched organization loads a bounded scope, with 1–3-hop
   neighborhoods, published location groups, or dated funding filters.
-  Each representative references actual source evidence; its `recordCount`
-  describes additional records available in the relationship table. It is not
-  an additional transaction or additive financial aggregate.
+  The default relationship graph does not substitute community summaries or
+  discard the underlying rows. An explicit `summary=community` query remains
+  available for aggregate research views.
 
 Geographic queries use `mode=geography` and optional `bbox=west,south,east,north`.
 Wide views return county aggregate markers; narrower bounds return published
