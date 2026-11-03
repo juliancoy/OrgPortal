@@ -93,11 +93,12 @@
 - Database and storage changes must remain compatible with both A and B during
   the rollout. Worker rollback does not undo D1 migrations or storage writes;
   review migration and rollback compatibility separately.
-- Current implementation: `cloudflare/build.sh` runs full checks/builds and the
-  configured deploy command runs `deploy all` immediately. Gradual promotion and
-  focused CI selection are not yet automated. Implement and test them in the
-  release tooling before claiming a staged rollout; do not bypass existing gates
-  or replace the release workflow with ad hoc production uploads.
+- Releases are manual after local validation. GitHub workflows are manual-only;
+  Cloudflare push-triggered builds are disconnected. Do not dispatch remote tests
+  or re-enable push deployment unless explicitly requested. Select and publish a
+  clean commit, validate locally, build once, then deploy the matching artifacts.
+  Later pushes to main do not invalidate the tested release commit. Gradual
+  promotion remains unimplemented; do not claim a canary rollout.
 - Consult Cloudflare's current [gradual deployment guidance](https://developers.cloudflare.com/workers/versions-and-deployments/gradual-deployments/),
   [version overrides](https://developers.cloudflare.com/workers/versions-and-deployments/version-overrides/),
   [version affinity](https://developers.cloudflare.com/workers/versions-and-deployments/gradual-deployments/version-affinity/)

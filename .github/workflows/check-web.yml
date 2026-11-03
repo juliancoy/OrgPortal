@@ -1,10 +1,6 @@
 name: Check portal web integrations
 
 on:
-  push:
-    paths: ['web/**', 'shared/**', 'org-worker/**', 'scripts/mcp-local/**', 'scripts/run-local-mcp-test.py', '.github/workflows/check-web.yml']
-  pull_request:
-    paths: ['web/**', 'shared/**', 'org-worker/**', 'scripts/mcp-local/**', 'scripts/run-local-mcp-test.py', '.github/workflows/check-web.yml']
   workflow_dispatch:
 
 permissions:

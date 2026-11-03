@@ -2229,6 +2229,20 @@
       ]
     },
     {
+      "id": "suite-scripts-release-policy-test-mjs",
+      "label": "scripts/release-policy.test.mjs",
+      "category": "Deployment and infrastructure",
+      "source": "scripts/release-policy.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "release-policy.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-scripts-run-local-mcp-test-py",
       "label": "scripts/run-local-mcp-test.py",
       "category": "User interface and integrations",

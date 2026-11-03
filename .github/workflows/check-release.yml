@@ -1,11 +1,7 @@
 name: Verify independent OrgPortal release
 on:
-  pull_request:
-    paths: ['cloudflare/**', 'scripts/release.mjs', 'run.py', '.github/workflows/check-release.yml']
-  push:
-    branches: [main]
-    paths: ['cloudflare/**', 'scripts/release.mjs', 'run.py', '.github/workflows/check-release.yml']
   workflow_dispatch:
+
 permissions:
   contents: read
 concurrency:
