@@ -1,6 +1,6 @@
 import { key, safeUrl, applyGovernmentClasses, governmentCategory } from './ecosystem.js'
 const moneyKinds = new Set(['grant','donation','contract','transfer', 'terms', 'capitalization', 'portfolio', 'coinvestment'])
-const graphKinds = new Set(['grant','donation','contract','transfer','affiliation','incubation','acceleration','collaboration','services','mentoring','venue','in_kind','approval','agency','equity','debt'])
+const graphKinds = new Set(['grant','donation','contract','transfer','affiliation','incubation','acceleration','collaboration','services','mentoring','venue','in_kind','appropriation','approval','agency','equity','debt'])
 export function graphRelationships(data, { moneyOnly = false, includeCapitalization = false } = {}) {
  return data.relationships.filter(r => r.status!=='voided' && r.source && r.target && (graphKinds.has(r.kind || r.relationship) || (includeCapitalization && r.kind === 'capitalization')) && (!moneyOnly || ['transfer','grant','donation','contract'].includes(r.kind) || (includeCapitalization && r.kind === 'capitalization')))
 }

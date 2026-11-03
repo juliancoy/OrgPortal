@@ -10,3 +10,10 @@ test('geography never invents coordinates and counts omitted nodes',()=>{const l
 test('published out-of-state metadata excludes coordinates inside the regional bounding box',()=>assert.equal(geographicPoint({latitude:39,longitude:-76,state:'VA'}),null))
 
 test('geographic county and municipality markers use derived centroids and expand to original coordinates',()=>{const orgs=[{id:'a',name:'A',county:'County',city:'City',latitude:39,longitude:-77},{id:'b',name:'B',county:'County',city:'City',latitude:39.2,longitude:-76.8},{id:'c',name:'C',county:'Other',latitude:39.3,longitude:-76.5},{id:'missing',name:'Missing',county:'County'}];const links=[{id:'ac',source:'a',target:'c'},{id:'bc',source:'b',target:'c'}];const layout=analyticalLayout(orgs,links,'geography',{grouping:'county'});assert.equal(layout.positions.size,2);assert.equal(layout.locatedCount,3);assert.equal(layout.missing,1);assert.equal(layout.nodeMapping.get('b'),'a');assert.equal(layout.edgeIds.size,2);assert.equal(layout.geographicGroups.get('a').members.length,2);assert.ok(Math.abs(layout.positions.get('a').x-(geographicPoint(orgs[0]).x+geographicPoint(orgs[1]).x)/2)<1e-8);const expanded=analyticalLayout(orgs,links,'geography',{grouping:'county',expanded:new Set(['County'])});assert.equal(expanded.positions.size,3);assert.deepEqual(expanded.positions.get('a'),geographicPoint(orgs[0]));assert.equal(analyticalLayout(orgs,links,'geography',{grouping:'municipality'}).positions.size,2);assert.equal(orgs[0].latitude,39)})
+
+test('budget appropriations participate in funding direction without becoming payment metrics',()=>{
+ const nodes=[{id:'fund',name:'State fund'},{id:'dept',name:'Department'}],edges=[{id:'budget',source:'fund',target:'dept',kind:'appropriation',amount:100,currency:'USD'}]
+ const layout=analyticalLayout(nodes,edges,'funding',{kind:'appropriation'})
+ assert.equal(layout.edgeIds.has('budget'),true)
+ assert.equal(layout.roles.get('fund'),'Funder');assert.equal(layout.roles.get('dept'),'Recipient')
+})

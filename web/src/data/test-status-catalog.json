@@ -699,6 +699,10 @@
       "kind": "node",
       "cases": [
         {
+          "id": "MCP form discovery shares live settings and schema without exposing or writing applications",
+          "label": "MCP form discovery shares live settings and schema without exposing or writing applications"
+        },
+        {
           "id": "final round host controls, immutable shortlist, tenant isolation and private single-choice ballots",
           "label": "final round host controls, immutable shortlist, tenant isolation and private single-choice ballots"
         },
@@ -2481,6 +2485,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-maryland-budget-test-mjs",
+      "label": "web/scripts/maryland-budget.test.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/maryland-budget.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "maryland-budget.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-navigation-practice-test-mjs",
       "label": "web/scripts/navigation-practice.test.mjs",
       "category": "User interface and integrations",
@@ -3779,6 +3797,20 @@
         {
           "id": "suite",
           "label": "motionStateMachine.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-budgetAppropriations-test-ts",
+      "label": "web/src/features/ecosystem/budgetAppropriations.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/budgetAppropriations.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "budgetAppropriations.test.ts"
         }
       ]
     },

@@ -32,7 +32,7 @@ export async function readRows(read,version,collection,ids){
 export async function queryEcosystem(read,section,params){
  const manifest=await read('manifest.json'),version=manifest.version
  if(params.get('version')&&params.get('version')!==version)return {status:409,body:{error:'Evidence snapshot changed. Reload this view.'}}
- const meta={version,generatedAt:manifest.generatedAt,governmentCoverage:manifest.governmentCoverage,nonprofitCoverage:manifest.nonprofitCoverage,transactionalCoverage:manifest.transactionalCoverage}
+ const meta={version,generatedAt:manifest.generatedAt,governmentCoverage:manifest.governmentCoverage,marylandBudgetCoverage:manifest.marylandBudgetCoverage,nonprofitCoverage:manifest.nonprofitCoverage,transactionalCoverage:manifest.transactionalCoverage}
  if(section==='overview')return {body:{...meta,...await read(`${version}/overview.json`)}}
  if(section==='funding'){
   const input=await read(`${version}/funding.json`),asOf=params.get('asOf')||new Date().toISOString().slice(0,10)
@@ -119,7 +119,7 @@ export async function queryEcosystem(read,section,params){
    const selectedIds=selected?new Set(ids):null
    const categoryIds=params.get('category')?new Set(index.filters.category?.[params.get('category')]?.map(i=>index.rows[i].id)||[]):null
    fundingCategoryIds=categoryIds
-   const endpoints=new Set(topology.edges.filter(e=>['transfer','grant','donation','contract'].includes(e[2])&&(!params.get('kind')||e[2]===params.get('kind'))&&(!categoryIds||categoryIds.has(nodeId(e[0]))||categoryIds.has(nodeId(e[1])))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))).flatMap(e=>[nodeId(e[0]),nodeId(e[1])]))
+   const endpoints=new Set(topology.edges.filter(e=>['transfer','grant','donation','contract','appropriation'].includes(e[2])&&(!params.get('kind')||e[2]===params.get('kind'))&&(!categoryIds||categoryIds.has(nodeId(e[0]))||categoryIds.has(nodeId(e[1])))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))).flatMap(e=>[nodeId(e[0]),nodeId(e[1])]))
    const membership=new URLSearchParams(nodeParams);membership.delete('category');membership.delete('org');ids=matching(index,membership).filter(i=>endpoints.has(index.rows[i].id)&&(!selectedIds||selectedIds.has(i)))
   }
   const ranked=graphRelevance(index,topology,ids,selected,distances,offset+nodeLimit);ids=ranked.ids
@@ -128,7 +128,7 @@ export async function queryEcosystem(read,section,params){
   const page=ids.slice(offset,offset+nodeLimit),organizations=(await readRows(read,version,'organizations',page)).map((org,i)=>({...org,relevance:{...ranked.scores.get(page[i]),rank:offset+i+1}}))
   const visible=new Set(organizations.map(o=>o.id)),edgeIds=new Set()
   for(const id of visible)for(const edge of topology.edgesByOrg[id]||[])edgeIds.add(edge)
-  const candidates=[...edgeIds].sort((a,b)=>a-b).filter(i=>{const e=topology.edges[i];return (!neighborhood?.edges||neighborhood.edges.has(i))&&visible.has(nodeId(e[0]))&&visible.has(nodeId(e[1]))&&(mode!=='funding'||(['transfer','grant','donation','contract'].includes(e[2])&&(!fundingCategoryIds||fundingCategoryIds.has(nodeId(e[0]))||fundingCategoryIds.has(nodeId(e[1])))))&&(!params.get('kind')||e[2]===params.get('kind'))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))})
+  const candidates=[...edgeIds].sort((a,b)=>a-b).filter(i=>{const e=topology.edges[i];return (!neighborhood?.edges||neighborhood.edges.has(i))&&visible.has(nodeId(e[0]))&&visible.has(nodeId(e[1]))&&(mode!=='funding'||(['transfer','grant','donation','contract','appropriation'].includes(e[2])&&(!fundingCategoryIds||fundingCategoryIds.has(nodeId(e[0]))||fundingCategoryIds.has(nodeId(e[1])))))&&(!params.get('kind')||e[2]===params.get('kind'))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))})
   if(selected)candidates.sort((a,b)=>Number(nodeId(topology.edges[b][0])===selected||nodeId(topology.edges[b][1])===selected)-Number(nodeId(topology.edges[a][0])===selected||nodeId(topology.edges[a][1])===selected)||a-b)
   const spread=spreadTransactionRows(candidates,topology)
   const edgeOffset=integer(params,'edgeOffset',0,1e7)

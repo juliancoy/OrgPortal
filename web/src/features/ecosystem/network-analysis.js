@@ -3,8 +3,8 @@ export const endpoint = value => typeof value === 'object' ? value?.id : value
 export function financialEvidence(edge) {
  const kind=edge.kind || edge.relationship
  const uncertain=/inferred|shared|coinvest|portfolio|capitalization/i.test(kind || '') || edge.inferred===true || /inferred|uncertain|unconfirmed/i.test(edge.status||'')
- const directed=!uncertain && ['transfer','grant','donation','contract'].includes(kind) && edge.status!=='voided'
- const amount=directed && edge.currency==='USD' && Number.isFinite(edge.amount) && edge.amount>=0 ? edge.amount : null
+ const directed=!uncertain && ['transfer','grant','donation','contract','appropriation'].includes(kind) && edge.status!=='voided'
+ const amount=directed && kind!=='appropriation' && edge.currency==='USD' && Number.isFinite(edge.amount) && edge.amount>=0 ? edge.amount : null
  return {directed,amount,kind:kind || 'unspecified',verified:directed && edge.status==='verified'}
 }
 export function createNetworkAnalysis(nodes,edges) {
