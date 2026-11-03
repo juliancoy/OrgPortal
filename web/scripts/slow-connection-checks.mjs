@@ -27,7 +27,7 @@ export async function testSlowConnection(root,output){
   }
   if(path==='/api/org/api/network/orgs/public/slow-org-0')return {json:orgs[0]}
   if(path.endsWith('/branding'))return {json:{portal:null}}
-  if(path==='/api/org/api/network/events/public')return {json:failEvents?{error:'Fixture unavailable'}:[event],status:failEvents?503:200}
+  if(path==='/api/org/api/network/events/public'||path==='/api/org/api/network/events/recommended')return {json:failEvents?{error:'Fixture unavailable'}:[event],status:failEvents?503:200}
   if(path==='/api/org/api/network/events/public/slow-workshop')return {json:event}
   if(path.endsWith('/attendance'))return {json:{event_id:event.id,count:0,registered:false,attendees:[]}}
   if(path.endsWith('/company-votes/public'))return {json:{available:false,closed:false,companies:[]}}
