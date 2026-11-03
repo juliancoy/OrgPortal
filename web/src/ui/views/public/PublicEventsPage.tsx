@@ -1,6 +1,6 @@
-import { loadPublicEventFeed } from '../../../data/publicOrganization/events'
+import { appendEventPage, EVENT_PAGE_SIZE, eventFeedPagePath, groupEventFeed, isRecommendedFeed, loadEventFeed } from './eventFeed'
 import {EventStandings} from '../../components/EventStandings'
-import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
 import { downloadIcsEvent, outlookCalendarUrl } from '../../utils/calendar'
@@ -9,13 +9,6 @@ import { pidpAppLoginUrl } from '../../../config/pidp'
 import { loadAttendance, recordAttendanceWithRetry, type EventAttendance } from './attendanceApi'
 import { loadGoogleCalendarConnection, savePortalEventToGoogleCalendar } from '../googleCalendarApi'
 import { loadMicrosoftCalendarConnection, savePortalEventToMicrosoftCalendar } from '../microsoftCalendarApi'
-
-const ORG_API_BASE = '/api/org'
-
-function orgUrl(path: string) {
-  if (!path.startsWith('/')) return `${ORG_API_BASE}/${path}`
-  return `${ORG_API_BASE}${path}`
-}
 
 type PublicEvent = {
   id: string
@@ -62,16 +55,21 @@ function currentPath() {
 }
 
 export function PublicEventsPage({
-  sourcePath = '/api/network/events/public?upcoming_only=false&limit=500',
+  sourcePath = '/api/network/events/recommended',
   heading = 'Events',
-  description = 'Browse upcoming and past events from users and organizations in the Org network.',
+  description = 'Discover upcoming events from your groups and hosts you participate with, followed by more events across the platform.',
   emptyMessage = 'No events are listed right now.',
   requiresAuth = false,
 }: { sourcePath?: string; heading?: string; description?: string; emptyMessage?: string; requiresAuth?: boolean } = {}) {
   const { token } = useAuth()
+  const recommended = isRecommendedFeed(sourcePath)
   const navigate = useNavigate()
   const [events, setEvents] = useState<PublicEvent[]>([])
   const [status, setStatus] = useState<string>('Loading events…')
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [pageError, setPageError] = useState('')
+  const loadNextPage = useRef<(() => Promise<void>) | null>(null)
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false)
   const [microsoftCalendarConnected, setMicrosoftCalendarConnected] = useState(false)
   const [attendanceById, setAttendanceById] = useState<Record<string, EventAttendance>>({})
@@ -107,30 +105,39 @@ export function PublicEventsPage({
   useEffect(() => {
     const controller = new AbortController()
     setEvents([])
+    setAttendanceById({})
     setStatus('Loading events…')
-    if (requiresAuth && !token) { setStatus('Sign in to see followed events.'); return () => controller.abort() }
-    const loading = requiresAuth ? fetch(orgUrl(sourcePath), { signal: controller.signal, ...(requiresAuth ? { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' as const } : {}) })
-      .then(async (resp) => {
-        if (!resp.ok) {
-          const text = await resp.text().catch(() => '')
-          throw new Error(text || `Failed to load events (${resp.status})`)
-        }
-        const data = await resp.json()
-        if (!Array.isArray(data)) throw new Error('The event listing is unavailable.')
-        return data as PublicEvent[]
-      }) : loadPublicEventFeed<PublicEvent>(orgUrl(sourcePath), controller.signal)
-    loading
-      .then((data) => {
+    setHasMore(false)
+    setLoadingMore(false)
+    setPageError('')
+    let offset = 0, busy = false, more = true
+    async function loadPage() {
+      if (busy || !more || controller.signal.aborted) return
+      busy = true
+      setLoadingMore(true)
+      setPageError('')
+      try {
+        const data = await loadEventFeed<PublicEvent>(eventFeedPagePath(sourcePath, offset), token, requiresAuth, controller.signal)
         if (controller.signal.aborted) return
-        setEvents(Array.isArray(data) ? data : [])
+        setEvents(previous => appendEventPage(previous, data))
+        offset += data.length
+        more = data.length === EVENT_PAGE_SIZE
+        setHasMore(more)
         setStatus('')
-      })
-      .catch((err) => {
+      } catch (err) {
         if (controller.signal.aborted) return
-        setEvents([])
-        setStatus(err instanceof Error ? err.message : 'Unable to load events')
-      })
-    return () => controller.abort()
+        const message = err instanceof Error ? err.message : 'Unable to load events'
+        if (offset === 0) setStatus(message)
+        else setPageError(message)
+      } finally {
+        busy = false
+        if (!controller.signal.aborted) setLoadingMore(false)
+      }
+    }
+    loadNextPage.current = loadPage
+    if (requiresAuth && !token) setStatus('Sign in to see followed events.')
+    else void loadPage()
+    return () => { controller.abort(); loadNextPage.current = null }
   }, [sourcePath, requiresAuth, token])
 
   useEffect(() => {
@@ -141,8 +148,7 @@ export function PublicEventsPage({
     let cancelled = false, next = 0
     const time = Date.now()
     const past = (event: PublicEvent) => Date.parse(event.ends_at || event.starts_at || (event.event_date ? event.event_date+'T23:59:59' : '')) < time
-    const ordered = [...events].sort((a,b) => Number(past(a))-Number(past(b)) || (past(a) ? Date.parse(b.starts_at || b.event_date || '')-Date.parse(a.starts_at || a.event_date || '') : Date.parse(a.starts_at || a.event_date || '')-Date.parse(b.starts_at || b.event_date || '')))
-    setAttendanceById({})
+    const ordered = events.filter(event => !attendanceById[event.id]).sort((a,b) => Number(past(a))-Number(past(b)) || (past(a) ? Date.parse(b.starts_at || b.event_date || '')-Date.parse(a.starts_at || a.event_date || '') : Date.parse(a.starts_at || a.event_date || '')-Date.parse(b.starts_at || b.event_date || '')))
     // Bound connection pressure and publish each result without waiting for the slowest.
     async function worker() {
       while (!cancelled && next < ordered.length) {
@@ -153,7 +159,7 @@ export function PublicEventsPage({
         } catch { /* Other event registrations remain usable. */ }
       }
     }
-    for (let i = 0; i < Math.min(4, events.length); i++) void worker()
+    for (let i = 0; i < Math.min(4, ordered.length); i++) void worker()
     return () => { cancelled = true }
   }, [events, token])
 
@@ -251,10 +257,7 @@ export function PublicEventsPage({
 
   const now = Date.now()
   const isPast = (event: PublicEvent) => Boolean(event.ends_at || event.starts_at || event.event_date) && new Date(event.ends_at || event.starts_at || event.event_date+'T23:59:59').getTime() < now
-  const groups = [
-    { heading: 'Upcoming events', events: events.filter((event) => !isPast(event)).sort((a, b) => Date.parse(a.starts_at || a.event_date || '') - Date.parse(b.starts_at || b.event_date || '')) },
-    { heading: 'Past events', events: events.filter(isPast).sort((a, b) => Date.parse(b.starts_at || '') - Date.parse(a.starts_at || '')) },
-  ]
+  const groups = groupEventFeed(events, recommended, now)
 
   return (
     <section className="public-events-page">
@@ -262,11 +265,12 @@ export function PublicEventsPage({
         <p className="public-event-eyebrow">Events</p>
         <h1>{heading}</h1>
         <p className="muted">{description}</p>
+        {recommended && <p className="muted">{token ? 'Prioritized by your follows, memberships, registrations and recent participation with each host.' : 'Prioritized by activity on OrgPortal. Sign in for events tailored to your groups and participation.'}</p>}
         <nav className="public-events-feed-nav" aria-label="Event feeds"><Link to="/events">All events</Link><Link to="/following">Following</Link></nav>
       </div>
       {status ? <p className="muted">{status}</p> : null}
       {!status && events.length === 0 && <p role="status">{emptyMessage}</p>}
-      {!status && groups.map((group) => (
+      {!status && groups.filter(group => group.events.length || !hasMore).map((group) => (
         <section key={group.heading} aria-label={group.heading}>
           <h2>{group.heading}</h2>
           {!group.events.length && <p className="muted">No {group.heading.toLowerCase()} are listed.</p>}
@@ -391,6 +395,10 @@ export function PublicEventsPage({
           </div>
         </section>
       ))}
+      {pageError && <p role="alert">{pageError}</p>}
+      {!status && hasMore && <button type="button" className="btn" disabled={loadingMore} onClick={() => void loadNextPage.current?.()}>
+        {loadingMore ? 'Loading more events…' : pageError ? 'Retry loading events' : 'Load more events'}
+      </button>}
     </section>
   )
 }

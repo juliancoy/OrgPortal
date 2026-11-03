@@ -1,4 +1,5 @@
 import { directoryExcludedAccountIds } from './peopleDirectoryExclusions';
+import { eventRecommendationRoutes } from './eventRecommendations';
 import { qcashWalletRoutes } from './qcashWalletLinks';
 import { pqcoinRoutes } from './pqcoin';
 import { requestMembership, hasMembershipRequest, membershipRequests, removeMembershipRequest } from './membershipRequests';
@@ -3418,7 +3419,7 @@ app.get("/api/network/orgs/public/:slug/media/:mediaId", async (c) => {
   return new Response(object.body, { status: 200, headers });
 });
 
-async function publicEventSearchRows(env: Env, q: string, limit: number, upcomingOnly: boolean) {
+async function publicEventSearchRows(env: Env, q: string, limit: number, upcomingOnly: boolean, offset = 0) {
   const filters: string[] = [];
   if (upcomingOnly) {
     filters.push("(COALESCE(e.starts_at,e.event_date) IS NULL OR COALESCE(e.starts_at,e.event_date) >= date('now'))");
@@ -3440,8 +3441,8 @@ async function publicEventSearchRows(env: Env, q: string, limit: number, upcomin
     rankedIds = rankSearchResults(
       searchable.results || [], q,
       row => [row.title, row.description, row.location, row.organization_name, row.host_org_name, row.slug, row.tags, row.city],
-      limit,
-    ).map(row => row.id);
+      offset + limit,
+    ).slice(offset, offset + limit).map(row => row.id);
     if (!rankedIds.length) return [];
   }
   // Fetch full display records only for the selected matches. A single JSON
@@ -3452,9 +3453,9 @@ async function publicEventSearchRows(env: Env, q: string, limit: number, upcomin
      LEFT JOIN organizations o ON o.id = e.host_org_id
      ${rankedIds ? "WHERE e.id IN (SELECT value FROM json_each(?))" : where}
      ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}, e.id ASC
-     LIMIT ?`,
+     LIMIT ? OFFSET ?`,
   )
-    .bind(...(rankedIds ? [JSON.stringify(rankedIds), limit] : [limit]))
+    .bind(...(rankedIds ? [JSON.stringify(rankedIds), limit, 0] : [limit, offset]))
     .all<EventRow>();
   if (!rankedIds) return rows.results || [];
   const byId = new Map((rows.results || []).map(row => [row.id, row]));
@@ -3464,11 +3465,14 @@ async function publicEventSearchRows(env: Env, q: string, limit: number, upcomin
   });
 }
 
+app.route("/api/network", eventRecommendationRoutes(currentUser, mapEvent));
+
 app.get("/api/network/events/public", async (c) => {
   const q = (c.req.query("q") || "").trim();
   const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "120", 10) || 120, 500));
-  const rankedRows = await publicEventSearchRows(c.env,q,limit,upcomingOnly);
+  const offset = Math.max(0, Math.min(Number.parseInt(c.req.query('offset') || '0', 10) || 0, 100000));
+  const rankedRows = await publicEventSearchRows(c.env,q,limit,upcomingOnly,offset);
   return c.json(await Promise.all(rankedRows.map((row) => mapEvent(c.env, c.req.raw, row))));
 });
 

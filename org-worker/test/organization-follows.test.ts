@@ -111,3 +111,15 @@ test('private follows, jobs and notices do not enter immutable journals',async()
   assert.equal(db.rows("SELECT * FROM change_journal WHERE table_name='user_notifications'").length,1);
  }finally{db.sqlite.close();}
 });
+
+test('following event pages advance without overlapping records',async()=>{
+ const f=fixture();try {
+  f.db.follow('alice')
+  for(let n=0;n<7;n++)f.db.event(`paged-${n}`)
+  const page=async(offset:number)=>(await (await f.request(`/following/events?limit=3&offset=${offset}`)).json() as {id:string}[]).map(e=>e.id)
+  assert.deepEqual(await page(0),['paged-0','paged-1','paged-2'])
+  assert.deepEqual(await page(3),['paged-3','paged-4','paged-5'])
+  assert.deepEqual(await page(6),['paged-6'])
+  assert.deepEqual(await page(7),[])
+ }finally{f.db.sqlite.close()}
+})

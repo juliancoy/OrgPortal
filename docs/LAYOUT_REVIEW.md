@@ -150,3 +150,18 @@ That separate check uses fresh native peers and the real gateway adapter. Wallet
 access now requires explicitly choosing **Create a wallet** or **Unlock a wallet**;
 profile linking, backup verification and technical details remain accessible
 through labeled disclosures.
+
+## LifeTech event discovery
+
+For a focused render of the real LifeTech discovery page, calendar and empty
+results in both themes and at desktop/mobile widths:
+
+```sh
+cd web
+node scripts/render-lifetech-events.mjs
+```
+
+Artifacts are written to `artifacts/layout-review/lifetech-events`. The isolated
+fixture uses synthetic events and blocks writes and external connections. Review
+the contact sheets and individual captures; `interactions.json` records topic
+filtering, search, calendar navigation, empty-result recovery and 25-event requests.

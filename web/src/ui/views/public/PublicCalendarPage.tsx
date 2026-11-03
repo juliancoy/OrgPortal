@@ -1,333 +1,126 @@
-import {EventStandings} from '../../components/EventStandings'
-import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { isLifeTechMedicalEvent, eventCalendarDateKey } from '../../../features/events/medicalEvents'
-import { getGroupSite } from '../../../config/timebankCommunity'
+import lifetechBrand from '../../../../../shared/lifetechBrand.json'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ArrowDown, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Search, Users } from 'lucide-react'
+import { useAuth } from '../../../app/AppProviders'
+import { eventCalendarDateKey } from '../../../features/events/medicalEvents'
 import { setSeoMeta, upsertJsonLd } from '../../utils/seo'
+import { appendEventPage, EVENT_PAGE_SIZE, eventFeedPagePath, loadEventFeed } from './eventFeed'
+import { pidpAppLoginUrl } from '../../../config/pidp'
+import './lifeTechEvents.css'
 
-const MEDICAL_EVENTS_SOURCE_URL = 'https://codecollective.us/baltimore/upcoming_events.json'
-const EVENT_TIME_ZONE = 'America/New_York'
-const ORG_API_BASE = '/api/org'
-
-type RegionalEvent = {
-  id?: string
-  name?: string | null
-  title?: string | null
-  description?: string | null
-  startDate?: string | null
-  event_date?: string | null
-  starts_at?: string | null
-  endTime?: string | null
-  ends_at?: string | null
-  url?: string | null
-  public_url?: string | null
-  source_group?: string | null
-  org_name?: string | null
-  orgName?: string | null
-  source?: string | null
-  imageUrl?: string | null
-  image_url?: string | null
-  orgImageUrl?: string | null
-  host_org_id?: string | null
-  tags?: unknown
-  slug?: string | null
-  portalSlug?: string | null
-  location?: string | { name?: string | null; address?: string | null; city?: string | null; state?: string | null } | null
-  medtechOwned?: boolean
+const TIME_ZONE = 'America/New_York'
+type CommunityEvent = {
+ id:string;slug:string;title:string;description?:string|null;starts_at?:string|null;ends_at?:string|null;event_date?:string|null
+ location?:string|null;image_url?:string|null;organization_name?:string|null;host_org_name?:string|null;community_event?:boolean;tags?:string[]
 }
-
-type CalendarEvent = {
-  id: string
-  title: string
-  description: string
-  startsAt: string
-  endsAt?: string | null
-  date: Date
-  dateKey: string
-  url: string
-  imageUrl: string
-  source: string
-  location: string
-  medtechOwned: boolean
-  dateOnly: boolean
+const topics=[['all','All events'],['community','LifeTech community'],['medical','Medicine & health'],['biotech','Biotech & research']] as const
+function text(value?:string|null) { return (value||'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim() }
+function dateKey(event:CommunityEvent) {return eventCalendarDateKey(event.starts_at||event.event_date||'')}
+function eventDate(event:CommunityEvent) {return new Date(event.starts_at||(event.event_date?`${event.event_date}T12:00:00-05:00`:''))}
+function dayParts(event:CommunityEvent) {
+ const key=dateKey(event)
+ return key?{month:new Date(`${key}T12:00:00Z`).toLocaleDateString('en-US',{month:'short',timeZone:TIME_ZONE}),day:key.slice(8)}:{month:'Date',day:'TBD'}
 }
-
-function orgUrl(path: string) {
-  return path.startsWith('/') ? `${ORG_API_BASE}${path}` : `${ORG_API_BASE}/${path}`
+function eventTime(event:CommunityEvent) {
+ if(!event.starts_at)return 'Time to be confirmed'
+ return eventDate(event).toLocaleString('en-US',{timeZone:TIME_ZONE,weekday:'short',hour:'numeric',minute:'2-digit'})+' ET'+(dateKey(event).slice(0,4)!==eventCalendarDateKey(new Date().toISOString()).slice(0,4)?` · ${dateKey(event).slice(0,4)}`:'')
 }
-
-function cleanText(value: unknown) {
-  if (typeof document === 'undefined') return String(value || '').replace(/<[^>]*>/g, ' ')
-  const div = document.createElement('div')
-  div.innerHTML = String(value || '')
-  return div.textContent || div.innerText || ''
+function localKey(date:Date) {return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`}
+function easternMidnight(key:string) {
+ const part=new Intl.DateTimeFormat('en-US',{timeZone:TIME_ZONE,timeZoneName:'shortOffset'}).formatToParts(new Date(`${key}T00:00:00Z`)).find(part=>part.type==='timeZoneName')?.value||'GMT-5'
+ const hours=Number(part.replace('GMT',''))
+ return `${key}T00:00:00${hours<0?'-':'+'}${String(Math.abs(hours)).padStart(2,'0')}:00`
 }
-
-function safeExternalUrl(value: unknown, fallback = '/events') {
-  const raw = String(value || '').trim()
-  if (!raw) return fallback
-  try {
-    const url = new URL(raw, window.location.origin)
-    if (['http:', 'https:'].includes(url.protocol)) return url.href
-  } catch {}
-  return fallback
-}
-
-function eventDate(event: RegionalEvent) {
-  const value = event.startDate || event.starts_at || event.event_date || ''
-  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-function locationText(event: RegionalEvent) {
-  if (typeof event.location === 'string') return event.location.trim()
-  if (event.location && typeof event.location === 'object') {
-    return [event.location.name, event.location.address, event.location.city, event.location.state]
-      .map((part) => String(part || '').trim())
-      .filter(Boolean)
-      .filter((part, index, parts) => !parts.slice(0, index).some((previous) => previous === part || previous.includes(part)))
-      .join(', ')
-  }
-  return ''
-}
-
-function medtechEventUrl(event: RegionalEvent) {
-  const slug = String(event.slug || event.portalSlug || '').trim()
-  if (slug) return `/events/${encodeURIComponent(slug)}`
-  const publicUrl = String(event.public_url || '').trim()
-  if (publicUrl) {
-    try {
-      const url = new URL(publicUrl, window.location.origin)
-      if (url.pathname.startsWith('/p/events/')) return `${url.origin}${url.pathname.slice('/p'.length)}${url.search}${url.hash}`
-      if (url.pathname.startsWith('/events/')) return `${url.origin}${url.pathname}${url.search}${url.hash}`
-    } catch {}
-  }
-  return '/org-events'
-}
-
-function imageUrl(event: RegionalEvent) {
-  for (const value of [event.image_url, event.imageUrl, event.orgImageUrl]) {
-    const raw = String(value || '').trim()
-    if (!raw) continue
-    try {
-      const url = new URL(raw, window.location.origin)
-      if (['http:', 'https:'].includes(url.protocol)) return url.href
-    } catch {}
-  }
-  return ''
-}
-
-function isMedTechOwnedEvent(event: RegionalEvent) {
-  return event.medtechOwned === true || ['org-baltimore-medtech', 'ef646755-9443-4c7b-ba4b-a7a29754f666'].includes(event.host_org_id || '') || /(?:lifetech\.fyi|medtech\.social)\/events\//.test(event.url || event.public_url || '')
-}
-
-function normalizePortalEvent(event: RegionalEvent): RegionalEvent {
-  const organizationName = String(event.org_name || event.orgName || event.source_group || 'LifeTech community')
-  return {
-    ...event,
-    name: event.title || event.name || 'Baltimore MedTech event',
-    startDate: event.starts_at || event.startDate || event.event_date || '',
-    endTime: event.ends_at || event.endTime || '',
-    url: medtechEventUrl(event),
-    source_group: organizationName,
-    org_name: organizationName,
-    medtechOwned: true,
-    tags: Array.isArray(event.tags) ? ['medtech', ...event.tags.map(String)] : ['medtech'],
-  }
-}
-
-function mergeEventSources(...sources: RegionalEvent[][]) {
-  const seen = new Set<string>()
-  const merged: RegionalEvent[] = []
-  for (const events of sources) {
-    for (const event of Array.isArray(events) ? events : []) {
-      const dateKey = String(event.startDate || event.starts_at || '').slice(0, 19)
-      const nameKey = String(event.name || event.title || '').trim().toLowerCase()
-      const urlKey = String(event.url || event.public_url || '').trim().toLowerCase()
-      const key = urlKey || `${nameKey}|${dateKey}`
-      if (!key || seen.has(key)) continue
-      seen.add(key)
-      merged.push(event)
-    }
-  }
-  return merged
-}
-
-function normalizeCalendarEvent(event: RegionalEvent, index: number): CalendarEvent | null {
-  const date = eventDate(event)
-  if (!date) return null
-  const medtechOwned = isMedTechOwnedEvent(event)
-  const title = cleanText(event.name || event.title || 'Community event').trim()
-  return {
-    id: `${String(event.url || event.public_url || title)}-${index}`,
-    title,
-    description: cleanText(event.description || '').replace(/\s+/g, ' ').trim(),
-    startsAt: event.startDate || event.starts_at || event.event_date || '',
-    dateOnly: !event.starts_at && !event.startDate?.includes('T'),
-    endsAt: event.endTime || event.ends_at || null,
-    date,
-    dateKey: eventCalendarDateKey(event.startDate || event.starts_at || event.event_date || ''),
-    url: medtechOwned ? medtechEventUrl(event) : safeExternalUrl(event.url || event.public_url),
-    imageUrl: imageUrl(event),
-    source: cleanText(event.source_group || event.org_name || event.orgName || '').trim(),
-    location: locationText(event),
-    medtechOwned,
-  }
-}
-
-function formatEventTime(date: Date) {
-  return date.toLocaleString(undefined, { timeZone: EVENT_TIME_ZONE, weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
-
-function dayKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+function EventDate({event}:{event:CommunityEvent}) {const parts=dayParts(event);return <div className="lte-date" aria-label={dateKey(event)||'Date to be confirmed'}><span>{parts.month}</span><strong>{parts.day}</strong></div>}
+function EventCard({event}:{event:CommunityEvent}) {
+ return <article className="lte-card">
+  <EventDate event={event}/>
+  <div className="lte-card-copy">
+   <p className="lte-card-source">{event.community_event?'LifeTech community':event.organization_name||event.host_org_name||'Around the region'}</p>
+   <h3><Link to={`/events/${encodeURIComponent(event.slug)}`}>{event.title}</Link></h3>
+   <div className="lte-meta"><span><Clock3 size={14} aria-hidden="true"/>{eventTime(event)}</span>{event.location&&<span><MapPin size={14} aria-hidden="true"/>{event.location}</span>}</div>
+   {event.description&&<p className="lte-card-description">{text(event.description)}</p>}
+  </div>
+  <Link className="lte-card-link" to={`/events/${encodeURIComponent(event.slug)}`} aria-label={`View ${event.title}`}><ArrowRight size={20} aria-hidden="true"/></Link>
+ </article>
 }
 
 export function PublicCalendarPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const view = searchParams.get('view') === 'list' ? 'list' : 'calendar'
-  const setView = (value: 'calendar' | 'list') => { const next = new URLSearchParams(searchParams); next.set('view', value); setSearchParams(next) }
-  const tenant = getGroupSite()
-  const organizationSlug = tenant?.home_org_slug || 'baltimore-medtech'
-  const organizationPaths = [...new Set([organizationSlug, 'baltimore-medtech', ...(organizationSlug === 'lifetech' || organizationSlug === 'baltimore-medtech' ? ['lifetech'] : [])])].map(slug => `/api/network/orgs/public/${encodeURIComponent(slug)}/events?upcoming_only=false&limit=200`)
-  const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [submissionEvents,setSubmissionEvents]=useState<{id:string;slug:string;title:string}[]>([])
-  const [visibleDate, setVisibleDate] = useState(() => new Date())
-  const [status, setStatus] = useState('Loading medical events…')
+ const {token}=useAuth()
+ const [params,setParams]=useSearchParams()
+ const view=params.get('view')==='calendar'?'calendar':'discover'
+ const category=topics.some(([key])=>key===params.get('category'))?params.get('category')!:'all'
+ const period=params.get('period')==='past'?'past':'upcoming'
+ const query=params.get('q')||''
+ const [search,setSearch]=useState(query)
+ const month=/^[12]\d{3}-(0[1-9]|1[0-2])$/.test(params.get('month')||'')?params.get('month')!:eventCalendarDateKey(new Date().toISOString()).slice(0,7)
+ const [events,setEvents]=useState<CommunityEvent[]>([])
+ const [loading,setLoading]=useState(true)
+ const [hasMore,setHasMore]=useState(false)
+ const [error,setError]=useState('')
+ const nextPage=useRef<(()=>Promise<void>)|null>(null)
+ function update(key:string,value:string) {const next=new URLSearchParams(params);next.set(key,value);setParams(next,{replace:true})}
+ useEffect(()=>setSearch(query),[query])
+ useEffect(()=>{if(search.trim()===query)return;const timeout=setTimeout(()=>{const next=new URLSearchParams(params);if(search.trim())next.set('q',search.trim());else next.delete('q');setParams(next,{replace:true})},350);return()=>clearTimeout(timeout)},[search,query,params,setParams])
+ const monthDate=new Date(`${month}-01T12:00:00`)
+ const monthTitle=monthDate.toLocaleDateString('en-US',{month:'long',year:'numeric'})
+ const monthEnd=localKey(new Date(monthDate.getFullYear(),monthDate.getMonth()+1,1))
+ const request=new URLSearchParams({community:'lifetech',category,period:view==='calendar'?'all':period})
+ if(query)request.set('q',query)
+ if(view==='calendar'){request.set('from',easternMidnight(`${month}-01`));request.set('to',easternMidnight(monthEnd));request.set('sort','date')}
+ const sourcePath=`/api/network/events/recommended?${request}`
+ useEffect(()=>{
+  const controller=new AbortController();let offset=0,busy=false,more=true
+  setEvents([]);setHasMore(false);setError('');setLoading(true)
+  async function loadPage() {
+   if(busy||!more||controller.signal.aborted)return
+   busy=true;setLoading(true);setError('')
+   try {
+    const page=await loadEventFeed<CommunityEvent>(eventFeedPagePath(sourcePath,offset),token,false,controller.signal)
+    if(controller.signal.aborted)return
+    setEvents(previous=>appendEventPage(previous,page));offset+=page.length;more=page.length===EVENT_PAGE_SIZE;setHasMore(more)
+   }catch(reason){if(!controller.signal.aborted)setError(reason instanceof Error?reason.message:'Unable to load events. Please try again.')}
+   finally{busy=false;if(!controller.signal.aborted)setLoading(false)}
+  }
+  nextPage.current=loadPage;void loadPage()
+  return()=>{controller.abort();nextPage.current=null}
+ },[sourcePath,token])
+ useEffect(()=>{setSeoMeta({title:'Events • LifeTech',description:'Connect with the LifeTech community at medical, health and biotech events in Baltimore and beyond.',canonicalUrl:`${window.location.origin}/events`,type:'website'})},[])
+ useEffect(()=>{upsertJsonLd('medtech-general-calendar',{'@context':'https://schema.org','@type':'ItemList',name:'LifeTech events',itemListElement:events.map((event,index)=>({'@type':'ListItem',position:index+1,name:event.title,url:`${window.location.origin}/events/${encodeURIComponent(event.slug)}`}))})},[events])
+ const featured=view==='discover'&&period==='upcoming'&&category==='all'&&!query?events.find(event=>event.community_event):undefined
+ const listed=events.filter(event=>event.id!==featured?.id)
+ const monthDays=useMemo(()=>{
+  const start=new Date(`${month}-01T12:00:00`);start.setDate(1-start.getDay())
+  return Array.from({length:42},(_,index)=>{const date=new Date(start);date.setDate(start.getDate()+index);const key=localKey(date);return {key,day:date.getDate(),inMonth:key.startsWith(month),events:events.filter(event=>dateKey(event)===key)}})
+ },[month,events])
+ function moveMonth(delta:number){update('month',localKey(new Date(monthDate.getFullYear(),monthDate.getMonth()+delta,1)).slice(0,7))}
+ return <section className="lte-page">
+  <header className="lte-heading">
+   <div><p className="lte-eyebrow"><span/> LifeTech / Events</p><h1>{lifetechBrand.tagline}</h1><p className="lte-intro">Meet the people moving health forward. Discover community gatherings, new ideas, and the work happening around you.</p></div>
+   <div className="lte-heading-note"><CalendarDays size={23} aria-hidden="true"/><p>Baltimore & beyond<span>Health · Medicine · Biotech</span></p></div>
+  </header>
+  {featured&&<article className="lte-featured">
+   <div className="lte-featured-copy"><p className="lte-eyebrow">Coming up with LifeTech</p><h2><Link to={`/events/${encodeURIComponent(featured.slug)}`}>{featured.title}</Link></h2>{featured.description&&<p className="lte-featured-description">{text(featured.description)}</p>}<div className="lte-meta"><span><Clock3 size={16} aria-hidden="true"/>{eventTime(featured)}</span>{featured.location&&<span><MapPin size={16} aria-hidden="true"/>{featured.location}</span>}</div><div className="lte-featured-actions"><Link className="lte-primary-link" to={`/events/${encodeURIComponent(featured.slug)}`}>Explore event <ArrowRight size={17} aria-hidden="true"/></Link>{/demo day/i.test(featured.title)&&<Link to={`/events/${encodeURIComponent(featured.slug)}#submissions`} aria-label="Submissions and voting">Submissions <ArrowRight size={16} aria-hidden="true"/></Link>}</div></div>
+   <div className="lte-featured-date"><span>Save the date</span><EventDate event={featured}/><small>{dateKey(featured)?`${eventDate(featured).toLocaleDateString('en-US',{timeZone:TIME_ZONE,weekday:'long'})} · ${dateKey(featured).slice(0,4)}`:'Date to be confirmed'}</small></div>
+  </article>}
+  <div className="lte-controls">
+   <div className="lte-view-switch" role="group" aria-label="Event view"><button type="button" aria-pressed={view==='discover'} onClick={()=>update('view','discover')}>Discover</button><button type="button" aria-pressed={view==='calendar'} onClick={()=>update('view','calendar')}><CalendarDays size={16} aria-hidden="true"/> Calendar</button></div>
+   <label className="lte-search"><Search size={18} aria-hidden="true"/><span className="sr-only">Search events</span><input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Find an event, topic, or host"/></label>
+  </div>
+  <div className="lte-topics" role="group" aria-label="Event topics">{topics.map(([key,label])=><button type="button" key={key} aria-pressed={category===key} onClick={()=>update('category',key)}>{label}</button>)}</div>
 
-  useEffect(() => {
-    setSeoMeta({
-      title: 'Events • LifeTech',
-      description: 'Medical, health, biotech, and Baltimore MedTech-hosted events around the region.',
-      canonicalUrl: `${window.location.origin}${window.location.pathname}`,
-      type: 'website',
-    })
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    setStatus('Loading medical events…')
-    setSubmissionEvents([])
-    Promise.allSettled([
-      fetch(MEDICAL_EVENTS_SOURCE_URL, { cache: 'no-store' }).then((response) => { if (!response.ok) throw new Error('Regional source unavailable'); return response.json() }),
-      ...organizationPaths.map(path => fetch(orgUrl(path), { cache: 'no-store' }).then((response) => { if (!response.ok) throw new Error('Organization source unavailable'); return response.json() })),
-    ])
-      .then(([regionalResult, ...organizationResults]) => {
-        const regional = regionalResult.status === 'fulfilled' ? regionalResult.value : []
-        const medtech = organizationResults.flatMap(result => result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : [])
-        if (cancelled) return
-        const medtechEvents = Array.isArray(medtech) ? medtech.filter(isLifeTechMedicalEvent).map(normalizePortalEvent) : []
-        const regionalEvents = Array.isArray(regional) ? regional.filter(isLifeTechMedicalEvent) : []
-        const nextEvents = mergeEventSources(medtechEvents, regionalEvents)
-          .map(normalizeCalendarEvent)
-          .filter((event): event is CalendarEvent => Boolean(event))
-          .sort((a, b) => a.date.getTime() - b.date.getTime())
-        setEvents(nextEvents)
-        setSubmissionEvents([...new Map(medtech.filter((event:RegionalEvent)=>event.id&&event.slug&&event.host_org_id&&Date.parse(event.ends_at||event.starts_at||'')>=Date.now()).map((event:RegionalEvent)=>[event.id,{id:event.id!,slug:event.slug!,title:event.title||event.name||'Event'}])).values()])
-        const firstUpcoming = nextEvents.find((event) => event.date >= new Date())
-        if (firstUpcoming) setVisibleDate(new Date(`${firstUpcoming.dateKey}T12:00:00`))
-        setStatus([regionalResult, ...organizationResults].every((result) => result.status === 'rejected')
-          ? 'The calendar is temporarily unavailable. Please try refreshing.'
-          : [regionalResult, ...organizationResults].some((result) => result.status === 'rejected')
-            ? 'Some event sources are unavailable. Showing events from the available sources.' : '')
-      })
-      .catch((reason: unknown) => {
-        if (cancelled) return
-        setStatus(reason instanceof Error ? reason.message : 'Unable to load the calendar.')
-        setEvents([])
-      })
-    return () => { cancelled = true }
-  }, [organizationSlug])
-
-  const upcomingEvents = useMemo(() => {
-    const now = new Date()
-    const upcoming = events.filter((event) => event.date >= now)
-    return upcoming
-
-  }, [events])
-
-  const monthDays = useMemo(() => {
-    const monthStart = new Date(visibleDate.getFullYear(), visibleDate.getMonth(), 1)
-    const firstGridDate = new Date(monthStart)
-    firstGridDate.setDate(monthStart.getDate() - monthStart.getDay())
-    const eventsByDay = new Map<string, CalendarEvent[]>()
-    for (const event of events) {
-      const key = event.dateKey
-      eventsByDay.set(key, [...(eventsByDay.get(key) || []), event])
-    }
-    return Array.from({ length: 42 }, (_, index) => {
-      const date = new Date(firstGridDate)
-      date.setDate(firstGridDate.getDate() + index)
-      return { date, events: eventsByDay.get(dayKey(date)) || [], inMonth: date.getMonth() === monthStart.getMonth() }
-    })
-  }, [events, visibleDate])
-
-  const jsonLd = useMemo(() => ({
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: 'Baltimore MedTech General Calendar',
-    itemListElement: upcomingEvents.slice(0, 50).map((event, index) => ({ '@type': 'ListItem', position: index + 1, name: event.title, url: new URL(event.url, window.location.origin).href })),
-  }), [upcomingEvents])
-
-  useEffect(() => {
-    upsertJsonLd('medtech-general-calendar', jsonLd)
-  }, [jsonLd])
-
-  return <section className="public-calendar-page">
-    <div className="public-events-heading public-calendar-heading">
-      <div><h1>Events</h1><p className="muted">LifeTech community, medical, health, and biotech events.</p></div>
-      <div className="public-calendar-view-switch" role="group" aria-label="Event view">
-        <button type="button" aria-pressed={view === 'calendar'} onClick={() => setView('calendar')}>Calendar</button>
-        <button type="button" aria-pressed={view === 'list'} onClick={() => setView('list')}>List</button>
-      </div>
-    </div>
-
-    {submissionEvents.map(event=><EventStandings key={event.id} eventId={event.id} eventSlug={event.slug} eventTitle={event.title}/>)}
-    {status ? <p className="muted" role="status">{status}</p> : null}
-
-    {view === 'list' ? <div className="community-events-columns">
-      {[{ title: 'LifeTech events', owned: true }, { title: 'Partner events', owned: false }].map(column => {
-        const now = new Date()
-        const columnEvents = events.filter(event => event.medtechOwned === column.owned).sort((a, b) => {
-          const aPast = (a.endsAt ? new Date(a.endsAt) : a.date) < now
-          const bPast = (b.endsAt ? new Date(b.endsAt) : b.date) < now
-          if (aPast !== bPast) return aPast ? 1 : -1
-          return aPast ? b.date.getTime() - a.date.getTime() : a.date.getTime() - b.date.getTime()
-        })
-        return <section className="public-calendar-upcoming" key={column.title} aria-label={column.title}>
-          <h2>{column.title}</h2>
-          <p className="muted">{column.owned ? 'LifeTech and Baltimore MedTech group events, upcoming and past.' : 'Medical, health, and biotech gatherings from partner organizations.'}</p>
-          {!status && !columnEvents.length ? <p className="muted">No events listed.</p> : null}
-          <div className="public-calendar-event-list">
-        {columnEvents.map((event) => <article key={event.id} className={`portal-card public-calendar-event-card ${event.medtechOwned ? 'medtech-owned' : ''} ${event.imageUrl ? 'has-image' : ''}`}>
-          <div className="public-calendar-event-date">
-            {event.date.toLocaleDateString(undefined, { month: 'short' })}<span>{event.date.toLocaleDateString(undefined, { day: 'numeric' })}</span>
-          </div>
-          <div className="public-calendar-event-body">
-            {event.medtechOwned ? <p className="public-calendar-feature-label">LifeTech community</p> : null}
-            <h3><a href={event.url}>{event.title}</a></h3>
-            <p className="muted">{[event.dateOnly ? `${event.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} • Time to be confirmed` : `${formatEventTime(event.date)}${event.endsAt ? `–${new Date(event.endsAt).toLocaleTimeString(undefined, { timeZone: EVENT_TIME_ZONE, hour: 'numeric', minute: '2-digit' })}` : ''} Eastern`, event.source, event.location].filter(Boolean).join(' • ')}</p>
-            {event.description ? <p>{event.description.slice(0, 180)}{event.description.length > 180 ? '…' : ''}</p> : null}
-            <a className="public-event-open-link" href={event.url}>{event.medtechOwned ? 'Register for this event' : 'Open event'}</a>
-          </div>
-          {event.imageUrl ? <a className="public-calendar-event-image" href={event.url} aria-label={`Open ${event.title}`}><img src={event.imageUrl} alt="" loading="lazy" decoding="async" /></a> : null}
-        </article>)}
-      </div>
-    </section>
-      })}
-    </div> : <section className="portal-card public-calendar-month" aria-labelledby="public-calendar-month-title">
-      <div className="public-calendar-month-toolbar">
-        <button type="button" onClick={() => setVisibleDate((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))} aria-label="Previous month">‹</button>
-        <h2 id="public-calendar-month-title">{visibleDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</h2>
-        <button type="button" onClick={() => setVisibleDate((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1))} aria-label="Next month">›</button>
-      </div>
-      <div className="public-calendar-grid">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((label) => <div key={label} className="public-calendar-weekday">{label}</div>)}
-        {monthDays.map(({ date, events: dayEvents, inMonth }) => <div key={date.toISOString()} className={`public-calendar-day ${inMonth ? '' : 'outside'}`}>
-          <span className="public-calendar-day-number">{date.getDate()}</span>
-          {dayEvents.map((event) => <a key={event.id} className={`public-calendar-day-event ${event.medtechOwned ? 'medtech-owned' : ''}`} href={event.url}>{event.title}</a>)}
-        </div>)}
-      </div>
-    </section>}
-  </section>
+  <div className="lte-content">
+   <div className="lte-results" aria-busy={loading}>
+    <div className="lte-results-heading"><div><p className="lte-eyebrow">{view==='calendar'?'Plan ahead':period==='past'?'From the community':'Find your next event'}</p><h2>{view==='calendar'?monthTitle:query?`Results for “${query}”`:category==='community'?'LifeTech gatherings':period==='past'?'Past events':'Worth getting together for'}</h2></div>{view==='discover'?<label className="lte-period"><span className="sr-only">Event dates</span><select value={period} onChange={event=>update('period',event.target.value)}><option value="upcoming">Upcoming</option><option value="past">Past events</option></select></label>:<div className="lte-month-controls"><button type="button" aria-label="Previous month" onClick={()=>moveMonth(-1)}><ChevronLeft size={18}/></button><button type="button" onClick={()=>update('month',eventCalendarDateKey(new Date().toISOString()).slice(0,7))}>Today</button><button type="button" aria-label="Next month" onClick={()=>moveMonth(1)}><ChevronRight size={18}/></button></div>}</div>
+    {loading&&!events.length&&<div className="lte-loading" role="status"><span/>Finding your next connection…</div>}
+    {!loading&&!error&&!events.length&&<div className="lte-empty"><CalendarDays size={32} aria-hidden="true"/><h3>No events here just yet</h3><p>{query||category!=='all'?'Try another topic or clear your search.':view==='calendar'?'Try another month or switch to Discover.':'Check back for the next gathering.'}</p>{(query||category!=='all')&&<button type="button" onClick={()=>{const next=new URLSearchParams(params);next.delete('q');next.delete('category');setSearch('');setParams(next,{replace:true})}}>Clear filters</button>}</div>}
+    {view==='discover'?<div className="lte-event-list">{listed.map(event=><EventCard key={event.id} event={event}/>)}</div>:<div className="lte-calendar" aria-label={monthTitle}>{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day=><div className="lte-weekday" key={day}>{day}</div>)}{monthDays.map(day=><div className={`lte-day${day.inMonth?'':' lte-day-outside'}${day.key===eventCalendarDateKey(new Date().toISOString())?' lte-day-today':''}`} key={day.key}><time dateTime={day.key}>{day.day}</time>{day.events.map(event=><Link key={event.id} to={`/events/${encodeURIComponent(event.slug)}`} className={event.community_event?'lte-calendar-community':''}>{event.title}</Link>)}</div>)}</div>}
+    {error&&<div className="lte-error" role="alert"><p>We couldn’t load {events.length?'more':'the'} events. Please try again.</p><button type="button" disabled={loading} onClick={()=>void nextPage.current?.()}>Retry</button></div>}
+    {hasMore&&!error&&<button className="lte-load-more" type="button" disabled={loading} onClick={()=>void nextPage.current?.()}>{loading?'Loading…':view==='calendar'?'Load more events in this month':'More events'}<ArrowDown size={16} aria-hidden="true"/></button>}
+    {view==='calendar'&&hasMore&&<p className="lte-page-note">Showing {events.length} events. Load more to see the rest of this month.</p>}
+   </div>
+   <aside className="lte-sidebar"><div className="lte-community-panel"><span className="lte-icon"><Users size={22} aria-hidden="true"/></span><h2>Better together.</h2><p>A room full of people who care about what you care about.</p><Link to="/people">Meet the community <ArrowRight size={16} aria-hidden="true"/></Link><Link to="/orgs">Explore organizations <ArrowRight size={16} aria-hidden="true"/></Link></div><div className="lte-personal-note"><span className="lte-eyebrow">Made for your interests</span><p>{token?'Your groups, registrations, and recent participation help bring the right events to the top.':'LifeTech gatherings first, with medical and biotech events from across the region.'}</p>{!token&&<a href={pidpAppLoginUrl('/events')}>Sign in for your event picks <ArrowRight size={15} aria-hidden="true"/></a>}</div></aside>
+  </div>
+ </section>
 }

@@ -1,3 +1,4 @@
+import lifetechBrand from '../../../shared/lifetechBrand.json'
 import { getGroupSite, type GroupSite } from './timebankCommunity'
 import { canonicalOrganizationHref } from '../../../shared/organizationUrls'
 export type PortalFeature = 'ubi'
@@ -26,7 +27,7 @@ const PORTAL_PROFILES: Record<PortalProfileId, PortalProfileConfig> = {
   lifetech: {
     id: 'lifetech', brandName: 'LifeTech', portalTitle: 'LifeTech Portal',
     nameBannerUrl: '/images/lifetech-namebanner.webp',
-    tagline: 'Health × Medicine × Biotech', brandImagePath: 'https://lifetech.fyi/assets/images/lifetech-logo.png',
+    tagline: lifetechBrand.tagline, brandImagePath: 'https://lifetech.fyi/assets/images/lifetech-logo.png',
     homeUrl: 'https://lifetech.fyi/', memberHomePath: '/chat', disabledFeatures: ['ubi'],
     manifestPath: '/manifest.webmanifest', faviconPath: 'https://lifetech.fyi/assets/images/lifetech-logo.png',
     faviconType: 'image/png', appleTouchIconPath: 'https://lifetech.fyi/assets/images/lifetech-logo.png', themeColor: '#155e59',
@@ -131,7 +132,7 @@ export function tenantProfileConfig(tenant: GroupSite): PortalProfileConfig {
     groupSiteId: tenant.id,
     brandName: tenant.name || base.brandName,
     portalTitle: profileId === 'orgportal' ? 'OrgPortal' : tenant.name ? `${tenant.name} Portal` : base.portalTitle,
-    tagline: tenant.tagline ?? base.tagline,
+    tagline: profileId === 'lifetech' && (!tenant.tagline || /^Health\s*[×x]\s*Medicine\s*[×x]\s*Biotech$/i.test(tenant.tagline)) ? lifetechBrand.tagline : tenant.tagline ?? base.tagline,
     brandImagePath,
     nameBannerUrl: tenant.feature_config?.brandThemes && tenant.brand_image_path ? undefined : typeof tenant.feature_config?.nameBannerUrl === 'string' && /^https:\/\//.test(tenant.feature_config.nameBannerUrl) ? tenant.feature_config.nameBannerUrl : base.nameBannerUrl,
     homeUrl: tenantBrandHomeUrl(tenant, base.homeUrl),

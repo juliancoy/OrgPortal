@@ -11,7 +11,7 @@ import '../../src/styles/themes/orgportal.css'
 import '../../src/styles/themes/lifetech.css'
 import '../../src/tenantBranding.css'
 const params=new URLSearchParams(location.search)
-setGroupSite({id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname:'lifetech.fyi',name:'LifeTech',tagline:'Health × Medicine × Biotech',accent_color:'#155e59',profile:'lifetech',features:['events'],brand_image_path:'/assets/images/lifetech-logo.png'})
+setGroupSite({id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname:'lifetech.fyi',name:'LifeTech',tagline:'Advancing medicine in Baltimore',accent_color:'#155e59',profile:'lifetech',features:['events'],brand_image_path:'/assets/images/lifetech-logo.png'})
 applyPortalBranding()
 document.documentElement.dataset.theme=localStorage.getItem('orgportal.theme')||'dark'
 if(params.has('existing')||params.has('edit'))writeFormDraft(localStorage,formDraftKey('fixture-member','presentation:fixture-event')!,{submissionId:params.has('edit')?'fixture-submission':'',editing:params.has('edit')?'true':'',imageOrg:'',imageUrl:'',org:'fixture-org',name:'',city:'Baltimore',description:'',title:'Making home rehabilitation more accessible',summary:'We are building an affordable wearable that helps people track their recovery at home. Our demo shows how patients and care teams can turn daily movement into useful feedback.',people:'[]'})
