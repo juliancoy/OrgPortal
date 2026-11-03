@@ -14,7 +14,7 @@ import {fundingStage} from '../src/features/ecosystem/fundingStatistics.ts'
 import {performanceRows,recipientExposure} from '../src/features/ecosystem/performance.ts'
 import {normalize,grams,gramBucket,PAGE_SIZE} from '../server/ecosystem-query.mjs'
 const root=new URL('../',import.meta.url)
-export async function buildEcosystemQuery({source=exportUnifiedEcosystem}={}){
+export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTEM_BUILD_SNAPSHOT?async()=>JSON.parse(await readFile(process.env.ORGPORTAL_ECOSYSTEM_BUILD_SNAPSHOT,'utf8')):exportUnifiedEcosystem}={}){
  const snapshot=await source(),hash=createHash('sha256');
  const raw=[JSON.stringify({datasetId:snapshot.datasetId,data:snapshot.data,performance:snapshot.performance,positions:snapshot.positions})]
  for(const value of raw)hash.update(value)
