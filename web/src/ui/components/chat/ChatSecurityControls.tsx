@@ -10,8 +10,9 @@ export function ChatEncryptionBadge({ mode, compact = false }: { mode: ChatEncry
   </span>
 }
 
-export function ChatSecurityControls({ api, conversationId, initialMode = 'none', onChange, onKeysForgotten }: {
+export function ChatSecurityControls({ api, conversationId, initialMode = 'none', onChange, onKeysForgotten, onPendingChange }: {
   api: NativeChatApi; conversationId: string; initialMode?: ChatEncryptionMode
+  onPendingChange?: (mode: ChatEncryptionMode | null) => void
   onChange?: (security: ChatSecurity) => void; onKeysForgotten?: () => void
 }) {
   const [security, setSecurity] = useState<ChatSecurity | null>(null)
@@ -22,7 +23,7 @@ export function ChatSecurityControls({ api, conversationId, initialMode = 'none'
   const [forgotten, setForgotten] = useState(false)
   const desired = useRef<ChatEncryptionMode | null>(null), saving = useRef(false), alive = useRef(true)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const callbacks = useRef({ onChange, onKeysForgotten }); callbacks.current = { onChange, onKeysForgotten }
+  const callbacks = useRef({ onChange, onKeysForgotten, onPendingChange }); callbacks.current = { onChange, onKeysForgotten, onPendingChange }
   const forgottenRef = useRef(false)
   const refreshGeneration = useRef(0)
 
@@ -58,7 +59,7 @@ export function ChatSecurityControls({ api, conversationId, initialMode = 'none'
     try {
       const next = await api.setEncryption(conversationId, target)
       if (!alive.current || generation !== refreshGeneration.current) return
-      if (desired.current === target) desired.current = null
+      if (desired.current === target) { desired.current = null; callbacks.current.onPendingChange?.(null) }
       applied(next)
       setStatus(desired.current === null ? 'Saved' : 'Changes pending…')
     } catch (failure) { if (alive.current) { setError(failure instanceof Error ? failure.message : 'Chat protection could not be saved.'); setStatus('Not saved') } }
@@ -66,6 +67,7 @@ export function ChatSecurityControls({ api, conversationId, initialMode = 'none'
     if (alive.current && desired.current !== null && desired.current !== target) void save()
   }
   function choose(next: ChatEncryptionMode) {
+    callbacks.current.onPendingChange?.(next)
     setChoice(next); desired.current = next; setStatus('Changes pending…'); setError('')
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => { void save() }, 400)
@@ -79,6 +81,12 @@ export function ChatSecurityControls({ api, conversationId, initialMode = 'none'
       applied(await api.getSecurity(conversationId)); setStatus('Browser keys removed')
       callbacks.current.onKeysForgotten?.()
     } catch (failure) { setStatus('Not removed'); setError(failure instanceof Error ? failure.message : 'Keys could not be removed.') }
+  }
+  async function accept() {
+    if (!security) return
+    setStatus('Accepting chat request and security level…'); setError('')
+    try { applied(await api.acceptConversation(conversationId, security)); setStatus('Accepted') }
+    catch (failure) { setStatus('Not accepted'); setError(failure instanceof Error ? failure.message : 'Acceptance could not be saved.') }
   }
   async function setup() {
     ++refreshGeneration.current
@@ -118,6 +126,11 @@ export function ChatSecurityControls({ api, conversationId, initialMode = 'none'
         {error && <p role="alert">{error} {desired.current !== null && <button type="button" onClick={() => { void save() }}>Retry protection change</button>}</p>}
       </div>
     </details>
-    {security && mode !== 'none' && security.missing_members.length > 0 && <p className="chat-security-wait" role="status">Waiting for {security.missing_members.length} {security.missing_members.length === 1 ? 'member' : 'members'} to open this chat and set up encryption. Sending is paused.</p>}
+    {security?.missing_acknowledgments?.includes(security.current_user_id) && <div role="status">
+      <p>Review this chat request and its security level before accepting.</p>
+      <button type="button" className="portal-button-secondary" disabled={desired.current !== null || saving.current} onClick={() => { void accept() }}>Accept chat request and security level</button>
+    </div>}
+    {!!security?.missing_acknowledgments?.length && <p className="chat-security-wait">Messages stay queued until every member accepts the chat request and current security level.</p>}
+    {security && mode !== 'none' && security.missing_members.length > 0 && <p className="chat-security-wait" role="status">Waiting for {security.missing_members.length} {security.missing_members.length === 1 ? 'member' : 'members'} to open this chat and set up encryption. You can queue messages while waiting.</p>}
   </section>
 }

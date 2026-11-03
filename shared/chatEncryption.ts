@@ -20,6 +20,7 @@ export type ChatSecurity = {
   current_user_id: string
   can_manage: boolean
   devices: ChatDeviceKey[]
+  missing_acknowledgments?: string[]
   missing_members: string[]
 }
 export type ChatRecipientEnvelope = {

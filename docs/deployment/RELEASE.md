@@ -118,3 +118,14 @@ remain public data; IndexedDB caches them independently of session permissions.
 
 Deploy the PIdP endpoint before releasing the frontend gate. The identity routing
 cutover does not run migrations or merge primary/member accounts.
+
+## Chat queue release
+
+`all` also checks, builds, deploys and verifies `chat-codecollective` through the
+same native build. It preserves live bindings and the existing Durable Object
+class. Chat migration 0006 is separately reviewed in
+[CHAT_OUTBOX.md](../CHAT_OUTBOX.md); deployment performs a read-only schema gate
+and never applies migrations. The frontend deploys before chat so queued messages
+fail closed until acknowledgment-aware server enforcement is available. Refresh
+older clients to expose acceptance controls. Preserve acknowledgment enforcement
+on rollback; the previous chat code is not a safe consent-enforcing rollback.

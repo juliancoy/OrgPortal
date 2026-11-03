@@ -1,3 +1,4 @@
+import { clearQueuedChatMessages } from './chatOutbox'
 import { browserChatKeys, decryptChatBody, encryptChatBody, existingChatKeys, forgetChatKeys } from './chatEncryption'
 import type { ChatEncryptedMessage, ChatEncryptionMode, ChatSecurity } from '../../../shared/chatEncryption'
 
@@ -142,6 +143,10 @@ async function readJson<T>(response: Response): Promise<T> {
   throw new Error(detail || `Chat request failed (${response.status})`)
 }
 
+export class ChatSendWaitingError extends Error {
+  constructor() { super('Queued until the chat request and security level are accepted and encryption is ready.') }
+}
+
 export class NativeChatApi {
   private readonly tokenProvider: () => Promise<string | null>
   private readonly baseUrl: string
@@ -236,8 +241,12 @@ export class NativeChatApi {
     return { ...payload, messages: await Promise.all(payload.messages.map(message => this.decryptMessage(message))) }
   }
 
-  async sendMessage(conversationId: string, clientMessageId: string, body: string, options: { replyToMessageId?: string; threadRootMessageId?: string } = {}): Promise<NativeChatMessage> {
+  async sendMessage(conversationId: string, clientMessageId: string, body: string, options: { replyToMessageId?: string; threadRootMessageId?: string; expectedMode?: ChatEncryptionMode; expectedUserId?: string } = {}): Promise<NativeChatMessage> {
     const security = await this.prepareEncryption(conversationId)
+    if (options.expectedUserId && security.current_user_id !== options.expectedUserId) throw new Error('Queued messages belong to a different account.')
+    if (options.expectedMode && !Array.isArray(security.missing_acknowledgments)) throw new ChatSendWaitingError()
+    if (options.expectedMode && security.mode !== options.expectedMode) throw new Error('The queued security level changed. Review the message before sending.')
+    if (security.missing_acknowledgments?.length || (security.mode !== 'none' && security.missing_members.length)) throw new ChatSendWaitingError()
     const encryption = security.mode === 'none' ? undefined : await encryptChatBody(body, conversationId, clientMessageId, security, await browserChatKeys(security.current_user_id))
     const payload = await this.request<{ message: NativeChatMessage }>(
       `/api/network/chat/conversations/${encodeURIComponent(conversationId)}/messages`,
@@ -254,6 +263,12 @@ export class NativeChatApi {
     )
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('portal:inbox-changed'))
     return this.decryptMessage(payload.message)
+  }
+
+  async acceptConversation(conversationId: string, security: ChatSecurity): Promise<ChatSecurity> {
+    return this.request(`/api/network/chat/conversations/${encodeURIComponent(conversationId)}/accept`, {
+      method: 'POST', body: JSON.stringify({ mode: security.mode, expected_revision: security.revision }),
+    })
   }
 
   async getSecurity(conversationId: string): Promise<ChatSecurity> {
@@ -282,6 +297,7 @@ export class NativeChatApi {
   async forgetEncryptionDevice(conversationId: string): Promise<void> {
     const security = await this.getSecurity(conversationId), keys = await existingChatKeys(security.current_user_id)
     if (keys) await this.request(`/api/network/chat/devices/${encodeURIComponent(keys.public_key.device_id)}`, { method: 'DELETE' })
+    await clearQueuedChatMessages(security.current_user_id)
     await forgetChatKeys(security.current_user_id)
   }
 

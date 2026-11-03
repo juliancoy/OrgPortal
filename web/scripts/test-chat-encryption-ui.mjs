@@ -26,21 +26,23 @@ try {
   const page = await context.newPage(), errors=[], sends=[], changes=[]
   page.setDefaultTimeout(15000)
   page.on('pageerror',error=>errors.push(error.message))
+  let acks=[]
   let mode='none', revision=0, devices=[], admin=true, missing=[], failSave=false, delaySave=false
   const conversation=()=>({id:'room-a',kind:'dm',title:'Research chat',updated_at:'2026-10-31T12:00:00Z',encryption_mode:mode,encryption_revision:revision,members:[{user_id:'alice',user_name:'Synthetic Admin',role:'owner',state:'active'}]})
-  const state=()=>({mode,revision,current_user_id:'alice',can_manage:admin,devices,missing_members:missing})
+  const state=()=>({mode,revision,current_user_id:'alice',can_manage:admin,devices,missing_members:missing,missing_acknowledgments:acks})
   await page.routeWebSocket('**/*',socket=>{socket.send(JSON.stringify({type:'connected'}))})
   await page.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url())
     if(url.origin!==origin)return route.abort()
     if(!url.pathname.startsWith('/api/'))return route.continue()
     const reply=body=>route.fulfill({json:body})
+    if(url.pathname.endsWith('/accept')){acks=[];return reply(state())}
     if(url.pathname.endsWith('/security')){
       if(request.method()==='PATCH'){
         const data=request.postDataJSON();changes.push(data)
         if(delaySave)await new Promise(resolve=>setTimeout(resolve,800))
         if(failSave){failSave=false;return route.fulfill({status:503,json:{detail:'Synthetic save failure'}})}
-        assert.equal(data.expected_revision,revision);mode=data.mode;revision++
+        assert.equal(data.expected_revision,revision);mode=data.mode;revision++;acks=['alice']
       }
       return reply(state())
     }
@@ -80,6 +82,7 @@ try {
       await protection.getByRole('status').filter({hasText:'Saved'}).waitFor()
     }
     await protection.locator(`.chat-encryption-badge.chat-encryption-${color}`).waitFor()
+    if(acks.includes('alice')) await page.getByRole('button',{name:'Accept chat request and security level',exact:true}).click()
     const secret=`Message using ${value}`
     await page.getByRole('textbox',{name:'Message',exact:true}).fill(secret)
     await page.getByRole('button',{name:'Send',exact:true}).click()
@@ -109,17 +112,38 @@ try {
   await select.selectOption('none')
   await protection.locator('.chat-encryption-blue.chat-encryption-badge').waitFor()
   assert.equal(mode,'none');delaySave=false
-  // Membership readiness pauses sending; ordinary members cannot edit policy.
-  mode='rsa-mlkem';revision++;missing=['bob'];admin=false
+  // Queue several messages while acceptance and device readiness are pending.
+  mode='rsa-mlkem';revision++;missing=['bob'];acks=['alice','bob'];admin=false
   await page.reload()
   await page.getByText('Chat protection',{exact:true}).click()
   await page.getByText(/Waiting for 1 member/).waitFor()
   assert.equal(await page.getByRole('combobox',{name:'Encryption for new messages'}).count(),0)
-  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Retained draft')
-  assert.equal(await page.getByRole('button',{name:'Send',exact:true}).isDisabled(),true)
-  assert.equal(await page.locator('.portal-chat-message .chat-encryption-blue').count(),1)
+  const sentBefore=sends.length
+  for(const body of ['Queued first','Queued second','Cancel this message']){
+    await page.getByRole('textbox',{name:'Message',exact:true}).fill(body)
+    await page.getByRole('button',{name:'Send',exact:true}).click()
+    await page.locator('.portal-chat-message').filter({hasText:body}).getByRole('button',{name:'Cancel queued message'}).waitFor()
+  }
+  assert.equal(sends.length,sentBefore)
+  await page.getByRole('button',{name:'Accept chat request and security level',exact:true}).click()
+  assert.equal(sends.length,sentBefore) // Keys and the other member are still pending.
+  await page.reload()
+  await page.locator('.portal-chat-message').filter({hasText:'Queued first'}).waitFor()
+  await page.locator('.portal-chat-message').filter({hasText:'Cancel this message'}).getByRole('button',{name:'Cancel queued message'}).click()
+  await page.locator('.portal-chat-message').filter({hasText:'Cancel this message'}).waitFor({state:'detached'})
+  mode='rsa';revision++;missing=[];acks=[]
+  await page.reload()
+  await page.locator('.portal-chat-message').filter({hasText:'Queued first'}).waitFor()
+  await page.waitForTimeout(400)
+  assert.equal(sends.length,sentBefore) // No silent security downgrade.
+  mode='rsa-mlkem';revision++
+  await page.reload()
+  await page.locator('.portal-chat-message').filter({hasText:'Queued second'}).locator('.chat-encryption-purple').waitFor()
+  assert.equal(sends.length,sentBefore+2)
+  assert.ok(sends.slice(sentBefore).every(item=>item.body===undefined && item.encryption.mode==='rsa-mlkem'))
+  assert.equal(await page.getByRole('button',{name:'Cancel queued message'}).count(),0)
   assert.deepEqual(errors,[])
-  await writeFile(`${output}/report.json`,JSON.stringify({passed:true,modes:['none','rsa','rsa-mlkem'],sends:sends.length,policyChanges:changes.length,checks:['ciphertext-only transport','browser decryption','per-message history badges','autosave retry','edits during save','administrator controls','missing-member send pause','responsive light/dark']},null,2))
+  await writeFile(`${output}/report.json`,JSON.stringify({passed:true,modes:['none','rsa','rsa-mlkem'],sends:sends.length,policyChanges:changes.length,checks:['ciphertext-only transport','browser decryption','per-message history badges','autosave retry','edits during save','administrator controls','encrypted durable queue','explicit request/security acceptance','ordered automatic delivery','cancellation','no silent downgrade','responsive light/dark']},null,2))
   console.log('Chat encryption Docker clickthrough passed; screenshots:',output)
   await context.close()
 } finally {

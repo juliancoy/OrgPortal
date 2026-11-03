@@ -157,3 +157,30 @@ test('migration preserves pre-existing history and anonymous event reads omit en
   assert.deepEqual(result.messages.map(m=>m.id),['old'])
   assert.ok(!JSON.stringify(result).includes('private_recipient_metadata'))
 })
+
+test('DM messages wait for explicit request and exact security acceptance; device readiness alone is insufficient', async () => {
+  const f = fixture()
+  f.db.sql.exec("UPDATE chat_conversations SET kind='dm' WHERE id='room-a'")
+  const accept = async (user: string) => {
+    const state = await f.security('room-a', user)
+    return f.request('conversations/room-a/accept', 'POST', {mode: state.mode, expected_revision: state.revision}, user)
+  }
+  const send = () => f.request('conversations/room-a/messages','POST',{body:'Queued greeting',client_message_id:'accepted-message'})
+  assert.deepEqual((await f.security()).missing_acknowledgments, ['alice','bob'])
+  assert.equal((await send()).status,409)
+  assert.equal((await accept('alice')).status,200)
+  assert.equal((await send()).status,409)
+  assert.equal((await accept('bob')).status,200)
+  assert.equal((await send()).status,201)
+  assert.equal((await send()).status,200) // stable idempotency key
+  const before = await f.security()
+  f.db.sql.exec("UPDATE chat_conversations SET encryption_revision=encryption_revision+1 WHERE id='room-a'")
+  assert.equal((await f.request('conversations/room-a/accept','POST',{mode:before.mode,expected_revision:before.revision},'bob')).status,409)
+  assert.equal((await f.request('conversations/room-a/messages','POST',{body:'Wait again',client_message_id:'not-accepted'})).status,409)
+  assert.equal((await f.request('conversations/room-b/accept','POST',{mode:'none',expected_revision:2},'alice')).status,403)
+  // Acceptance can change after validation; the conditional insert must still reject it.
+  await accept('alice'); await accept('bob')
+  f.db.beforeInsert = () => { f.db.sql.exec("UPDATE chat_conversation_members SET accepted_security_revision=-1 WHERE conversation_id='room-a' AND user_id='bob'") }
+  assert.equal((await f.request('conversations/room-a/messages','POST',{body:'Race',client_message_id:'race-acceptance'})).status,409)
+  assert.equal(f.db.sql.prepare('SELECT COUNT(*) AS n FROM chat_messages').get()!.n,1)
+})

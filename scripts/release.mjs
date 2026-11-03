@@ -10,7 +10,7 @@ const [action, target = 'all'] = process.argv.slice(2);
 if (!['check', 'build', 'deploy', 'verify'].includes(action) || !['all', 'web', 'api'].includes(target)) {
   throw new Error('Usage: node scripts/release.mjs check|build|deploy|verify [all|web|api]');
 }
-const web = target !== 'api', api = target !== 'web';
+const web = target !== 'api', api = target !== 'web', chat = target === 'all';
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const commit = git('rev-parse', 'HEAD');
 const dirty = Boolean(git('status', '--porcelain', '--untracked-files=normal'));
@@ -21,6 +21,7 @@ function run(command, args, cwd = root, extraEnv = {}) {
 }
 const npm = (dir, ...args) => run('npm', args, resolve(root, dir));
 if (action === 'check') {
+  if (chat) { npm('chat-worker', 'run', 'typecheck'); npm('chat-worker', 'test'); }
   if (web) {
     run('node', ['scripts/test-status.mjs', 'capture', 'web']);
     run('node', ['scripts/test-status.mjs', 'capture', 'routing']);
@@ -49,6 +50,11 @@ if (action === 'build') {
     run(wrangler, ['deploy', '--config', 'cloudflare/wrangler.jsonc', '--dry-run', '--outdir', resolve(root, '.release/web')]);
     writeFileSync('.release/web.json', JSON.stringify(metadata));
   }
+  if (chat) {
+    npm('chat-worker', 'run', 'build:metadata');
+    run(wrangler, ['deploy', '--config', 'wrangler.jsonc', '--dry-run', '--outdir', resolve(root, '.release/chat')], resolve(root, 'chat-worker'));
+    writeFileSync('.release/chat.json', JSON.stringify(metadata));
+  }
   if (api) {
     npm('org-worker', 'run', 'build:metadata');
     run(wrangler, ['deploy', '--config', 'org-worker/wrangler.jsonc', '--dry-run', '--outdir', resolve(root, '.release/api')]);
@@ -60,7 +66,7 @@ async function cf(path, method = 'GET', body) {
   const token = process.env.CLOUDFLARE_API_TOKEN;
   if (!account || !token) throw new Error('Cloudflare account ID and deployment token are required');
   const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}${path}`, {
-    method, headers: { authorization: `Bearer ${token}` }, body, signal: AbortSignal.timeout(120000),
+    method, headers: { authorization: `Bearer ${token}`, ...(body && !(body instanceof FormData) ? {'content-type':'application/json'} : {}) }, body: body && !(body instanceof FormData) ? JSON.stringify(body) : body, signal: AbortSignal.timeout(120000),
   });
   const data = await response.json();
   if (!response.ok || !data.success) throw new Error(`Cloudflare ${method} ${path}: ${JSON.stringify(data.errors)}`);
@@ -70,9 +76,17 @@ if (action === 'deploy') {
   if (dirty) throw new Error('Refusing to deploy a dirty checkout');
   const main = git('ls-remote', 'origin', 'refs/heads/main').split(/\s/)[0];
   if (main !== commit) throw new Error('Release commit is no longer main; build the current main commit');
-  for (const part of [api && 'api', web && 'web'].filter(Boolean)) {
+  for (const part of [api && 'api', web && 'web', chat && 'chat'].filter(Boolean)) {
     const built = JSON.parse(readFileSync(`.release/${part}.json`, 'utf8'));
     if (built.commit !== commit || built.dirty) throw new Error(`Rebuild ${part} from this clean commit`);
+  }
+  if (chat) {
+    // Read-only schema gate. Migrations are reviewed/applied separately.
+    const settings = await cf('/workers/scripts/chat-codecollective/settings');
+    const database = settings.bindings.find(binding => binding.name === 'DB' && binding.type === 'd1')?.id;
+    if (!database) throw new Error('Live chat database binding is missing');
+    const schema = await cf(`/d1/database/${database}/query`, 'POST', {sql:'PRAGMA table_info(chat_conversation_members)'});
+    if (!schema[0]?.results?.some(column => column.name === 'accepted_security_revision')) throw new Error('Review and apply chat migration 0006 separately before release');
   }
   if (api) {
     // Code-only release: inherit ALL live bindings, including secrets. Do not reset
@@ -91,11 +105,24 @@ if (action === 'deploy') {
     console.log(JSON.stringify({ service: 'org-codecollective', commit, version: released.deployment_id }));
   }
   if (web) run(wrangler, ['deploy', '--config', 'cloudflare/wrangler.jsonc', '--keep-vars', '--message', `OrgPortal ${commit}`]);
+  if (chat) {
+    const path = '/workers/scripts/chat-codecollective';
+    const settings = await cf(`${path}/settings`);
+    const metadata = { main_module:'worker.js', bindings:settings.bindings.map(({name}) => ({name,type:'inherit'})), annotations:{'workers/message':`OrgPortal ${commit}`} };
+    for (const key of ['compatibility_date','compatibility_flags','usage_model','logpush','observability','tags','tail_consumers','limits']) if (settings[key] !== undefined) metadata[key] = settings[key];
+    if (settings.placement?.mode) metadata.placement = {mode:settings.placement.mode};
+    const form = new FormData();
+    form.set('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
+    form.set('worker.js',new Blob([readFileSync('.release/chat/worker.js')],{type:'application/javascript+module'}),'worker.js');
+    const released = await cf(path,'PUT',form);
+    console.log(JSON.stringify({service:'chat-codecollective',commit,version:released.deployment_id}));
+  }
   await verify();
 }
 async function verify() {
   for (const [enabled, origin, expectedService] of [
     [api, 'https://orgportal.cc/api/org', 'org-worker'],
+    [chat, 'https://orgportal.cc/api/chat', 'chat-worker'],
     [web, 'https://orgportal-web.jcloiacon.workers.dev', 'orgportal-web'],
   ]) {
     if (!enabled) continue;

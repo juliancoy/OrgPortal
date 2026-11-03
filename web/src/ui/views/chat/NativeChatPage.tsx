@@ -1,3 +1,4 @@
+import { queueChatMessage, queuedChatMessages, queuedMessageReady, removeQueuedChatMessage, type QueuedChatMessage } from '../../../chat/chatOutbox'
 import { OrganizationAvatar } from '../../components/OrganizationAvatar'
 import { useOrganizationPersonnel } from '../../hooks/useOrganizationPersonnel'
 import { conversationChatPath, organizationChatPath, organizationChatSlug } from '../../../chat/chatLinks'
@@ -8,15 +9,15 @@ import { portalUrl } from '../../../config/portalBase'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../app/AppProviders'
-import { NativeChatApi, type NativeChatConversation, type NativeChatMessage, type NativeChatSocketEvent } from '../../../chat/nativeChatApi'
+import { ChatSendWaitingError, NativeChatApi, type NativeChatConversation, type NativeChatMessage, type NativeChatSocketEvent } from '../../../chat/nativeChatApi'
 import { refreshRuntimeTokenFromSession } from '../../../infrastructure/auth/sessionToken'
 import { toUserFacingErrorMessage } from '../../../infrastructure/http/userFacingError'
 import { NativeVideoCall } from '../../components/chat/NativeVideoCall'
 import { ChatEncryptionBadge, ChatSecurityControls } from '../../components/chat/ChatSecurityControls'
-import type { ChatSecurity } from '../../../../../shared/chatEncryption'
+import type { ChatEncryptionMode, ChatSecurity } from '../../../../../shared/chatEncryption'
 
 type MessageState = NativeChatMessage & {
-  delivery_state?: 'pending' | 'confirmed' | 'failed'
+  delivery_state?: 'queued' | 'pending' | 'confirmed' | 'failed'
 }
 
 type RealtimeState = 'idle' | 'connecting' | 'connected' | 'reconnecting'
@@ -143,6 +144,11 @@ export function NativeChatPage() {
   const [realtimeSocket, setRealtimeSocket] = useState<WebSocket | null>(null)
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(() => new Set())
   const [isSending, setIsSending] = useState(false)
+  const [outbox, setOutbox] = useState<QueuedChatMessage[]>([])
+  const [queueFailures, setQueueFailures] = useState<Record<string, string>>({})
+  const [pendingSecurity, setPendingSecurity] = useState<ChatEncryptionMode | null>(null)
+  const [isQueueing, setIsQueueing] = useState(false)
+  const accountRef = useRef(user?.id); accountRef.current = user?.id
   const sendingIds = useRef(new Set<string>())
   const activeRoom = useRef(roomId)
   activeRoom.current = roomId
@@ -165,7 +171,13 @@ export function NativeChatPage() {
     [conversations, roomId],
   )
   const personnelFor = useOrganizationPersonnel(selectedConversation?.kind === 'org_room' ? selectedConversation.org_id : null)
-  const encryptionBlocked = !!chatSecurity && chatSecurity.room === roomId && chatSecurity.value.mode !== 'none' && chatSecurity.value.missing_members.length > 0
+  const currentSecurity = chatSecurity && chatSecurity.room === roomId ? chatSecurity.value : null
+  const selectedMode = pendingSecurity ?? currentSecurity?.mode ?? selectedConversation?.encryption_mode ?? 'none'
+  const timelineMessages: MessageState[] = [...messages, ...outbox.filter(item => item.userId === user?.id && item.roomId === roomId).map(item => ({
+    id: item.id, client_message_id: item.id, conversation_id: item.roomId, sender_user_id: item.userId,
+    body: item.body, created_at: new Date(item.createdAt).toISOString(), delivery_state: 'queued' as const,
+  }))]
+
   const visibleConversations = useMemo(() => conversations.filter(conversation => conversationLabel(conversation, user?.id).toLocaleLowerCase().includes(groupQuery.trim().toLocaleLowerCase())), [conversations, groupQuery, user?.id])
   const visibleGroups = useMemo(() => groups.filter(group => group.name.toLocaleLowerCase().includes(groupQuery.trim().toLocaleLowerCase())), [groups, groupQuery])
 
@@ -245,6 +257,39 @@ export function NativeChatPage() {
     setConversations(sorted)
     return sorted
   }, [api])
+
+  useEffect(() => {
+    let cancelled = false
+    setOutbox([]); setQueueFailures({}); setPendingSecurity(null)
+    if (user?.id && roomId) void queuedChatMessages(user.id, roomId)
+      .then(rows => { if (!cancelled) setOutbox(rows) })
+      .catch(() => { if (!cancelled) setError('Queued messages could not be opened in this browser.') })
+    return () => { cancelled = true }
+  }, [user?.id, roomId])
+
+  useEffect(() => {
+    const next = outbox.find(item => item.roomId === roomId && item.userId === user?.id)
+    if (!next || !currentSecurity || pendingSecurity !== null || queueFailures[next.id] || sendingIds.current.size || !queuedMessageReady(next, currentSecurity)) return
+    sendingIds.current.add(next.id); setIsSending(true)
+    void (async () => {
+      try {
+        const confirmed = await api.sendMessage(next.roomId, next.id, next.body, { expectedMode: next.mode, expectedUserId: next.userId })
+        await removeQueuedChatMessage(next.id)
+        if (activeRoom.current === next.roomId && accountRef.current === next.userId) {
+          setOutbox(rows => rows.filter(item => item.id !== next.id))
+          mergeMessages([confirmed])
+          latestSequenceRef.current = Math.max(latestSequenceRef.current, Number(confirmed.sequence || 0))
+        }
+        if (accountRef.current === next.userId) void refreshConversations().catch(() => {})
+      } catch (failure) {
+        if (failure instanceof ChatSendWaitingError) {
+          const latest = await api.getSecurity(next.roomId).catch(() => null)
+          if (latest && activeRoom.current === next.roomId && accountRef.current === next.userId) setChatSecurity({ room: next.roomId, value: latest })
+        }
+        if (activeRoom.current === next.roomId && accountRef.current === next.userId && !(failure instanceof ChatSendWaitingError)) setQueueFailures(current => ({ ...current, [next.id]: toUserFacingErrorMessage(failure, 'Message was not sent. Retry when ready.') }))
+      } finally { sendingIds.current.delete(next.id); setIsSending(false) }
+    })()
+  }, [api, outbox, currentSecurity, pendingSecurity, queueFailures, roomId, user?.id, mergeMessages, refreshConversations, isSending])
 
   const syncConversation = useCallback(
     async (activeRoomId: string, afterSequence = latestSequenceRef.current) => {
@@ -579,54 +624,28 @@ export function NativeChatPage() {
     if (!timeline) return
     if (!stickToBottom.current) { setNewMessagesBelow(true); return }
     timeline.scrollTo({ top: timeline.scrollHeight, left: 0, behavior: 'auto' })
-  }, [messages])
+  }, [messages, outbox])
 
   async function sendMessage() {
-    const body = draft.trim()
-    if (!body || !roomId || encryptionBlocked || sendingIds.current.size > 0) return
-    const clientMessageId = uuid()
-    const pending: MessageState = {
-      id: clientMessageId,
-      conversation_id: roomId,
-      sender_user_id: user?.id || 'me',
-      sender_name: user?.displayName || user?.email || 'You',
-      client_message_id: clientMessageId,
-      body,
-      message_type: 'text',
-      created_at: new Date().toISOString(),
-      delivery_state: 'pending',
-    }
-    stickToBottom.current = true
-    setNewMessagesBelow(false)
-    setDraft('')
-    setIsSending(true)
-    setMessages((current) => [...current, pending])
-    await deliverMessage(pending)
+    const body = draft.trim(), owner = user?.id, destination = roomId
+    if (!body || !owner || !destination || isQueueing) return
+    const queued: QueuedChatMessage = { id: uuid(), userId: owner, roomId: destination, body, mode: selectedMode, createdAt: Date.now() }
+    setIsQueueing(true); setError(null)
+    try {
+      await queueChatMessage(queued)
+      if (accountRef.current !== owner) return
+      setDrafts(current => current[destination]?.trim() === body ? { ...current, [destination]: '' } : current)
+      if (activeRoom.current === destination) {
+        setOutbox(rows => [...rows, queued]); stickToBottom.current = true; setNewMessagesBelow(false)
+      }
+    } catch (failure) { setError(toUserFacingErrorMessage(failure, 'Message could not be queued. Your draft is unchanged.')) }
+    finally { setIsQueueing(false) }
   }
 
-  async function deliverMessage(message: MessageState) {
-    const clientMessageId = message.client_message_id
-    if (!clientMessageId || sendingIds.current.has(clientMessageId)) return
-    sendingIds.current.add(clientMessageId)
-    setIsSending(true)
-    setError(null)
-    setMessages(current => current.map(item => item.client_message_id === clientMessageId ? { ...item, delivery_state: 'pending' } : item))
-    try {
-      const confirmed = await api.sendMessage(message.conversation_id, clientMessageId, message.body)
-      if (activeRoom.current === message.conversation_id) {
-        mergeMessages([confirmed])
-        latestSequenceRef.current = Math.max(latestSequenceRef.current, Number(confirmed.sequence || 0))
-      }
-      refreshConversations().catch(() => {})
-    } catch (err) {
-      if (activeRoom.current === message.conversation_id) {
-        setMessages(current => current.map(item => item.client_message_id === clientMessageId ? { ...item, delivery_state: 'failed' } : item))
-        setError(toUserFacingErrorMessage(err, 'Failed to send message'))
-      }
-    } finally {
-      sendingIds.current.delete(clientMessageId)
-      setIsSending(sendingIds.current.size > 0)
-    }
+  async function cancelQueued(id: string) {
+    if (sendingIds.current.has(id)) return
+    try { await removeQueuedChatMessage(id); setOutbox(rows => rows.filter(item => item.id !== id)) }
+    catch { setError('The queued message could not be canceled. Please retry.') }
   }
 
   async function shareConversation() {
@@ -789,11 +808,12 @@ export function NativeChatPage() {
                 ) : null}
               </div>
               <ChatSecurityControls key={roomId} api={api} conversationId={roomId} initialMode={selectedConversation?.encryption_mode || 'none'}
+                onPendingChange={setPendingSecurity}
                 onChange={value => {
                   setChatSecurity({ room: roomId, value })
                   setConversations(current => current.map(room => room.id === roomId ? { ...room, encryption_mode: value.mode, encryption_revision: value.revision } : room))
                 }}
-                onKeysForgotten={() => { void api.listMessages(roomId).then(payload => { if (activeRoom.current === roomId) setMessages(payload.messages) }).catch(() => setError('Messages could not be refreshed after removing browser keys.')) }} />
+                onKeysForgotten={() => { setOutbox([]); void api.listMessages(roomId).then(payload => { if (activeRoom.current === roomId) setMessages(payload.messages) }).catch(() => setError('Messages could not be refreshed after removing browser keys.')) }} />
               <button type="button" className="portal-button-secondary" onClick={() => shareConversation().catch(() => {})}>Share chat link</button>
               {shareStatus && <p role="status" className="native-chat-share-status">{shareStatus}</p>}
               <p className="native-chat-room-status">
@@ -808,9 +828,9 @@ export function NativeChatPage() {
               stickToBottom.current = timeline.scrollHeight - timeline.scrollTop - timeline.clientHeight < 80
               if (stickToBottom.current) setNewMessagesBelow(false)
             }}>
-              {messages.map((message, index) => {
+              {timelineMessages.map((message, index) => {
                 const mine = message.sender_user_id === user?.id || message.sender_user_id === 'me'
-                const previous = messages[index - 1]
+                const previous = timelineMessages[index - 1]
                 const groupedWithPrevious =
                   Boolean(previous) &&
                   previous.sender_user_id === message.sender_user_id &&
@@ -835,13 +855,17 @@ export function NativeChatPage() {
                     <MessageBody body={message.body} />
                     <div className="native-chat-message-footer">
                       {(!message.delivery_state || message.delivery_state === 'confirmed') && <ChatEncryptionBadge compact mode={message.encryption?.mode || 'none'} />}
-                      {message.delivery_state === 'pending' ? <span>Sending...</span> : null}
-                      {message.delivery_state === 'failed' ? <span className="portal-chat-error" role="alert">Not sent. <button type="button" disabled={isSending} onClick={() => deliverMessage(message).catch(() => {})}>Retry</button></span> : null}
+                      {message.delivery_state === 'queued' && <>
+                        <span>{sendingIds.current.has(message.id) ? 'Sending…' : queueFailures[message.id] || `Queued · ${outbox.find(item => item.id === message.id)?.mode === 'rsa-mlkem' ? 'RSA + ML-KEM' : outbox.find(item => item.id === message.id)?.mode === 'rsa' ? 'RSA' : 'Not encrypted'}`}</span>
+                        {queueFailures[message.id] && <button type="button" disabled={isSending} onClick={() => setQueueFailures(current => { const next = { ...current }; delete next[message.id]; return next })}>Retry queued message</button>}
+                        <button type="button" disabled={sendingIds.current.has(message.id)} onClick={() => { void cancelQueued(message.id) }}>Cancel queued message</button>
+                      </>}
+
                     </div>
                   </article>
                 )
               })}
-              {messages.length === 0 ? <p className="portal-chat-muted">No messages yet.</p> : null}
+              {timelineMessages.length === 0 ? <p className="portal-chat-muted">No messages yet.</p> : null}
             </div>
 
             {newMessagesBelow && <button type="button" className="native-chat-jump" onClick={() => {
@@ -852,6 +876,7 @@ export function NativeChatPage() {
             }}>Jump to latest messages</button>}
             {listingContext && <aside className="tb-chat-context"><a href={portalUrl(timebankListingPath(listingContext.id))}>Regarding: {listingContext.title}</a><span>Your draft is editable. It sends only when you press Send.</span></aside>}
             {listingError && <p role="status" className="portal-chat-muted">{listingError}</p>}
+            <p className="portal-chat-muted" role="status">Messages queue in this browser until the chat request and security level are accepted. Keep this chat open to send automatically. Queued messages expire after 7 days.</p>
             <footer className="portal-chat-composer">
               <textarea
                 value={draft}
@@ -866,8 +891,8 @@ export function NativeChatPage() {
                   }
                 }}
               />
-              <button type="button" className="btn-primary" disabled={isSending || encryptionBlocked || !draft.trim()} onClick={() => sendMessage().catch(() => {})}>
-                Send
+              <button type="button" className="btn-primary" disabled={isQueueing || !draft.trim()} onClick={() => sendMessage().catch(() => {})}>
+                {isQueueing ? 'Queueing…' : 'Send'}
               </button>
             </footer>
           </>

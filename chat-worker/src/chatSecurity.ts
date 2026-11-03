@@ -3,7 +3,7 @@ import { HTTPException } from 'hono/http-exception'
 import { CHAT_ENCRYPTION_MODES, MAX_CHAT_ENCRYPTION_DEVICES, chatDeviceId, decodeChatBytes, validateChatEnvelope, type ChatDeviceKey, type ChatEncryptionMode, type ChatSecurity } from '../../shared/chatEncryption'
 
 type Room = { id: string; kind: string; org_id: string | null; event_id: string | null; encryption_mode?: ChatEncryptionMode; encryption_revision?: number }
-type Member = { user_id: string; role: string; state: string }
+type Member = { user_id: string; role: string; state: string; accepted_security_revision?: number }
 type DeviceRow = { user_id: string; device_id: string; rsa_jwk: string; kem_public: string }
 type Dependencies = {
   requireMember(env: Env, room: string, user: string): Promise<{ role: string }>
@@ -53,7 +53,7 @@ export async function canManageChatSecurity(env: Env, room: Room, userId: string
 
 export async function chatSecuritySnapshot(env: Env, room: Room, userId: string, deps: Dependencies): Promise<ChatSecurity> {
   const actor = await deps.requireMember(env, room.id, userId)
-  const memberRows = await env.DB.prepare("SELECT user_id, role, state FROM chat_conversation_members WHERE conversation_id = ? AND state = 'active'")
+  const memberRows = await env.DB.prepare("SELECT user_id, role, state, accepted_security_revision FROM chat_conversation_members WHERE conversation_id = ? AND state = 'active'")
     .bind(room.id).all<Member>()
   const members = [] as Member[]
   for (const member of memberRows.results || []) {
@@ -69,11 +69,14 @@ export async function chatSecuritySnapshot(env: Env, room: Room, userId: string,
   }))
   return { mode: modeOf(room), revision: room.encryption_revision || 0, current_user_id: userId,
     can_manage: await canManageChatSecurity(env, room, userId, actor.role, deps), devices,
+    missing_acknowledgments: room.kind === 'dm' ? members.filter(member => member.accepted_security_revision !== (room.encryption_revision || 0)).map(member => member.user_id) : [],
     missing_members: members.filter(member => !devices.some(device => device.user_id === member.user_id)).map(member => member.user_id) }
 }
 
 export async function validateEncryptedChatSend(env: Env, room: Room, userId: string, clientId: string, value: unknown, deps: Dependencies) {
   const mode = modeOf(room)
+  const security = await chatSecuritySnapshot(env, room, userId, deps)
+  if (security.missing_acknowledgments?.length) fail(409, 'Waiting for every member to accept this chat request and security level.')
   if (mode === 'none') {
     if (value != null) fail(409, 'Chat protection changed. Refresh before sending.')
     return null
@@ -83,7 +86,6 @@ export async function validateEncryptedChatSend(env: Env, room: Room, userId: st
   try { envelope = validateChatEnvelope(value) } catch { fail(400, 'Invalid encrypted message') }
   if (envelope.mode !== mode || envelope.revision !== (room.encryption_revision || 0) || envelope.conversation_id !== room.id ||
       envelope.sender_user_id !== userId || envelope.client_message_id !== clientId) fail(409, 'Chat protection changed or message context is invalid. Refresh before sending.')
-  const security = await chatSecuritySnapshot(env, room, userId, deps)
   if (security.missing_members.length) fail(409, 'Waiting for every chat member to open this chat and register encryption keys.')
   if (security.devices.length > MAX_CHAT_ENCRYPTION_DEVICES) fail(409, 'This encrypted chat has too many active devices.')
   const expected = new Set(security.devices.map(device => `${device.user_id}:${device.device_id}`))
@@ -126,6 +128,20 @@ export function chatSecurityRoutes(deps: Dependencies) {
   routes.get('/conversations/:conversationId/security', async c => {
     const room = await deps.conversation(c.env.DB, c.req.param('conversationId'))
     return c.json(await chatSecuritySnapshot(c.env, room, c.get('user').id, deps))
+  })
+  routes.post('/conversations/:conversationId/accept', async c => {
+    const userId = c.get('user').id, room = await deps.conversation(c.env.DB, c.req.param('conversationId'))
+    await deps.requireMember(c.env, room.id, userId)
+    const payload = await boundedChatJson(c.req.raw, 1000)
+    if (payload.mode !== modeOf(room) || payload.expected_revision !== (room.encryption_revision || 0)) fail(409, 'Chat protection changed. Review it before accepting.')
+    const result = await c.env.DB.prepare(`UPDATE chat_conversation_members SET accepted_security_revision=?
+      WHERE conversation_id=? AND user_id=? AND state='active' AND EXISTS
+      (SELECT 1 FROM chat_conversations WHERE id=? AND encryption_revision=? AND encryption_mode=?)`)
+      .bind(room.encryption_revision || 0, room.id, userId, room.id, room.encryption_revision || 0, modeOf(room)).run()
+    if (result.meta.changes !== 1) fail(409, 'Chat protection changed. Review it before accepting.')
+    const security = await chatSecuritySnapshot(c.env, room, userId, deps)
+    await deps.broadcast(c.env, room.id, { type: 'conversation.security', conversation_id: room.id, mode: security.mode, revision: security.revision })
+    return c.json(security)
   })
   routes.patch('/conversations/:conversationId/security', async c => {
     const userId = c.get('user').id, room = await deps.conversation(c.env.DB, c.req.param('conversationId'))
