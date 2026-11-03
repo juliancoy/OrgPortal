@@ -23,6 +23,7 @@ await testUploadImageCompression()
 const {server,base}=await fixtureServer(root,output)
 try{
  execFileSync(process.execPath,[join(root,'scripts/check-progressive-graph.mjs')],{cwd:root,stdio:'inherit'})
+ execFileSync(process.execPath,[join(root,'scripts/check-node-parent.mjs')],{cwd:root,stdio:'inherit'})
  execFileSync(process.execPath,[join(root,'scripts/render-lifetech-events.mjs'),join(output,'lifetech-events')],{cwd:root,stdio:'inherit'})
  await testSlowConnection(root,output)
  await testEventApplicants(base,join(output,'event-applicants'))

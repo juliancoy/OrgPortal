@@ -1,3 +1,4 @@
+import {graphNeighborhood} from '../src/features/ecosystem/graph-neighborhood.js'
 import {compileFunding,companyKey,fundingSummary,fundingCsv} from '../src/features/ecosystem/fundingStatistics.ts'
 import {compareAttainment} from '../src/features/ecosystem/performance.ts'
 
@@ -74,6 +75,9 @@ export async function queryEcosystem(read,section,params){
  }
  if(graph){
   const topology=await read(`${version}/topology.json`),nodeId=value=>typeof value==='number'?topology.nodeIds[value]:value,selected=params.get('org'),depth=integer(params,'depth',1,3)
+  const direction=params.get('direction')||'both'
+  if(!['both','parents','children'].includes(direction))throw Error('Invalid graph direction')
+  let neighborhood
   const mode=params.get('mode')||'network',geographic=mode==='geography'
   if(!['network','funding','geography'].includes(mode))throw new Error('Invalid graph mode')
   // Validate dates even though node membership itself is not dated.
@@ -96,8 +100,8 @@ export async function queryEcosystem(read,section,params){
   // An org selects an indexed neighborhood, not just its own directory row.
   if(selected){
    if(!topology.adjacency[selected])throw new Error('Unknown organization')
-   const seen=new Set([selected]);let frontier=[selected]
-   for(let hop=0;hop<depth;hop++){const next=[];for(const id of frontier)for(const value of topology.adjacency[id]||[]){const neighbor=nodeId(value);if(!seen.has(neighbor)){seen.add(neighbor);next.push(neighbor)}}frontier=next}
+   neighborhood=graphNeighborhood(topology,selected,depth,direction)
+   const seen=neighborhood.nodes
    const scoped=new URLSearchParams(nodeParams);scoped.delete('org');ids=matching(index,scoped).filter(i=>seen.has(index.rows[i].id))
    if(geographic)ids=ids.filter(i=>{const r=index.rows[i];return Number.isFinite(r.latitude)&&Number.isFinite(r.longitude)&&(!bbox||(r.longitude>=bbox[0]&&r.latitude>=bbox[1]&&r.longitude<=bbox[2]&&r.latitude<=bbox[3]))})
    ids.sort((a,b)=>Number(index.rows[b].id===selected)-Number(index.rows[a].id===selected)||topology.degree[index.rows[b].id]-topology.degree[index.rows[a].id]||index.rows[a].id.localeCompare(index.rows[b].id))
@@ -117,13 +121,13 @@ export async function queryEcosystem(read,section,params){
   const page=ids.slice(offset,offset+MAX_NODES),organizations=await readRows(read,version,'organizations',page)
   const visible=new Set(organizations.map(o=>o.id)),edgeIds=new Set()
   for(const id of visible)for(const edge of topology.edgesByOrg[id]||[])edgeIds.add(edge)
-  const candidates=[...edgeIds].sort((a,b)=>a-b).filter(i=>{const e=topology.edges[i];return visible.has(nodeId(e[0]))&&visible.has(nodeId(e[1]))&&(mode!=='funding'||(['transfer','grant','donation','contract'].includes(e[2])&&(!fundingCategoryIds||fundingCategoryIds.has(nodeId(e[0]))||fundingCategoryIds.has(nodeId(e[1])))))&&(!params.get('kind')||e[2]===params.get('kind'))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))})
+  const candidates=[...edgeIds].sort((a,b)=>a-b).filter(i=>{const e=topology.edges[i];return (!neighborhood?.edges||neighborhood.edges.has(i))&&visible.has(nodeId(e[0]))&&visible.has(nodeId(e[1]))&&(mode!=='funding'||(['transfer','grant','donation','contract'].includes(e[2])&&(!fundingCategoryIds||fundingCategoryIds.has(nodeId(e[0]))||fundingCategoryIds.has(nodeId(e[1])))))&&(!params.get('kind')||e[2]===params.get('kind'))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))})
   if(selected)candidates.sort((a,b)=>Number(nodeId(topology.edges[b][0])===selected||nodeId(topology.edges[b][1])===selected)-Number(nodeId(topology.edges[a][0])===selected||nodeId(topology.edges[a][1])===selected)||a-b)
   const pairs=new Map()
-  for(const i of candidates){const edge=topology.edges[i],key=JSON.stringify([edge[0],edge[1]].sort());if(!pairs.has(key))pairs.set(key,{first:i,count:0});pairs.get(key).count++}
+  for(const i of candidates){const edge=topology.edges[i],key=JSON.stringify(direction==='both'?[edge[0],edge[1]].sort():[edge[0],edge[1]]);if(!pairs.has(key))pairs.set(key,{first:i,count:0});pairs.get(key).count++}
   const representatives=[...pairs.values()].slice(0,MAX_EDGES),loaded=await readRows(read,version,'graph',representatives.map(pair=>pair.first))
   const relationships=loaded.map((edge,i)=>({...edge,recordCount:representatives[i].count}))
-  const body={...meta,metricMax:manifest.metricMax,geography:geographic?{located:topology.geography.located,missing:topology.geography.missing}:undefined,organizations,relationships,financing:[],total:ids.length,totalOrganizations:manifest.totals.organizations,totalRelationships:manifest.totals.relationships,offset,nextOffset:offset+MAX_NODES<ids.length?offset+MAX_NODES:null,matchingEdges:candidates.length,matchingLinks:pairs.size,truncated:pairs.size>MAX_EDGES,groups:manifest.groups}
+  const body={...meta,direction,metricMax:manifest.metricMax,geography:geographic?{located:topology.geography.located,missing:topology.geography.missing}:undefined,organizations,relationships,financing:[],total:ids.length,totalOrganizations:manifest.totals.organizations,totalRelationships:manifest.totals.relationships,offset,nextOffset:offset+MAX_NODES<ids.length?offset+MAX_NODES:null,matchingEdges:candidates.length,matchingLinks:pairs.size,truncated:pairs.size>MAX_EDGES,groups:manifest.groups}
   // The source table remains complete; bound graph response bytes as well as edge counts.
   let budget=2*1024*1024-new TextEncoder().encode(JSON.stringify({...body,relationships:[]})).byteLength-1024
   const bounded=[]

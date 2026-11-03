@@ -45,10 +45,11 @@ root.querySelector('.eco-network-controls').prepend(queryControls)
 let graphRequest,searchRequest,searchTimer,geographyTimer,graphScope={},graphOffset=0,graphNext=null,graphSequence=0
 const graphEndpoint=parameters=>portalPath('/api/ecosystem/graph?'+new URLSearchParams(parameters))
 async function loadGraph(scope=graphScope,{keepView=false}={}){
+ if(scope.org)scope={...scope,direction:scope.direction||graphScope.direction||'children'}
  graphRequest?.abort();const controller=new AbortController();graphRequest=controller
  const sequence=++graphSequence,parameters={depth:$('#network-hop-depth').value||'1',offset:String(scope.offset||0)}
  if(data?.version)parameters.version=data.version
- if(scope.org)parameters.org=scope.org
+ if(scope.org){parameters.org=scope.org;parameters.direction=scope.direction}
  if(scope.group)parameters[scope.group[0]]=scope.group[1]
  const mode=$('#network-analysis-mode').value;parameters.mode=mode
  if(mode==='funding')for(const [key,id] of [['kind','network-flow-kind'],['category','network-flow-category'],['from','network-flow-from'],['to','network-flow-to']]){const value=$('#'+id).value;if(value&&value!=='all')parameters[key]=value}
@@ -80,7 +81,7 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
   groupSelect.value=scope.group?JSON.stringify(scope.group):''
   $('#network-data-previous').disabled=!graphOffset;$('#network-data-next').disabled=graphNext===null
   const message=next.communityOverview?`${next.organizations.length} of ${next.total} community markers representing ${next.totalOrganizations} organizations. Select a community to load its organizations and source connections.`:next.clustered?`${next.organizations.length} county aggregate markers from ${next.geography.located} organizations with published Maryland coordinates; ${next.geography.missing} missing or outside Maryland. Select a county or zoom in to load organizations.`:`Loaded ${next.organizations.length} of ${next.total} matching organizations; ${next.totalOrganizations} in the full network. ${next.relationships.length} connection representatives for ${next.matchingEdges} evidence records between these loaded organizations. See Relationships for every source record.${next.truncated?' More evidence is available in Relationships.':''} Financial summaries use the full snapshot.`
-  $('#network-data-status').textContent=stream.pending?`Loading detail: ${data.organizations.length}/${next.organizations.length} organizations in this page; ${next.total} in scope. The graph remains interactive.`:message
+  $('#network-data-status').textContent=stream.pending?`Loading detail: ${data.organizations.length}/${next.organizations.length} organizations in this page; ${next.total} in scope. The graph remains interactive.`:(scope.org?`${scope.direction==='parents'?'Parents (incoming relationships)':'Children (outgoing relationships)'}. `:'')+message
   $('#network-source').textContent='Evidence snapshot built '+new Date(next.generatedAt).toLocaleString()
   previewSummaries=preparedData.summaries
   if(gpuReady){search();rebuild({incremental:true})}
@@ -208,7 +209,7 @@ function bindNodePreview(button,node) {
  button.addEventListener('pointerenter',()=>previewNode(node))
  button.addEventListener('focus',()=>previewNode(node))
 }
-function activateNode(id){const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
+function activateNode(id){if(id===selected){const direction=graphScope.direction==='parents'?'children':'parents';void loadGraph({...graphScope,org:id,direction,offset:0},{keepView:true}).then(()=>{if(!disposed&&graphScope.org===id&&graphScope.direction===direction)select(id)}).catch(()=>{});return}const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
 function select(id,openInspector=true) {
  if(data?.version&&graphScope.org!==id){void loadGraph({org:id}).then(()=>{if(!disposed&&graphScope.org===id)select(id,openInspector)}).catch(()=>{});return}
  let org = data.organizations.find(o=>o.id===id); if (!org) return
@@ -218,13 +219,13 @@ function select(id,openInspector=true) {
  selected = id;$('#network-detail-mode').value='focus';$('#network-detail-mode').dispatchEvent(new Event('input',{bubbles:true})); inspectorKey='node:'+id; $('#neighbors').disabled=false
  $('#network-detail').innerHTML = organizationPreview(org,previewSummaries);if(analysis)appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin);appendEvidenceLink(org);rewriteLinks();if(matchMedia('(max-width:900px)').matches&&!root.classList.contains('eco-controls-open')&&!root.classList.contains('eco-visualization-open')&&!root.classList.contains('eco-search-open')){root.classList.add('eco-inspector-open');root.classList.remove('eco-controls-open');panelState()}
  if(openInspector)selectPanel('inspector')
- const u = new URL(location.href); u.searchParams.set('org',id); history.replaceState(history.state,'',u)
+ const u = new URL(location.href); u.searchParams.set('org',id);u.searchParams.set('direction',graphScope.direction||'children'); history.replaceState(history.state,'',u)
  refreshSelection()
  const point=nodes.find(n=>n.id===id);if(point)focusView(point)
 }
 function appendEvidenceLink(org){const link=document.createElement('a');link.href=portalPath('/ecosystem/network/relationships?org='+encodeURIComponent(org.id));link.textContent='All relationships and source evidence →';$('#network-detail').append(link)}
 function refreshSelection(){
- for(const {button,n} of labelItems)button.setAttribute('aria-pressed',String(n.id===selected))
+ for(const {button,n} of labelItems){button.setAttribute('aria-pressed',String(n.id===selected));button.title=n.id===selected?`Show ${graphScope.direction==='parents'?'children':'parents'} of ${n.name}`:`Select ${n.name}`}
  updateDisclosure()
 }
 function unpin() {
@@ -233,7 +234,7 @@ function unpin() {
  selected=null;inspectorKey=null
  $('#neighbors').checked=false;$('#neighbors').disabled=true
  $('#network-detail').innerHTML='<h2>Select an organization</h2><p>Hover a node or edge to preview it, or click a node to pin its details.</p>'
- const u=new URL(location.href);u.searchParams.delete('org');history.replaceState(history.state,'',u)
+ const u=new URL(location.href);u.searchParams.delete('org');u.searchParams.delete('direction');history.replaceState(history.state,'',u)
  if(filtered)rebuild();else refreshSelection()
 }
 function closeDetails() {
@@ -270,13 +271,14 @@ function rebuild({incremental=false}={}) {
  let visibleIds=new Set(visible.map(n=>n.id))
  const moneyOnly=$('#network-view').value==='money'
  edges=uniqueNetworkLinks(graphRelationships(graphData,{moneyOnly,includeCapitalization:context}).filter(e=>visibleIds.has(e.source) && visibleIds.has(e.target) && (moneyOnly || rels.has(e.relationship))))
- if ($('#neighbors').checked && selected) {
-  const neighbors=new Set([selected]); edges.forEach(e=>{if(e.source===selected)neighbors.add(e.target);if(e.target===selected)neighbors.add(e.source)})
+ const focusedId=graphScope.org||selected
+ if ($('#neighbors').checked && focusedId) {
+  const neighbors=new Set([focusedId]); edges.forEach(e=>{if(e.source===focusedId)neighbors.add(e.target);if(e.target===focusedId)neighbors.add(e.source)})
   visible=visible.filter(n=>neighbors.has(n.id)); visibleIds=new Set(visible.map(n=>n.id)); edges=edges.filter(e=>visibleIds.has(e.source)&&visibleIds.has(e.target))
  }
  if ($('#hide-isolated').checked) {
   const connected=new Set(edges.flatMap(e=>[e.source,e.target]))
-  visible=visible.filter(n=>n.serverCommunity||n.serverCluster||connected.has(n.id))
+  visible=visible.filter(n=>n.id===graphScope.org||n.serverCommunity||n.serverCluster||connected.has(n.id))
  }
  recordedCounts=new Map(graphData.organizations.map(n=>[n.id,n.networkMetrics?.recordCount||0]))
  const amounts=new Map(graphData.organizations.map(n=>[n.id,n.networkMetrics?.amount||0]))
@@ -468,7 +470,7 @@ async function start(){
  try {
   await settingsReady
   await initGPU();if(disposed)return
-  await loadGraph({org:new URL(location.href).searchParams.get('org')||undefined})
+  await loadGraph({org:new URL(location.href).searchParams.get('org')||undefined,direction:new URL(location.href).searchParams.get('direction')==='parents'?'parents':'children'})
   search();if(disposed)return
   root.addEventListener('wheel',event=>{
    if(!host.contains(event.target))return

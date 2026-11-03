@@ -34,3 +34,23 @@ The browser check starts an isolated host Vite server with synthetic public
 responses and checks 2D, 3D and 4D ingestion, intermediate batches, one layout
 worker per view, and browser errors. It requires local Playwright Chromium and
 port 5198. It performs no production writes or authenticated requests.
+
+## Parents and children
+
+Selecting an organization starts with children (outgoing relationships). Clicking
+the selected node toggles to parents (incoming relationships), and clicking it
+again returns to children. Other nodes remain clickable; selecting one preserves
+the direction. The scope status names the direction and shared URLs retain it.
+A node with no parents or children stays visible so the direction can be toggled
+again. Parent/child here follows stored source/target direction, including
+non-fiscal relationships; it does not infer ownership or a unique primary parent.
+
+The graph API accepts `direction=parents|children|both`; omitted direction retains
+legacy bidirectional behavior. Direction is applied before node pagination, and
+traversal uses the existing per-organization edge index.
+
+`node web/scripts/check-node-parent.mjs` checks pointer and keyboard toggles,
+clickable parents, empty scopes and reloads in 2D, 3D and 4D. Run this browser
+check in isolated local Docker. It defaults to the supported WebGL2 fallback for
+3D/4D on software graphics hosts; `GRAPH_PARENT_NATIVE_GPU=1` enables native
+WebGPU testing on a suitable host.
