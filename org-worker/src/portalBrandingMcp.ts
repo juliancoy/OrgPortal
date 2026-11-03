@@ -9,7 +9,7 @@ export const portalBrandingTargetSchema = z.object({ organizationId: z.string().
 const themeColorsSchema = z.record(z.string().regex(THEME_COLOR_TOKEN), z.string().regex(THEME_COLOR));
 export const organizationThemesSchema = z.object({
   defaultTheme: z.string().regex(THEME_ID),
-  themes: z.array(z.object({ id: z.string().regex(THEME_ID), name: z.string().trim().min(1).max(80), light: themeColorsSchema, dark: themeColorsSchema, imagery:z.object({icon:z.string().refine(isThemeImage),avatar:z.string().refine(isThemeImage),background:z.string().refine(isThemeImage)}).strict().optional() }).strict()).min(1).max(24),
+  themes: z.array(z.object({ id: z.string().regex(THEME_ID), name: z.string().trim().min(1).max(80), logoAppearance:z.object({background:z.enum(['transparent','solid','gradient']),color:z.string().regex(THEME_COLOR),secondaryColor:z.string().regex(THEME_COLOR),shape:z.enum(['circle','rounded'])}).strict().optional(), light: themeColorsSchema, dark: themeColorsSchema, imagery:z.object({icon:z.string().refine(isThemeImage),avatar:z.string().refine(isThemeImage),background:z.string().refine(isThemeImage)}).strict().optional() }).strict()).min(1).max(24),
 }).strict().refine(value => parseOrganizationThemes(value) !== null, 'Use unique theme IDs, an existing defaultTheme, and matching light/dark keys with 1-128 hex colors per mode');
 export const portalBrandingUpdateSchema = portalBrandingTargetSchema.extend({
   brandThemes: organizationThemesSchema.nullable().optional(),

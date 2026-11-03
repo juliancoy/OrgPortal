@@ -1,0 +1,10 @@
+img.transparent-logo {
+  box-sizing: border-box;
+  object-fit: contain !important;
+  padding: calc(var(--transparent-logo-padding, 0px) * var(--logo-padding-scale, 1));
+  border-radius: var(--logo-radius, 50%) !important;
+  background: var(--logo-background, transparent);
+}
+
+.organization-avatar:has(> img.transparent-logo),
+.organization-profile-avatar:has(> img.transparent-logo) { border-radius: var(--logo-radius, 50%); }

@@ -1,3 +1,4 @@
+import { defaultLogoAppearance, logoAppearanceVariables } from '../../../shared/logoAppearance'
 import {rememberBrandingPaint} from './brandingPaint'
 import { parseOrganizationThemes, portalThemeColors } from '../../../shared/organizationThemes'
 import { getGroupSite } from './timebankCommunity'
@@ -37,7 +38,7 @@ export function applyOrganizationTheme(id = readOrganizationTheme()) {
   }
   // Extra root specificity overrides built-in tenant palettes in both modes.
   const root = ':root:root:root[data-organization-theme]'
-  const declarations = (colors: Record<string, string>) => Object.entries(portalThemeColors(colors)).map(([token, color]) => `--${token}:${color};`).join('')
+  const declarations = (colors: Record<string, string>) => Object.entries(portalThemeColors(colors)).map(([token, color]) => `--${token}:${color};`).join('') + Object.entries(logoAppearanceVariables(theme.logoAppearance || defaultLogoAppearance(getGroupSite()?.slug))).map(([token, value]) => `${token}:${value};`).join('')
   style.textContent = `${root}{${declarations(theme.light)}}\n${root}[data-theme="dark"]{${declarations(theme.dark)}}\n@media(prefers-color-scheme:dark){${root}:not([data-theme]){${declarations(theme.dark)}}}`
   document.documentElement.dataset.organizationTheme = theme.id
 }
@@ -55,7 +56,8 @@ export function organizationPageTheme(site:import('./timebankCommunity').GroupSi
  const theme=config?.themes.find(theme=>theme.id===config.defaultTheme)
  if(!theme)return null
  const selector='.portal-org-page[data-brand-theme]'
- const colors=(values:Record<string,string>)=>Object.entries(portalThemeColors(values)).map(([key,value])=>`--${key}:${value};`).join('')
+ const logo=logoAppearanceVariables(theme.logoAppearance || defaultLogoAppearance(site?.slug || site?.home_org_slug))
+ const colors=(values:Record<string,string>)=>Object.entries({...portalThemeColors(values),...Object.fromEntries(Object.entries(logo).map(([key,value])=>[key.slice(2),value]))}).map(([key,value])=>`--${key}:${value};`).join('')
  return `${selector}{${colors(theme.light)}color:var(--text-primary);background:var(--surface);} :root[data-theme="dark"] ${selector}{${colors(theme.dark)}} @media(prefers-color-scheme:dark){:root:not([data-theme]) ${selector}{${colors(theme.dark)}}}`
 }
 
