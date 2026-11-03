@@ -4,6 +4,7 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync, cpSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import { assertLocalRelease, assertPublishedRelease } from './release-policy.mjs';
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 process.chdir(root);
 const [action, target = 'all'] = process.argv.slice(2);
@@ -68,8 +69,8 @@ async function cf(path, method = 'GET', body) {
 }
 if (action === 'deploy') {
   if (dirty) throw new Error('Refusing to deploy a dirty checkout');
-  const main = git('ls-remote', 'origin', 'refs/heads/main').split(/\s/)[0];
-  if (main !== commit) throw new Error('Release commit is no longer main; build the current main commit');
+  assertLocalRelease();
+  assertPublishedRelease(root, commit);
   for (const part of [api && 'api', web && 'web'].filter(Boolean)) {
     const built = JSON.parse(readFileSync(`.release/${part}.json`, 'utf8'));
     if (built.commit !== commit || built.dirty) throw new Error(`Rebuild ${part} from this clean commit`);

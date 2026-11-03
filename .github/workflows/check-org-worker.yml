@@ -1,9 +1,7 @@
 name: Check shared org worker
 on:
-  push:
-    paths: ['org-worker/**', 'chat-worker/**', 'shared/**', 'docs/privacy/**', '.github/workflows/check-org-worker.yml']
-  pull_request:
-    paths: ['org-worker/**', 'chat-worker/**', 'shared/**', 'docs/privacy/**', '.github/workflows/check-org-worker.yml']
+  workflow_dispatch:
+
 permissions:
   contents: read
 jobs:

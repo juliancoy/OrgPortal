@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ "${WORKERS_CI:-}" == 1 ]]; then
+  echo "Remote builds are disabled. Validate and build locally, then release explicitly."
+  exit 0
+fi
 cd "$(dirname "$0")/.."
 # Cloudflare's preinstalled asdf Python may omit SQLite. Keep the journal
 # reproducibility check enabled by using the system Python when necessary.
