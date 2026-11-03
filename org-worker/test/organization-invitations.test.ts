@@ -230,3 +230,43 @@ test('invitation card is readable without authentication, without revealing reci
  f.db.sql.prepare('UPDATE organization_invitations SET expires_at=1 WHERE id=?').run(id);
  assert.equal((await publicApp.request('/invitations/'+id+'/public',{}, {DB:f.db.asD1()} as Env)).status,410);
 });
+
+test('managers can publish and hide expired invitee names from exact archived presentation references without granting access or resending',async t=>{
+ const f=fixture(t),id=await f.issue();
+ const old=Date.now()-8*86400000,stamp=new Date(old).toISOString(),future=new Date(Date.now()+30*86400000).toISOString();
+ f.db.sql.prepare("INSERT INTO events(id,ingest_key,title,slug,host_org_id,starts_at,created_at,updated_at) VALUES('demo','demo','Demo','demo','two',?,?,?)").run(future,stamp,stamp);
+ f.db.sql.prepare("INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at,presenters_json) VALUES('demo','proposal','one','chair','Research','Summary','submitted',?,?,?)").run(stamp,future,JSON.stringify([{invitationId:id}]));
+ f.db.sql.prepare("INSERT INTO support_tickets(id,organization_id,sender_email,subject,category,status,created_at,updated_at,expires_at,created_by_user_id) VALUES('archive','two','new@example.test','Invitation from One','membership','answered',?,?,?,'chair')").run(stamp,stamp,Date.now()+60*86400000);
+ f.db.sql.prepare("INSERT INTO support_messages(id,ticket_id,direction,body,author_id,delivery,created_at) VALUES(?,'archive','outbound','Saved member invitation','chair','sent',?)").run('invitation:'+id,stamp);
+ f.db.sql.prepare('DELETE FROM organization_invitations WHERE id=?').run(id);
+ const path='/orgs/one/invitations/'+id+'/publication';
+ assert.equal((await f.request(path+'/preview','member',{publicName:'Ryan Lafferty'})).status,403);
+ assert.equal((await f.request(path.replace('/one/','/two/')+'/preview','chair',{publicName:'Ryan Lafferty'})).status,403);
+ assert.equal((await f.request(path+'/preview','chair',{publicName:'new@example.test'})).status,400);
+ assert.equal((await f.request(path.replace(id,crypto.randomUUID())+'/preview','chair',{publicName:'Unrelated'})).status,404);
+ assert.equal((await f.act(path,'chair',{publicName:'Ryan Lafferty'})).status,200);
+ const saved=f.db.sql.prepare('SELECT * FROM organization_invitations WHERE id=?').get(id)!;
+ assert.equal(saved.email_status,'sent');assert.ok(Number(saved.expires_at)<Date.now());
+ assert.equal(f.db.sql.prepare("SELECT count(*) n FROM organization_memberships WHERE user_id='new'").get()!.n,0);
+ assert.equal((await f.request('/invitations/'+id,'new')).status,409);
+ const publicRoutes=organizationMemberTitleRoutes(async()=>({id:'outsider'}),()=>new Response('error',{status:500}));
+ const read=async()=>await(await publicRoutes.request('/public/one/personnel',{}, {DB:f.db.asD1()} as Env)).json() as {people:{name:string;pendingInvitation:boolean;titles:string[]}[]};
+ const roster=await read(),invited=roster.people.find(p=>p.name==='Ryan Lafferty');
+ assert.ok(invited?.pendingInvitation);assert.deepEqual(invited.titles,[]);
+ assert.doesNotMatch(JSON.stringify(roster),/new@example|invitation:|Saved member|Research|user_email/);
+ assert.equal((await f.act(path,'chair',{publicName:null})).status,200);
+ assert.ok(!(await read()).people.some(p=>p.name==='Ryan Lafferty'));
+});
+
+test('publishing an existing invitation name preserves its original acceptance, mail text, and volunteer access rules',async t=>{
+ const f=fixture(t),id=await f.issue('volunteer','member');
+ const path='/orgs/one/invitations/'+id+'/publication';
+ assert.equal((await f.act(path,'chair',{publicName:'Dummy Invitee'})).status,200);
+ const row=f.db.sql.prepare('SELECT intent_json FROM organization_invitations WHERE id=?').get(id)!;
+ assert.deepEqual(JSON.parse(String(row.intent_json)),{publicName:'Dummy Invitee'});
+ assert.match(invitationMessage('https://portal.test',id,'One','volunteer',String(row.intent_json)).text,/no membership permissions/);
+ assert.equal((await f.act('/invitations/'+id,'new',{})).status,200);
+ assert.equal(f.db.sql.prepare("SELECT count(*) n FROM organization_memberships WHERE user_id='new'").get()!.n,0);
+ assert.equal(f.db.sql.prepare("SELECT count(*) n FROM organization_personnel_relationships WHERE user_id='new'").get()!.n,0);
+ assert.equal(f.db.sql.prepare("SELECT count(*) n FROM organization_volunteer_awards WHERE user_id='new'").get()!.n,1);
+});

@@ -92,8 +92,15 @@ export function organizationMemberTitleRoutes(auth:(env:Env,request:Request)=>Pr
    if(existing){if(!existing.titles.includes(label))existing.titles.push(label);existing.role_classes.push({scheme:row.scheme,key:row.class_key})}
    else people.push({id,name:row.user_name,titles:[label],photo_url:row.photo_url,photo_source_url:null,profile_slug:row.profile_slug,description:null,pendingInvitation:false,personnel_class:'public',role_classes:[{scheme:row.scheme,key:row.class_key}]});
   }
+  if(c.req.param('view')==='personnel'){
+   const invited=await c.env.DB.prepare("SELECT id,json_extract(intent_json,'$.publicName') AS public_name FROM organization_invitations WHERE organization_id=? AND status='pending' AND expires_at>? AND json_valid(intent_json) AND NULLIF(trim(json_extract(intent_json,'$.publicName')),'') IS NOT NULL ORDER BY created_at,id LIMIT 100").bind(org.id,Date.now()-90*86400000).all<{id:string;public_name:string}>();
+   for(const row of invited.results){
+    const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`${org.id}:invitation:${row.id}`));
+    people.push({id:Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join(''),name:row.public_name,titles:[],photo_url:null,photo_source_url:null,profile_slug:null,description:null,personnel_class:'public',role_classes:[],pendingInvitation:true});
+   }
+  }
   if(submittedTeam){
-   const pending=await c.env.DB.prepare("SELECT id FROM organization_invitations WHERE organization_id=? AND purpose='member' AND status='pending' AND expires_at>? ORDER BY created_at,id LIMIT 500").bind(org.id,Date.now()).all<{id:string}>();
+   const pending=await c.env.DB.prepare("SELECT id FROM organization_invitations WHERE organization_id=? AND purpose='member' AND status='pending' AND (intent_json IS NULL OR json_extract(intent_json,'$.publicName') IS NULL) AND expires_at>? ORDER BY created_at,id LIMIT 500").bind(org.id,Date.now()).all<{id:string}>();
    for(const row of pending.results){
     const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`${org.id}:invitation:${row.id}`));
     people.push({id:Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join(''),name:'Invited teammate',titles:[],photo_url:null,photo_source_url:null,profile_slug:null,description:null,personnel_class:'public',role_classes:[],pendingInvitation:true});

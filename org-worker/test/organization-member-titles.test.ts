@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {EventTestDb} from './event-test-db';
 import {runMemberTitlesOperation,organizationMemberTitleRoutes,organizationTitlePeople} from '../src/organizationMemberTitles';
 const identity={userId:'pidp-user',scopes:['org:portal.read','org:portal.write']};
-function fixture(){return new EventTestDb(`CREATE TABLE organization_invitations(id TEXT,organization_id TEXT,email TEXT,purpose TEXT,status TEXT,expires_at INTEGER,created_at INTEGER);
+function fixture(){return new EventTestDb(`CREATE TABLE organization_invitations(id TEXT,organization_id TEXT,email TEXT,purpose TEXT,status TEXT,expires_at INTEGER,created_at INTEGER,intent_json TEXT);
 ALTER TABLE organization_memberships ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
  ALTER TABLE organization_memberships ADD COLUMN user_name TEXT;
  ALTER TABLE organization_memberships ADD COLUMN user_email TEXT;
@@ -149,7 +149,7 @@ test('Personnel includes the public signup team and a pending teammate without l
    const response=await routes.request(`https://example.test/public/${slug}/${view}`,{}, {DB:d1} as Env);assert.equal(response.status,200);
    return await response.json() as {people:{id:string;name:string;pendingInvitation:boolean;photo_url:string|null;description:string|null}[]};
   };
-  await db.prepare("INSERT INTO organization_invitations VALUES('private-invite','org-one','private-teammate@example.test','member','pending',?,0)").bind(Date.now()+86400000).run();
+  await db.prepare("INSERT INTO organization_invitations(id,organization_id,email,purpose,status,expires_at,created_at) VALUES('private-invite','org-one','private-teammate@example.test','member','pending',?,0)").bind(Date.now()+86400000).run();
   assert.equal((await read()).people.length,1); // Names are public without sharing contact information.
   await db.prepare("INSERT INTO events(id,ingest_key,title,slug,host_org_id,created_at,updated_at) VALUES('event-1','signup-event','Signup event','signup-event','org-one','2026-10-25','2026-10-25')").run();
   await db.prepare("INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,updated_at,expires_at) VALUES('event-1','application','org-one','pidp-user','Signup presentation','Summary','2026-10-25','2999-01-01')").run();

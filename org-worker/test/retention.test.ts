@@ -62,6 +62,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
   for(let i=0;i<501;i++)sql.prepare(`INSERT INTO ${table} VALUES (?,?)`).run(String(i),now);
   sql.prepare(`INSERT INTO ${table} VALUES (?,?)`).run('live',now+1);
  }
+ sql.prepare('INSERT INTO organization_invitations VALUES (?,?)').run('recent-expired-invitation',now-1);
  const db=adapter(sql) as unknown as D1Database;
  assert.equal((await runRetention(db,now,true)).private_newsletter_previews,501);
  assert.equal(sql.prepare('SELECT COUNT(*) n FROM email_oauth_states').get()!.n,2);
@@ -80,6 +81,7 @@ test('expiry units, bounds, dry-run, retries and unresolved operations',async()=
  assert.equal(first.organization_recognition_ballots,1);
  assert.equal(first.organization_volunteer_awards,1);
  assert.equal(first.organization_invitations,1);
+ assert.equal(sql.prepare('SELECT id FROM organization_invitations').get()!.id,'recent-expired-invitation');
  assert.equal(first.organization_membership_requests,1);
  assert.equal(sql.prepare('SELECT user_id FROM organization_membership_requests').get()!.user_id,'live');
  assert.equal(first.organization_personnel_relationships,1);

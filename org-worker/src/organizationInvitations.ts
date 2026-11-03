@@ -1,5 +1,5 @@
 import {archiveInvitationMail} from './supportCorrespondence';
-import { personnelIntentSchema, readPersonnelIntent, intentDescription, requiresConfirmation, managePersonnel, readPersonnelRelationships, relationshipActionSchema, runRelationshipAction } from './personnelRelationships';
+import { readPublicInvitationName, publicInvitationNameSchema, personnelIntentSchema, readPersonnelIntent, intentDescription, requiresConfirmation, managePersonnel, readPersonnelRelationships, relationshipActionSchema, runRelationshipAction } from './personnelRelationships';
 import { z } from 'zod';
 import { EventIntegrationError } from './eventPlatforms';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
@@ -29,7 +29,47 @@ export function organizationInvitationRoutes(auth:(env:Env,req:Request)=>Promise
  app.get('/orgs/:org/invitations',async c=>{
   const actor=await auth(c.env,c.req.raw),org=c.req.param('org');await managePersonnel(c.env.DB,org,actor.id);
   const rows=await c.env.DB.prepare('SELECT id,email,purpose,intent_json,status,email_status,delivery_blocker,attempts,created_at,expires_at,email_archive_ticket_id AS correspondence_ticket_id FROM organization_invitations WHERE organization_id=? ORDER BY created_at DESC LIMIT 100').bind(org).all<Invitation>();
-  return c.json({invitations:rows.results.map(row=>({...row,intent:readPersonnelIntent(row.intent_json),intent_json:undefined,status:row.status==='pending'&&row.expires_at<=Date.now()?'expired':row.status})),relationships:await readPersonnelRelationships(c.env.DB,org)});
+  return c.json({invitations:rows.results.map(row=>({...row,publicName:readPublicInvitationName(row.intent_json),intent:readPersonnelIntent(row.intent_json),intent_json:undefined,status:row.status==='pending'&&row.expires_at<=Date.now()?'expired':row.status})),relationships:await readPersonnelRelationships(c.env.DB,org)});
+ });
+ // Public roster names are manager-approved labels, never inferred from recipient emails.
+ app.post('/orgs/:org/invitations/:id/publication/:operation',async c=>{
+  const actor=await auth(c.env,c.req.raw),db=c.env.DB,org=c.req.param('org'),id=c.req.param('id'),operation=c.req.param('operation');
+  if(!['preview','apply'].includes(operation))emailFail(404,'Operation not found');
+  await managePersonnel(db,org,actor.id);
+  const args=receiptSchema.extend({publicName:publicInvitationNameSchema.nullable()}).parse(await c.req.json());
+  const current=await db.prepare('SELECT * FROM organization_invitations WHERE id=? AND organization_id=?').bind(id,org).first<Invitation>();
+  // Recover only an exact invitation reference belonging to this organization's live
+  // application and its system-created mail archive. A subject/name match is insufficient.
+  const archived=current?null:await db.prepare(`SELECT t.sender_email AS email,m.author_id AS invited_by,m.delivery AS email_status,m.created_at
+   FROM event_submissions s JOIN json_each(s.presenters_json) p
+   JOIN support_messages m ON m.id='invitation:' || json_extract(p.value,'$.invitationId')
+   JOIN support_tickets t ON t.id=m.ticket_id
+   WHERE s.organization_id=? AND json_extract(p.value,'$.invitationId')=? AND s.expires_at>?
+   AND m.direction='outbound' AND t.expires_at>? LIMIT 1`).bind(org,id,new Date().toISOString(),Date.now()).first<{email:string;invited_by:string;email_status:string;created_at:string}>();
+  if(!current&&!archived)emailFail(404,'Invitation or retained archive not found');
+  if(current&&current.status!=='pending')emailFail(409,'Only unaccepted invitations can be listed as Invited');
+  if(current&&current.expires_at<=Date.now()-90*86400000)emailFail(404,'Invitation history expired');
+  const intent:Record<string,unknown>=current?.intent_json?JSON.parse(current.intent_json):{};
+  if(args.publicName)intent.publicName=args.publicName;else delete intent.publicName;
+  await enforceEventRateLimit(db,actor.id);
+  const owner={userId:actor.id,organizationId:org,eventId:'invitation:publication:'+id},fingerprint=await previewFingerprint({current,archived,publicName:args.publicName});
+  if(operation==='preview')return c.json({publicName:args.publicName,effect:args.publicName?`Show ${args.publicName} publicly as Invited. No membership or ownership access is granted.`:'Remove the public invitation name.',...await prepareEventOperation(db,owner,fingerprint)});
+  if(args.confirm!==true||!args.previewId)emailFail(409,'Review and confirm the public name first');
+  await claimEventOperation(db,owner,args.previewId,fingerprint);
+  try{
+   const permission="EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=? AND user_id=? AND status='active' AND role IN ('owner','administrator'))";
+   let saved;
+   if(current)saved=await db.prepare(`UPDATE organization_invitations SET intent_json=? WHERE id=? AND organization_id=? AND status='pending' AND intent_json IS ? AND ${permission} RETURNING id`).bind(JSON.stringify(intent),id,org,current.intent_json,org,actor.id).first();
+   else {
+    const sentAt=Date.parse(archived!.created_at),expires=Math.min(Date.now()-1,sentAt+7*86400000);
+    if(!Number.isFinite(sentAt)||expires<=Date.now()-90*86400000)emailFail(404,'Invitation history expired');
+    saved=await db.prepare(`INSERT OR IGNORE INTO organization_invitations(id,organization_id,email,purpose,invited_by,created_at,expires_at,intent_json,email_status)
+     SELECT ?,?,?,'member',?,?,?,?,? WHERE ${permission} RETURNING id`).bind(id,org,archived!.email,archived!.invited_by,sentAt,expires,JSON.stringify(intent),archived!.email_status,org,actor.id).first();
+   }
+   if(!saved)emailFail(409,'Invitation or management access changed');
+   await finishEventOperation(db,args.previewId,true,['invitation-publication']);
+   return c.json({saved:true,publicName:args.publicName,status:'Invited'});
+  }catch(error){await finishEventOperation(db,args.previewId,false,[]);throw error}
  });
  app.post('/orgs/:org/relationships/:operation',async c=>{
   if(!['preview','apply'].includes(c.req.param('operation')))emailFail(404,'Operation not found');
@@ -85,7 +125,7 @@ export function organizationInvitationRoutes(auth:(env:Env,req:Request)=>Promise
   const invitation=await db.prepare('SELECT id,organization_id,email,purpose,invited_by,created_at,expires_at,status,intent_json FROM organization_invitations WHERE id=?').bind(id).first<Invitation>();
   if(!invitation||!verifiedInvitationRecipient(actor,invitation.email))emailFail(403,'Sign in with the verified email address that received this invitation');
   if(invitation.status!=='pending'||invitation.expires_at<=Date.now())emailFail(409,'Invitation expired or already accepted');
-  if(invitation.intent_json)await managePersonnel(db,invitation.organization_id,invitation.invited_by);
+  if(readPersonnelIntent(invitation.intent_json))await managePersonnel(db,invitation.organization_id,invitation.invited_by);
   if(!await issuerAllowed(db,invitation.organization_id,invitation.invited_by,invitation.purpose))emailFail(409,'The inviter no longer has permission');
   const existing=await db.prepare('SELECT status FROM organization_memberships WHERE organization_id=? AND user_id=?').bind(invitation.organization_id,actor.id).first<{status:string}>();
   if(invitation.purpose==='member'&&existing?.status==='inactive')emailFail(409,'Ask an organizer to restore your existing inactive membership');
@@ -100,12 +140,12 @@ export function organizationInvitationRoutes(auth:(env:Env,req:Request)=>Promise
   if(invitation.status!=='pending'||invitation.expires_at<=Date.now()||!await issuerAllowed(c.env.DB,invitation.organization_id,invitation.invited_by,invitation.purpose))return c.json({error:'This invitation is no longer available. Ask the sender for a new invitation.'},410);
   const organization=await c.env.DB.prepare('SELECT name,slug FROM organizations WHERE id=?').bind(invitation.organization_id).first();
   if(!organization)emailFail(404,'Invitation not found');
-  return c.json({organization,purpose:invitation.purpose,expiresAt:invitation.expires_at,effect:invitation.intent_json?intentDescription(readPersonnelIntent(invitation.intent_json)!):invitation.purpose==='member'?'You are invited to join this organization as a member.':'You are invited to accept Volunteer recognition for three months. This grants no membership permissions.'});
+  return c.json({organization,purpose:invitation.purpose,expiresAt:invitation.expires_at,effect:readPersonnelIntent(invitation.intent_json)?intentDescription(readPersonnelIntent(invitation.intent_json)!):invitation.purpose==='member'?'You are invited to join this organization as a member.':'You are invited to accept Volunteer recognition for three months. This grants no membership permissions.'});
  });
  app.get('/invitations/:id',async c=>{
   const actor=await auth(c.env,c.req.raw),invitation=await recipient(c.env.DB,c.req.param('id'),actor);
   const org=await c.env.DB.prepare('SELECT name,slug FROM organizations WHERE id=?').bind(invitation.organization_id).first();
-  return c.json({organizationId:invitation.organization_id,intent:readPersonnelIntent(invitation.intent_json),effect:invitation.intent_json?intentDescription(readPersonnelIntent(invitation.intent_json)!):null,purpose:invitation.purpose,expiresAt:invitation.expires_at,organization:org});
+  return c.json({organizationId:invitation.organization_id,intent:readPersonnelIntent(invitation.intent_json),effect:readPersonnelIntent(invitation.intent_json)?intentDescription(readPersonnelIntent(invitation.intent_json)!):null,purpose:invitation.purpose,expiresAt:invitation.expires_at,organization:org});
  });
  app.post('/invitations/:id/:operation',async c=>{
   const actor=await auth(c.env,c.req.raw),db=c.env.DB,invitation=await recipient(db,c.req.param('id'),actor),operation=c.req.param('operation');
@@ -113,14 +153,14 @@ export function organizationInvitationRoutes(auth:(env:Env,req:Request)=>Promise
   await enforceEventRateLimit(db,actor.id);
   const owner={userId:actor.id,organizationId:invitation.organization_id,eventId:`invitation:${invitation.id}`};
   const fingerprint=await previewFingerprint(invitation);
-  if(operation==='preview')return c.json({intent:readPersonnelIntent(invitation.intent_json),effect:invitation.intent_json?intentDescription(readPersonnelIntent(invitation.intent_json)!):invitation.purpose==='member'?'Join as a member':'Volunteer recognition only',...await prepareEventOperation(db,owner,fingerprint)});
+  if(operation==='preview')return c.json({intent:readPersonnelIntent(invitation.intent_json),effect:readPersonnelIntent(invitation.intent_json)?intentDescription(readPersonnelIntent(invitation.intent_json)!):invitation.purpose==='member'?'Join as a member':'Volunteer recognition only',...await prepareEventOperation(db,owner,fingerprint)});
   const args=receiptSchema.parse(await c.req.json());if(args.confirm!==true||!args.previewId)emailFail(409,'Review and confirm acceptance first');
   await claimEventOperation(db,owner,args.previewId,fingerprint);
   try{
    const now=new Date(),org=invitation.organization_id;
    const claim=db.prepare(`UPDATE organization_invitations SET status='accepting',accepted_user_id=? WHERE id=? AND status='pending' AND expires_at>?
     AND EXISTS(SELECT 1 FROM organization_memberships WHERE organization_id=? AND user_id=? AND status='active'
-    AND (role IN ('owner','administrator') OR (?='volunteer' AND ? IS NULL)))`).bind(actor.id,invitation.id,now.getTime(),org,invitation.invited_by,invitation.purpose,invitation.intent_json);
+    AND (role IN ('owner','administrator') OR (?='volunteer' AND ? IS NULL)))`).bind(actor.id,invitation.id,now.getTime(),org,invitation.invited_by,invitation.purpose,readPersonnelIntent(invitation.intent_json)?invitation.intent_json:null);
    // The conditional insert and claim run in one D1 transaction. Existing active
    // roles are retained; inactive privileged memberships are never reactivated.
    const condition="EXISTS(SELECT 1 FROM organization_invitations WHERE id=? AND status='accepting' AND accepted_user_id=?)";
@@ -141,7 +181,7 @@ export function organizationInvitationRoutes(auth:(env:Env,req:Request)=>Promise
  return app;
 }
 export function invitationMessage(base:string,id:string,name:string,purpose:string,intentJson?:string|null){
- const link=`${base}/invitations/${encodeURIComponent(id)}`,effect=intentJson?intentDescription(readPersonnelIntent(intentJson)!):purpose==='member'?'join as a member':'accept Volunteer recognition (no membership permissions)';
+ const link=`${base}/invitations/${encodeURIComponent(id)}`,effect=readPersonnelIntent(intentJson)?intentDescription(readPersonnelIntent(intentJson)!):purpose==='member'?'join as a member':'accept Volunteer recognition (no membership permissions)';
  return {subject:`Invitation from ${name}`,text:`You are invited to ${effect} at ${name}. Sign in or create an account using this email address, verify it, then review and accept: ${link}\n\nThis invitation expires in seven days. If unexpected, ignore it.`,html:`<p>You are invited to ${escapeHtml(effect)} at ${escapeHtml(name)}.</p><p><a href="${escapeHtml(link)}">Review invitation</a></p><p>Sign in or create an account with this email address and verify it. Expires in seven days. If unexpected, ignore it.</p>`};
 }
 /** Operator-only, organization-scoped transactional senders. Never sourced from invitation input. */

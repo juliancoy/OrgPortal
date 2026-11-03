@@ -437,3 +437,5 @@ event attendance retain their separate sharing checks. Profile responses use
 `Cache-Control: no-store` so owner-only details cannot be cached as public data.
 
 Organization related-event lists include public featured event links whose HTTPS URL exactly matches the organization’s registered source URL (ignoring case and trailing slashes). This includes prize providers and sponsors without assigning host status. Names alone do not establish an association; hosted-only feeds remain restricted to the event host.
+
+Managers can publish an invitation display name in Personnel with the status **Invited**, including after the acceptance link expires. Recipient emails and proposed roles remain private; listing grants no membership, organizer or owner access. Invitation acceptance lasts seven days; history and optional public names expire 90 days after link expiry. Exact system mail archives referenced by live presentations can restore an expired roster entry without sending mail or renewing its link.

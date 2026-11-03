@@ -345,9 +345,15 @@ retain local storage under the device owner's policies. Verified account erasure
 on a device must clear its scoped draft keys or the site's browser storage.
 
 Organization invitations hold the normalized recipient email, organization, purpose,
-inviter, delivery state, and accepting account ID for seven days from creation.
-The hourly retention job removes expired invitations in batches; acceptance stops
-at the expiry time even before cleanup. They are excluded from public replication
+inviter, delivery state, accepting account ID and an optional manager-published display
+name. Acceptance stops seven days from creation. Expired invitation history remains
+for 90 days after expiry so invited people do not silently disappear from the roster;
+the hourly retention job then removes rows in bounded batches. Only an explicitly
+published display name and an Invited label appear publicly, without recipient email,
+invitation ID, proposed roles or access. Managers may remove the public name.
+A purged invitation referenced by a live presentation may be reconstructed from its
+exact system mail archive for roster display; this does not renew acceptance, send
+email or create membership. Archive and presentation expiry still bound recovery. They are excluded from public replication
 and immutable journals. Organization deletion cascades. Verified erasure requests
 must delete invitations by accepting account, inviter, and verified recipient email;
 restore procedures must repeat that deletion and expiry cleanup before serving.
@@ -435,7 +441,7 @@ backup restrictions; clearing live copy does not erase immutable history. Reappl
 verified removals to restored backups before serving them. No additional personal
 history store or public replica of memberships is created.
 
-Personnel invitation intents remain in the existing seven-day private invitation store. Delivery blockers contain enumerated operational reasons, never raw provider responses. Accepted `organization_personnel_relationships` stores canonical user ID, display name, class, consent time, confirmation state and optional supporting evidence URL/confirming actor. Public personnel responses expose only active classes and display names, public-profile links/photos, and organization-scoped opaque identifiers; pending classes, recipient emails and evidence are private. Both active and pending relationships expire 24 calendar months after acceptance; bounded scheduled retention removes expired rows. Reads exclude expired rows immediately. Recipients may remove their own relationships, managers may remove any in their organization, and deleting an organization cascades its relationships. This store is excluded from immutable journaling and public replication.
+Personnel invitation intents use the existing invitation store: seven-day acceptance and 90-day history after expiry. Optional publicName is a manager-approved Invited roster label, separate from acceptance and access. Delivery blockers contain enumerated operational reasons, never raw provider responses. Accepted `organization_personnel_relationships` stores canonical user ID, display name, class, consent time, confirmation state and optional supporting evidence URL/confirming actor. Public personnel responses expose only active classes and display names, public-profile links/photos, and organization-scoped opaque identifiers; pending classes, recipient emails and evidence are private. Both active and pending relationships expire 24 calendar months after acceptance; bounded scheduled retention removes expired rows. Reads exclude expired rows immediately. Recipients may remove their own relationships, managers may remove any in their organization, and deleting an organization cascades its relationships. This store is excluded from immutable journaling and public replication.
 
 On a verified account-erasure request, delete relationships by canonical subject ID and clear that subject's `confirmed_by` references on remaining relationships. Reapply verified erasures to restored backups before serving them. Removing an accepted relationship leaves separately held membership and independently published titles unchanged; review those existing stores under their own erasure rules. Private evidence must be a reference URL rather than uploaded credentials or sensitive supporting documents.
 
