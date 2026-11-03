@@ -44,6 +44,11 @@ type UserOrganizationListItem = {
   claimed_by_user_id?: string | null
 }
 
+function websiteLabel(value: string) {
+  try { return new URL(value).hostname.replace(/^www\./, '') || value }
+  catch { return value }
+}
+
 function currentUrl() {
   return `${window.location.origin}/orgs`
 }
@@ -203,53 +208,39 @@ export function PublicOrganizationsPage() {
 
   return (
     <section className="organization-directory" style={{ display: 'grid', gap: '1rem' }}>
-      <h1 className="sr-only">Organizations</h1>
+      <header className="organization-directory-heading">
+        <div><h1>Organizations</h1><p className="muted">Find a community. Get involved.</p></div>
+        {!status && <span className="organization-directory-count">{sortedOrgs.length.toLocaleString()} organizations</span>}
+      </header>
       {status ? <p className="muted">{status}</p> : null}
       {membershipStatus ? <p className="muted" role="status">{membershipStatus}</p> : null}
       {!status && sortedOrgs.length === 0 ? (
         <p className="muted organization-directory-empty">No organizations were found.</p>
       ) : null}
-      <div
-        style={{
-          display: 'grid',
-          gap: '0.9rem',
-        }}
-      >
+      <div className="organization-directory-grid">
         {sortedOrgs.slice(0, visibleCount).map((org) => (
           <article
             key={org.id}
             className="portal-card organization-directory-card"
-            style={{
-              display: 'flex',
-              gap: '0.85rem',
-              alignItems: 'flex-start',
-              flexWrap: 'wrap',
-            }}
           >
-            <OrgImage
-              src={org.image_url}
-              alt={org.name}
-              style={{
-                width: 64,
-                height: 64,
-                objectFit: 'contain',
-                borderRadius: 10,
-                border: '1px solid var(--border)',
-                flex: '0 0 auto',
-              }}
-            />
-            <div style={{ display: 'grid', gap: '0.45rem', minWidth: 0, maxWidth: '100%', flex: '1 1 200px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
-                <Link className="organization-directory-link" to={`/orgs/${org.slug}`} style={{ textDecoration: 'none' }}>
-                  <span title={org.name}>{shortGroupName(org.name)}</span>
-                </Link>
-              </h2>
-              <p className="muted organization-directory-meta" style={{ margin: 0 }}>
-                Members: {org.membership_count} • Upcoming events: {org.upcoming_events_count}
-                {` • Feedback ${org.feedback_count || 0}`}
-                {org.is_disputed ? ` • Disputed ownership (${org.pending_challenges_count})` : ''}
-                {myOrgRoles.has(org.slug) ? ' • Your organization' : ''}
-              </p>
+            <header className="organization-directory-card-header">
+              <OrgImage src={org.image_url} alt={org.name} className="organization-directory-logo" />
+              <div className="organization-directory-identity">
+                <h2>
+                  <Link className="organization-directory-link" to={`/orgs/${org.slug}`}>
+                    <span title={org.name}>{shortGroupName(org.name)}</span>
+                  </Link>
+                </h2>
+                {myOrgRoles.has(org.slug) && <span className="organization-directory-membership">Your organization</span>}
+                {org.is_disputed && <span className="organization-directory-disputed">Disputed ownership ({org.pending_challenges_count})</span>}
+              </div>
+            </header>
+            <dl className="organization-directory-stats">
+              <div><dt>Members</dt><dd>{(org.membership_count || 0).toLocaleString()}</dd></div>
+              <div><dt>Upcoming</dt><dd>{(org.upcoming_events_count || 0).toLocaleString()}</dd></div>
+              <div><dt>Feedback</dt><dd>{(org.feedback_count || 0).toLocaleString()}</dd></div>
+            </dl>
+            <div className="organization-directory-body">
               {org.description ? <BioMarkdown className="organization-directory-description" value={org.description} /> : null}
               {(() => {
                 const links = Array.from(
@@ -261,60 +252,57 @@ export function PublicOrganizationsPage() {
                 )
                 if (links.length === 0) return null
                 return (
-                  <div style={{ display: 'grid', gap: '0.3rem' }}>
-                    <p className="muted" style={{ margin: 0 }}>Claimed links:</p>
-                    <div style={{ display: 'grid', gap: '0.25rem' }}>
+                  <div className="organization-directory-websites" aria-label={`Websites for ${org.name}`}>
+                    <div>
                       {links.map((url) => (
                         <a
                           key={url}
                           href={url}
                           target="_blank"
                           rel="noreferrer"
-                          style={{ wordBreak: 'break-word' }}
+                          className="organization-directory-website"
                         >
-                          {url}
+                          {websiteLabel(url)} <span aria-hidden="true">↗</span>
                         </a>
                       ))}
                     </div>
                   </div>
                 )
               })()}
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }} role="group" aria-label={`Actions for ${org.name}`}>
-                <button
-                  type="button"
-                  className={myOrgRoles.has(org.slug) ? 'btn-secondary' : 'btn-primary'}
-                  onClick={() => void updateOrganizationMembership(org, !myOrgRoles.has(org.slug))}
-                  disabled={Boolean(myOrgRoles.get(org.slug) && myOrgRoles.get(org.slug) !== 'member')}
-                  aria-pressed={myOrgRoles.has(org.slug)}
-                >
-                  {myOrgRoles.get(org.slug) === 'owner' || myOrgRoles.get(org.slug) === 'administrator'
-                    ? 'Managing'
-                    : myOrgRoles.has(org.slug)
-                      ? 'Leave Group'
-                      : 'Request to join'}
-                </button>
-                <Link to={`/orgs/${org.slug}`} style={{ textDecoration: 'none' }}>
-                  Give Feedback
-                </Link>
-                {token ? (
-                  <Link
-                    to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}
-                    className="btn-secondary"
-                    style={{ textDecoration: 'none', width: 'fit-content' }}
-                  >
-                    Message Group
-                  </Link>
-                ) : (
-                  <a
-                    href={pidpAppLoginUrl(`/chat?start=group&org=${encodeURIComponent(org.slug)}`)}
-                    className="btn-secondary"
-                    style={{ textDecoration: 'none', width: 'fit-content' }}
-                  >
-                    Message Group
-                  </a>
-                )}
-              </div>
             </div>
+            <footer className="organization-directory-actions" role="group" aria-label={`Actions for ${org.name}`}>
+              <button
+                type="button"
+                className={myOrgRoles.has(org.slug) ? 'btn-secondary' : 'btn-primary'}
+                onClick={() => void updateOrganizationMembership(org, !myOrgRoles.has(org.slug))}
+                disabled={Boolean(myOrgRoles.get(org.slug) && myOrgRoles.get(org.slug) !== 'member')}
+                aria-pressed={myOrgRoles.has(org.slug)}
+              >
+                {myOrgRoles.get(org.slug) === 'owner' || myOrgRoles.get(org.slug) === 'administrator'
+                  ? 'Managing'
+                  : myOrgRoles.has(org.slug)
+                    ? 'Leave Group'
+                    : 'Request to join'}
+              </button>
+              <Link className="btn-secondary" to={`/orgs/${org.slug}`}>
+                Give Feedback
+              </Link>
+              {token ? (
+                <Link
+                  to={`/chat?start=group&org=${encodeURIComponent(org.slug)}`}
+                  className="btn-secondary"
+                >
+                  Message Group
+                </Link>
+              ) : (
+                <a
+                  href={pidpAppLoginUrl(`/chat?start=group&org=${encodeURIComponent(org.slug)}`)}
+                  className="btn-secondary"
+                >
+                  Message Group
+                </a>
+              )}
+            </footer>
           </article>
         ))}
       </div>
