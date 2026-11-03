@@ -44,6 +44,13 @@ connections, event registrations, and unexpired company favorites. These signals
 are not included in search responses or copied into a new store. Guest search
 uses text relevance. Personalized responses are not publicly cached.
 
+The events discovery feed orders public events using existing follows, active
+memberships, registrations and registrations for the same hosts over the previous
+year. Guest ordering uses aggregate registration and active membership counts.
+Ranking creates no new activity store, and private ranking signals are not returned
+or publicly cached. Unfollowing, membership changes and registration removal take
+effect on the next feed request.
+
 ## Retention schedule
 
 QCash profile-wallet candidate (not deployed): linking is an explicit opt-in,

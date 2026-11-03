@@ -1,3 +1,4 @@
+import lifetechBrand from '../../../../shared/lifetechBrand.json'
 import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
 import { createQrSvg } from '../utils/qr'
 import { portalPath } from '../../config/portalBase'
@@ -59,7 +60,7 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef, side = '
             <div className="conference-nametag-logo"><img src={logo.startsWith('/') ? portalPath(logo) : logo} alt="" /></div>
             <div className="conference-nametag-lockup">
               <span>{branding?.name || 'LifeTech'}</span>
-              <small>{branding?.tagline || 'Health × Medicine × Biotech'}</small>
+              <small>{branding?.tagline && !/^Health\s*[×x]\s*Medicine\s*[×x]\s*Biotech$/i.test(branding.tagline) ? branding.tagline : lifetechBrand.tagline}</small>
             </div>
           </div>
           {side === 'back' && <p className="conference-nametag-connect">Let’s connect</p>}

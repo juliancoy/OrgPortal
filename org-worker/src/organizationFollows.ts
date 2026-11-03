@@ -39,11 +39,12 @@ export function organizationFollowRoutes<Env extends FollowEnv>(
  });
  app.get('/following/events', async c => {
   const user = await auth(c.env,c.req.raw);
-  const limit = Math.max(1,Math.min(parseInt(c.req.query('limit') || '200',10) || 200,200));
+  const limit = Math.max(1,Math.min(parseInt(c.req.query('limit') || '25',10) || 25,200));
+  const offset = Math.max(0,Math.min(parseInt(c.req.query('offset') || '0',10) || 0,100000));
   const rows = await c.env.DB.prepare(`SELECT e.*,o.name AS organization_name,o.slug AS organization_slug,o.image_url AS organization_image_url
    FROM events e JOIN organization_follows f ON f.organization_id = e.host_org_id
    JOIN organizations o ON o.id = e.host_org_id WHERE f.user_id = ? AND ${upcoming}
-   ORDER BY COALESCE(e.starts_at,e.event_date) IS NULL,COALESCE(e.starts_at,e.event_date),e.id LIMIT ?`).bind(user.id,limit).all();
+   ORDER BY COALESCE(e.starts_at,e.event_date) IS NULL,COALESCE(e.starts_at,e.event_date),e.id LIMIT ? OFFSET ?`).bind(user.id,limit,offset).all();
   return c.json(await Promise.all(rows.results.map(row => mapEvent(c.env,c.req.raw,row))));
  });
  app.post('/notifications/:id/read', async c => {

@@ -37,7 +37,7 @@ import '../../src/styles/themes/lifetech.css'
 import '../../src/tenantBranding.css'
 import '../../src/styles/layout.css'
 const brand=new URLSearchParams(location.search).get('brand')
-const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname:'lifetech.fyi',name:'LifeTech',tagline:'Health × Medicine × Biotech',accent_color:'#155e59',profile:'lifetech',features:['directory','events','chat'],brand_image_path:'/fixture-assets/lifetech-logo.png',feature_config:new URLSearchParams(location.search).has('customThemes')?{brandThemes:fixtureThemes}:undefined}
+const life={id:'lifetech',slug:'lifetech',organization_id:'fixture-org',hostname:'lifetech.fyi',name:'LifeTech',tagline:'Advancing medicine in Baltimore',accent_color:'#155e59',profile:'lifetech',features:['directory','events','chat'],brand_image_path:'/fixture-assets/lifetech-logo.png',feature_config:new URLSearchParams(location.search).has('customThemes')?{brandThemes:fixtureThemes}:undefined}
 if(brand==='lifetech')setGroupSite(life)
 applyPortalBranding()
 const body=<Routes>
