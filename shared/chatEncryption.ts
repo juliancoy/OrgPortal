@@ -3,9 +3,9 @@ export type EncryptedChatMode = Exclude<ChatEncryptionMode, 'none'>
 export const CHAT_ENCRYPTION_MODES: ChatEncryptionMode[] = ['none', 'rsa', 'rsa-mlkem']
 export const MAX_CHAT_ENCRYPTION_DEVICES = 256
 export const CHAT_ENCRYPTION_LABELS: Record<ChatEncryptionMode, { label: string; description: string; color: string }> = {
-  none: { label: 'Not end-to-end encrypted', description: 'Message content is readable by the chat service. HTTPS still protects transport.', color: 'blue' },
-  rsa: { label: 'Encrypted · RSA', description: 'New messages use device-held RSA-3072 keys and AES-256-GCM.', color: 'green' },
-  'rsa-mlkem': { label: 'Quantum-resistant · RSA + ML-KEM', description: 'New messages combine RSA-3072 and ML-KEM-768 (Kyber), with AES-256-GCM. Calls and earlier messages are not covered.', color: 'purple' },
+  none: { label: 'Public', description: 'Message content is readable by the chat service. HTTPS still protects transport.', color: 'blue' },
+  rsa: { label: 'Conventional Encryption - RSA', description: 'New messages use device-held RSA-3072 keys and AES-256-GCM.', color: 'green' },
+  'rsa-mlkem': { label: 'Quantum Resistant (RSA + ML-KEM)', description: 'New messages combine RSA-3072 and ML-KEM-768 (Kyber), with AES-256-GCM. Calls and earlier messages are not covered.', color: 'purple' },
 }
 
 export type ChatDeviceKey = {

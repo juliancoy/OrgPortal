@@ -856,7 +856,7 @@ export function NativeChatPage() {
                     <div className="native-chat-message-footer">
                       {(!message.delivery_state || message.delivery_state === 'confirmed') && <ChatEncryptionBadge mode={message.encryption?.mode || 'none'} />}
                       {message.delivery_state === 'queued' && <>
-                        <span>{sendingIds.current.has(message.id) ? 'Sending…' : queueFailures[message.id] || `Queued · ${outbox.find(item => item.id === message.id)?.mode === 'rsa-mlkem' ? 'RSA + ML-KEM' : outbox.find(item => item.id === message.id)?.mode === 'rsa' ? 'RSA' : 'Not encrypted'}`}</span>
+                        <span>{sendingIds.current.has(message.id) ? 'Sending…' : queueFailures[message.id] || `Queued · ${outbox.find(item => item.id === message.id)?.mode === 'rsa-mlkem' ? 'RSA + ML-KEM' : outbox.find(item => item.id === message.id)?.mode === 'rsa' ? 'RSA' : 'Public'}`}</span>
                         {queueFailures[message.id] && <button type="button" disabled={isSending} onClick={() => setQueueFailures(current => { const next = { ...current }; delete next[message.id]; return next })}>Retry queued message</button>}
                         <button type="button" disabled={sendingIds.current.has(message.id)} onClick={() => { void cancelQueued(message.id) }}>Cancel queued message</button>
                       </>}
