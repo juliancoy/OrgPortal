@@ -725,7 +725,7 @@ export function NativeChatPage() {
                     {renderPresenceAvatar(label, avatarUrl, participantOnline)}
                     <span className="native-chat-room-copy">
                       <span className="native-chat-room-name">{label}</span>
-                      <ChatEncryptionBadge mode={conversation.encryption_mode || 'none'} compact />
+                      <ChatEncryptionBadge mode={conversation.encryption_mode || 'none'} />
                       {conversation.last_message?.body ? (
                         <small className="native-chat-room-preview">{conversation.last_message.body}</small>
                       ) : null}
@@ -854,7 +854,7 @@ export function NativeChatPage() {
                     </div>
                     <MessageBody body={message.body} />
                     <div className="native-chat-message-footer">
-                      {(!message.delivery_state || message.delivery_state === 'confirmed') && <ChatEncryptionBadge compact mode={message.encryption?.mode || 'none'} />}
+                      {(!message.delivery_state || message.delivery_state === 'confirmed') && <ChatEncryptionBadge mode={message.encryption?.mode || 'none'} />}
                       {message.delivery_state === 'queued' && <>
                         <span>{sendingIds.current.has(message.id) ? 'Sending…' : queueFailures[message.id] || `Queued · ${outbox.find(item => item.id === message.id)?.mode === 'rsa-mlkem' ? 'RSA + ML-KEM' : outbox.find(item => item.id === message.id)?.mode === 'rsa' ? 'RSA' : 'Not encrypted'}`}</span>
                         {queueFailures[message.id] && <button type="button" disabled={isSending} onClick={() => setQueueFailures(current => { const next = { ...current }; delete next[message.id]; return next })}>Retry queued message</button>}
