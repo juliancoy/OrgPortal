@@ -2593,6 +2593,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-progressive-graph-test-mjs",
+      "label": "web/scripts/progressive-graph.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/progressive-graph.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "progressive-graph.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-sphere-pies-test-mjs",
       "label": "web/scripts/sphere-pies.test.mjs",
       "category": "Ecosystem and data",
@@ -3793,6 +3807,20 @@
         {
           "id": "suite",
           "label": "performance.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-progressiveGraph-test-ts",
+      "label": "web/src/features/ecosystem/progressiveGraph.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/progressiveGraph.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "progressiveGraph.test.ts"
         }
       ]
     },
