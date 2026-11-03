@@ -3237,6 +3237,20 @@
       ]
     },
     {
+      "id": "suite-web-src-chat-chatOutbox-test-ts",
+      "label": "web/src/chat/chatOutbox.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/chat/chatOutbox.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "chatOutbox.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-chat-matrixService-test-ts",
       "label": "web/src/chat/matrixService.test.ts",
       "category": "Messaging and email",
