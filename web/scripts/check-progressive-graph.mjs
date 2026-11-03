@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import {chromium} from 'playwright'
 import {createServer} from 'vite'
 import react from '@vitejs/plugin-react'
-const server=await createServer({configFile:false,root:new URL('..',import.meta.url).pathname,cacheDir:'/tmp/orgportal-progressive-check',plugins:[react()],define:{__APP_VERSION__:JSON.stringify('test'),__APP_BUILD_NUMBER__:1},server:{host:'127.0.0.1',port:5198,strictPort:true}})
+const server=await createServer({configFile:false,root:new URL('..',import.meta.url).pathname,cacheDir:'/tmp/orgportal-progressive-check',plugins:[react()],optimizeDeps:{include:['react','react-dom/client','react-router-dom','d3-force','d3-force-3d']},define:{__APP_VERSION__:JSON.stringify('test'),__APP_BUILD_NUMBER__:1},server:{host:'127.0.0.1',port:5198,strictPort:true}})
 await server.listen()
 const browser=await chromium.launch({headless:true,args:['--enable-unsafe-webgpu','--use-angle=swiftshader','--enable-features=Vulkan']})
 try{
