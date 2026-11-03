@@ -82,12 +82,6 @@ export function ChatSecurityControls({ api, conversationId, initialMode = 'none'
       callbacks.current.onKeysForgotten?.()
     } catch (failure) { setStatus('Not removed'); setError(failure instanceof Error ? failure.message : 'Keys could not be removed.') }
   }
-  async function accept() {
-    if (!security) return
-    setStatus('Accepting chat request and security level…'); setError('')
-    try { applied(await api.acceptConversation(conversationId, security)); setStatus('Accepted') }
-    catch (failure) { setStatus('Not accepted'); setError(failure instanceof Error ? failure.message : 'Acceptance could not be saved.') }
-  }
   async function setup() {
     ++refreshGeneration.current
     setStatus('Preparing this browser…'); setError('')
@@ -126,11 +120,6 @@ export function ChatSecurityControls({ api, conversationId, initialMode = 'none'
         {error && <p role="alert">{error} {desired.current !== null && <button type="button" onClick={() => { void save() }}>Retry protection change</button>}</p>}
       </div>
     </details>
-    {security?.missing_acknowledgments?.includes(security.current_user_id) && <div role="status">
-      <p>Review this chat request and its security level before accepting.</p>
-      <button type="button" className="portal-button-secondary" disabled={desired.current !== null || saving.current} onClick={() => { void accept() }}>Accept chat request and security level</button>
-    </div>}
-    {!!security?.missing_acknowledgments?.length && <p className="chat-security-wait">Messages stay queued until every member accepts the chat request and current security level.</p>}
     {security && mode !== 'none' && security.missing_members.length > 0 && <p className="chat-security-wait" role="status">Waiting for {security.missing_members.length} {security.missing_members.length === 1 ? 'member' : 'members'} to open this chat and set up encryption. You can queue messages while waiting.</p>}
   </section>
 }

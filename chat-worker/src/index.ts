@@ -928,10 +928,7 @@ app.post("/api/network/chat/conversations/:conversationId/messages", async (c) =
      (id, conversation_id, sender_user_id, sender_name, client_message_id, body, sequence, message_type, reply_to_message_id,
       thread_root_message_id, created_at, encryption)
      SELECT ?, ?, ?, ?, ?, ?, ?, 'text', ?, ?, ?, ? FROM chat_conversations
-     WHERE id = ? AND encryption_mode = ? AND encryption_revision = ?
-       AND (kind <> 'dm' OR NOT EXISTS (SELECT 1 FROM chat_conversation_members m
-         WHERE m.conversation_id=chat_conversations.id AND m.state='active'
-           AND m.accepted_security_revision<>chat_conversations.encryption_revision))`,
+     WHERE id = ? AND encryption_mode = ? AND encryption_revision = ?`,
   )
     .bind(
       messageId,

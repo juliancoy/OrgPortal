@@ -225,12 +225,6 @@ class FakeD1 {
   }
 
   async run(sql: string, params: unknown[]) {
-    if (sql.includes('SET accepted_security_revision=?')) {
-      const member = this.members.find(row => row.conversation_id === params[1] && row.user_id === params[2]);
-      if (member) member.accepted_security_revision = params[0];
-      return { success: true, meta: { changes: member ? 1 : 0 } };
-    }
-
     if (sql.includes("INSERT INTO chat_presence")) {
       const existing = this.presence.find((row) => row.user_id === params[0]);
       if (existing) existing.last_seen_at = params[1];
@@ -576,10 +570,6 @@ test("messages require membership and persist for listed conversations", async (
     env(db),
   );
   const { conversation } = (await dm.json()) as { conversation: { id: string } };
-
-  const stateResponse = await app.request(`https://chat.example.test/api/network/chat/conversations/${conversation.id}/security`, authedInit(), env(db));
-  const security = await stateResponse.json() as {revision:number};
-  for (const member of db.members) member.accepted_security_revision = security.revision;
 
   const created = await app.request(
     `https://chat.example.test/api/network/chat/conversations/${conversation.id}/messages`,
