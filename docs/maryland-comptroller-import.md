@@ -1,9 +1,14 @@
-# Maryland Comptroller transaction integration — prepared, not published
+# Maryland Comptroller transaction integration — published
 
 Target: OrgPortal `master_transaction_records`, which supplies the ecosystem's
 financial evidence. Account checked live: verified `julian@codecollective.us`;
 the saved `platform-admin` connection has operator access to the LifeTech API.
-No production data, schema, permissions, or traffic has been changed.
+Production migration 0131 and the authenticated MCP importer are published.
+The full batch was imported as 455 receipt-bound atomic batches and verified at
+`2026-11-03T01:02:15.643Z`. All 113,671 rows were new; no rows were skipped.
+Live counts, signed-cent totals and all 75 retained source checksum counts match
+the reviewed JSONL. The private verification report is
+`../.runtime/comptroller-import/production-verification.json` relative to this repository.
 
 Validated batch: **113,671 observations** — 16,817 BPW rows (2022-09-14 to
 2026-09-16) and 96,854 MD-VIEW payment totals (2023-10-03 to 2026-11-02).
@@ -17,9 +22,10 @@ full-schema real-data import twice, signed-cent reconciliation, original
 transaction preservation, foreign-key checks, database integrity and diff checks.
 See `artifacts/maryland-comptroller/validation.json` and `manifest.json`.
 
-## Reviewable change
+## Published implementation
 
-Migration `0131_external_financial_observations.sql` adds a reusable public observation table with source-system, currency, measurement and JSON metadata columns
+Migration `0131_external_financial_observations.sql` adds a reusable public
+observation table with source-system, currency, measurement and JSON metadata columns
 and extends the existing master transaction view. All prior view branches are
 preserved. This is evidence alongside the internal ledger; importing observations
 does not create settled ledger transfers or change account balances.
@@ -28,8 +34,8 @@ does not create settled ledger transfers or change account balances.
 accept at most 250 rows per request through the authenticated MCP connection.
 `get_maryland_comptroller_import_status` returns source counts/checksums or
 inspects an exact operation receipt. The saved operator grant is MCP-scoped;
-the importer does not use the browser-facing session API. It requires the existing live operator identity and organization
-authorization, rate limit, and exact expiring preview/apply receipt. Each batch
+the importer uses its resource-bound operator grant. It requires the existing
+live operator identity and organization authorization, rate limit, and exact expiring preview/apply receipt. Each batch
 inserts observations and its minimal audit record atomically. An unchanged import
 is idempotent. A changed payment with the same identifier stops for source review.
 No names are automatically merged into directory organizations or assigned owners.
@@ -78,8 +84,8 @@ summed together. No claim of a complete historical state ledger is made.
 python -m pip install -r scripts/requirements-maryland-comptroller.txt
 python scripts/collect-maryland-comptroller.py
 python scripts/test-maryland-comptroller.py
-node --import tsx --test org-worker/test/maryland-comptroller.test.ts
-node --import tsx org-worker/scripts/validate-comptroller-import.mjs
+(cd org-worker && node --import tsx --test test/maryland-comptroller.test.ts)
+(cd org-worker && node --import tsx scripts/validate-comptroller-import.mjs)
 npm --prefix org-worker run typecheck
 git diff --check
 ```
@@ -98,17 +104,31 @@ foreign keys and integrity. API tests cover denied access, invalid sources,
 wrong fact types, duplicate IDs, changed evidence, receipt binding/replay and
 rollback on audit failure.
 
-## Authorized publication
+## Publication evidence
 
-Repository `AGENTS.md` requires explicit review for database migrations. The user approved proceeding with the reusable-table design. Migration 0131 and
-its compatible master-view extension have been reviewed and locally validated;
-apply only this migration, then use the release and authenticated import workflow.
-Use the normal OrgPortal release workflow; preserve the unrelated edits already
-present in the working tree. Authenticated production imports must use the
-reviewed API with this account, not direct SQL or a local-replica upload. Process
-one preview/apply batch at a time, respect the 60-request/minute limit, and retain
-receipts. Stop on uncertain outcomes; inspect receipt and remote records before
-retrying. Compare production source counts and checksums after completion.
+The user approved the reusable-table design and migration review. Only migration
+0131 was applied to production; the existing master-view branches were preserved.
+The integration was released through OrgPortal's native Cloudflare workflow, with
+full release gates passing. Production API/MCP commits used for publication are
+descendants of integration commit `feaa3a10589efc9f58a4c1dd579b56d738ef69e0`.
+The completion run used `4fcace26e201004343912905ab665448d9634e35`.
+
+Collection and the main import ran in an isolated checkout. Original unrelated
+workspace edits were retained. Imports used the verified `julian@codecollective.us`
+operator grant for `https://lifetech.fyi/api/org/mcp`, exact preview/apply receipts,
+and the existing 60-request/minute limit. No direct SQL data import or local-replica
+upload was used.
+
+The first local process was interrupted at 108,750 confirmed rows. Inspection
+showed the in-flight receipt was still `prepared` and the live count was exactly
+108,750, proving that apply never executed. Its unused preview was abandoned;
+a fresh preview resumed the same offset. All remaining batches completed and
+final source counts/checksums reconciled. `recovery.jsonl` retains that inspection.
+
+For future imports, preserve the source artifact and reviewed file SHA256, process
+one preview/apply batch at a time, and stop on uncertain outcomes. Inspect the
+operation receipt and exact remote records before any retry. Reconcile production
+source counts and checksums after completion.
 
 The reusable table accepts other source systems, currencies, financial measurements
 and nested JSON metadata without a new migration. The Maryland adapter validates
@@ -133,3 +153,10 @@ exports and caches. Reapply confirmed deletions before any backup restore. Revie
 payment payee retention annually and remove observations no longer justified by
 public-interest evidence; do not imply automatic expiry or a deployed erasure
 workflow. This source does not create memberships or verify legal identity.
+
+Local publication receipts and the verification report live in
+`.runtime/comptroller-import/` under the workspace root, with a private directory
+and owner-only files. Use the report's `verifiedAt` and receipt file timestamps as
+the twelve-month review clock. Remove these files during verified account erasure
+and remove corresponding backup/export copies; no automatic expiry is claimed.
+Credentials are retained only in the existing OS keyring.
