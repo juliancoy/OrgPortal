@@ -9,7 +9,7 @@ test('native observations retain signed amounts, separate approvals and source-l
 });
 test('native source IDs replace their snapshot mirrors without double-counting and without label matching',()=>{
  const input={organizations:[{id:'a',name:'Same'},{id:'b',name:'Other'}],relationships:[{id:'original',source:'a',target:'b',kind:'transfer',amount:1}],financing:[]};
- const result=projectNativeEvidence(input,[{id:'support:bmoremedtech:original',record_id:'bmoremedtech:original',record_type:'organization_support',from_label:'Same',to_label:'Other',transaction_type:'services',amount:null,status:'reported'}]);
+ const result=projectNativeEvidence(input,[{id:'support:bmoremedtech:original',record_id:'bmoremedtech:original',record_type:'organization_support',from_organization_id:'a',to_organization_id:'b',from_label:'Same',to_label:'Other',transaction_type:'services',amount:null,status:'reported'}]);
  assert.equal(result.relationships.length,1);assert.equal(result.relationships[0].id,'original');assert.equal(result.relationships[0].kind,'services');assert.equal(result.relationships[0].source,'a');
 });
 test('database export fails closed instead of falling back to archival files',async()=>{
@@ -29,4 +29,17 @@ test('large relationship search scans bounded shards and paginates without dropp
  };
  const first=await queryEcosystem(read,'relationships',new URLSearchParams({q:'mentoring',limit:'1'})),second=await queryEcosystem(read,'relationships',new URLSearchParams({kind:'mentoring',offset:'1',limit:'1'}));
  assert.equal(first.body.total,2);assert.equal(first.body.records[0].id,'a');assert.equal(first.body.nextOffset,1);assert.equal(second.body.records[0].id,'c');assert.equal(first.body.transactionalCoverage.datasetId,'db-fixture');
+});
+
+test('native counterparty corrections override saved snapshot links rather than retaining stale identities',()=>{
+ const input={organizations:[{id:'old',name:'Old'},{id:'new',name:'New'},{id:'recipient',name:'Recipient'}],relationships:[{id:'e',source:'old',target:'recipient',kind:'transfer',amount:1}],financing:[]};
+ const result=projectNativeEvidence(input,[{id:'support:e',record_id:'e',record_type:'organization_support',from_organization_id:'new',to_organization_id:'recipient',from_label:'New',to_label:'Recipient',transaction_type:'transfer',amount:2,status:'reported'}]);
+ assert.equal(result.relationships.length,1);assert.equal(result.relationships[0].source,'new');assert.equal(result.relationships[0].amount,2);
+});
+
+test('directory aliases require exact unique portal slugs and never matching names',()=>{
+ const input={organizations:[{id:'source-org',name:'Same name',portalSlug:'verified-slug'}],relationships:[],financing:[]};
+ const native=(id,from)=>({id,record_id:id,record_type:'organization_support',from_organization_id:from,to_organization_id:'recipient',from_label:'Same name',to_label:'Recipient',transaction_type:'collaboration',status:'reported'});
+ const result=projectNativeEvidence(input,[native('linked','native-org'),native('unrelated','other-org')],[{id:'native-org',slug:'verified-slug',name:'Current name'},{id:'other-org',slug:'other-slug',name:'Same name'}]);
+ assert.equal(result.relationships[0].source,'source-org');assert.equal(result.relationships[1].source,'other-org');
 });

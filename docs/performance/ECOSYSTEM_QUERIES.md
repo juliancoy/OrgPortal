@@ -5,22 +5,27 @@ Vite development/preview servers share `web/server/ecosystem-query.mjs`.
 They query a versioned, read-only index of published public research evidence.
 This index is separate from private organization records and writable initiatives.
 
-`web/scripts/build-ecosystem-query.mjs` builds the index from the published portal,
-relationship, event, nonprofit, performance, and position snapshots. Existing
-identity reconciliation, award deduplication, currency rules, signed obligations,
-and funding-stage calculations remain the source of summary calculations.
-The generator runs before the production bundle and at Vite startup. After source
-evidence is updated, rebuild the index and frontend; `generatedAt` is the index
-build time, not the original evidence retrieval date. Source coverage/retrieval
-metadata stays in responses. These endpoints do not claim to be live queries of
-all recently edited organization records.
+`web/scripts/build-ecosystem-query.mjs` builds from a checksum-verified public export
+of the main transactional database: versioned public source collections plus native
+support, financing, nonprofit grants and external financial observations. Private
+ledger/account records are excluded. See [the unified database runbook](../unified-ecosystem-db.md).
+Archival source JSON is only used for reviewed bootstrap and isolated tests.
 
-Organization/type membership and trigram postings identify matching record IDs.
-Only the three least common search trigrams are read, followed by exact substring
-verification against compact metadata. One/two-character searches inspect compact
-metadata. Full evidence records live in 25-record chunks; at most six chunks are
-read concurrently. Overview and financial summaries are computed at build time.
-No request downloads and merges the complete original evidence snapshots.
+The generator runs before the production bundle and at Vite startup. Rebuild the
+frontend after changing source evidence; `generatedAt` is the index build time,
+not the original evidence retrieval date. `transactionalCoverage` identifies the
+source dataset, export time and native/Comptroller counts. This is a public cache
+of database evidence, not a live query of every recent edit.
+
+Small collections use organization/type membership and trigram postings. Large
+relationship collections scan bounded 1,000-record search metadata chunks and
+retain only requested page IDs; this preserves substring search without a giant
+index file. Full evidence stays in 25-record chunks, with at most six read
+concurrently. Topology uses integer endpoint references for large datasets.
+Graph responses are limited to 250 nodes, 1,000 edges and 2 MiB, with explicit
+truncation; the Relationships view retains every source record. Overview and
+financial summaries are computed over the complete exported evidence at build
+time. No browser request downloads and merges all source snapshots.
 
 Endpoints:
 

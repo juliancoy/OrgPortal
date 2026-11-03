@@ -1,5 +1,17 @@
 # Ecosystem network data
 
+Current source architecture: [unified transactional database](unified-ecosystem-db.md).
+All dimensional graph views read the same database-derived public query index.
+Fiscal and non-fiscal evidence, events, nonprofit profiles and performance research
+are stored in the main organization database. Native public transaction records
+are overlaid by explicit source ID. Private account ledgers are not public graph
+data. Refresh the index through a frontend build after source changes.
+
+The sections below describe the earlier snapshot collection and historical visual
+checks. `sync-portal-ecosystem.mjs` and standalone source JSON now serve archival
+bootstrap/research purposes; the production query builder reads database exports.
+
+
 The network includes the complete public organization directory, without a LifeTech tag filter. Production support records are read through the public OrgPortal API. `web/scripts/sync-portal-ecosystem.mjs` refreshes that evidence.
 
 `web/scripts/build-network-history.mjs` reads every available `event_history.json`, `manual_events.json`, and `upcoming_events.json` at the CodeCollective root and its immediate source directories. Set `CODECOLLECTIVE_DIR` for a different checkout. Event occurrences are deduplicated by source URL and start date; cross-listed events with different source URLs remain distinct. All entries with a title and public URL are retained, including undated events. Organization links require source metadata or a Code Collective organizer URL; mentions alone do not establish hosting. The event browser searches the entire dataset and progressively displays results.

@@ -3,12 +3,19 @@ import {createHash} from 'node:crypto';
 const hash=value=>createHash('sha256').update(value).digest('hex');
 const canonical=value=>Array.isArray(value)?`[${value.map(canonical).join(',')}]`:value!==null&&typeof value==='object'?`{${Object.entries(value).filter(([,v])=>v!==undefined).sort(([a],[b])=>a<b?-1:a>b?1:0).map(([k,v])=>JSON.stringify(k)+':'+canonical(v)).join(',')}}`:JSON.stringify(value);
 const collections=['organizations','relationships','financing','events','nonprofitProfiles','performanceRecords','performanceAssessments','metadata','positions'];
-export function projectNativeEvidence(input,records){
+export function projectNativeEvidence(input,records,directory=[]){
  const data=structuredClone(input),orgs=new Map(data.organizations.map(o=>[o.id,o]));
+ const slugs=new Map(),aliases=new Map()
+ for(const org of data.organizations)if(org.portalSlug){const candidates=slugs.get(org.portalSlug)||[];candidates.push(org.id);slugs.set(org.portalSlug,candidates)}
+ for(const org of directory){
+  const candidates=slugs.get(org.slug)||[],id=orgs.has(org.id)?org.id:candidates.length===1?candidates[0]:org.id
+  aliases.set(org.id,id)
+  if(!orgs.has(id))orgs.set(id,{id,name:org.name,type:'Organization',category:'general',website:org.source_url||'',relevance:org.description||'',portalSlug:org.slug,directory:true,sourceCategory:'OrgPortal'})
+ }
  const bySource=new Map();for(const edge of data.relationships){bySource.set(edge.id,edge);if(edge.financingId)bySource.set(edge.financingId,edge);if(edge.id.startsWith('portal:'))bySource.set(edge.id.slice(7),edge);}
  const replaced=new Set(),newEdges=[];
  function endpoint(id,label,scope,role,prior){
-  if(prior&&orgs.has(prior))return prior;
+  if(id&&aliases.has(id))return aliases.get(id);
   if(id&&orgs.has(id))return id;
   if(!id&&!label)return null;
   const nodeId=id||`source-label:${scope}:${role}:${hash(label).slice(0,32)}`;
@@ -38,11 +45,13 @@ export function projectNativeEvidence(input,records){
    provenance,transactionRecordId:r.id,sourceRecordType:r.record_type};
   newEdges.push(edge);
  }
- data.organizations=[...orgs.values()];data.relationships=[...data.relationships.filter(r=>!replaced.has(r.id)),...newEdges];
+ data.relationships=[...data.relationships.filter(r=>!replaced.has(r.id)),...newEdges];
+ const referenced=new Set(data.relationships.flatMap(r=>[r.source,r.target]));
+ data.organizations=[...orgs.values()].filter(o=>o.entityType!=='source_label'||referenced.has(o.id));
  // financing is a secondary presentation of the same evidence, never extra graph edges.
  const nativeById=new Map(newEdges.map(r=>[r.id,r]));
  data.financing=(data.financing||[]).map(r=>{const match=nativeById.get(r.id)||newEdges.find(e=>e.financingId===r.id);return match?{...r,...match,funderId:match.source,recipientId:match.target,funder:match.sourceLabel,recipient:match.targetLabel}:r;});
- data.transactionalCoverage={nativeRecords:records.length,comptrollerRecords:records.filter(r=>r.record_type==='external_financial_observation').length,unverifiedLabelNodes:data.organizations.filter(o=>o.identityStatus==='unverified_label').length};
+ data.transactionalCoverage={directoryRecords:directory.length,nativeRecords:records.length,comptrollerRecords:records.filter(r=>r.record_type==='external_financial_observation').length,unverifiedLabelNodes:data.organizations.filter(o=>o.identityStatus==='unverified_label').length};
  return data;
 }
 export async function exportUnifiedEcosystem({fetcher=fetch,base='https://lifetech.fyi/api/org/api/network/ecosystem/public'}={}){
@@ -63,5 +72,7 @@ export async function exportUnifiedEcosystem({fetcher=fetch,base='https://lifete
  all.sort((a,b)=>(a.collection+'\t'+a.key)<(b.collection+'\t'+b.key)?-1:1);
  if(hash(all.map(r=>`${r.collection}\t${r.key}\t${r.sha256}\n`).join(''))!==datasetId)throw Error('Database dataset digest mismatch');
  const native=[];let after='';do{const url=new URL(base+'/native');if(after)url.searchParams.set('after',after);const page=await get(url);if(!Array.isArray(page.records)||page.next!==null&&(typeof page.next!=='string'||page.next<=after))throw Error('Invalid native evidence page');native.push(...page.records);after=page.next;}while(after!==null);
- return {datasetId,exportedAt:new Date().toISOString(),data:projectNativeEvidence(data,native),performance,positions};
+ const directory=[]
+ for(let offset=0;;offset+=500){const page=await get(new URL(base.replace(/\/ecosystem\/public$/,'')+'/orgs/public?limit=500&offset='+offset));if(!Array.isArray(page))throw Error('Incomplete public organization directory');directory.push(...page);if(page.length<500)break;}
+ return {datasetId,exportedAt:new Date().toISOString(),data:projectNativeEvidence(data,native,directory),performance,positions};
 }
