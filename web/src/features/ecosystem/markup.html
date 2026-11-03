@@ -1,25 +1,28 @@
 <header class="eco-network-heading">
 <h1>Organization network</h1>
 <nav aria-label="Network views">
-<a href="/ecosystem/network/performance">Performance</a>
-<a href="/ecosystem/network/interventions">Interventions</a>
-<a href="/ecosystem/network/nonprofits">Nonprofits</a>
 <a href="/ecosystem/network/overview">Overview</a>
 <a href="/ecosystem/network" aria-current="page">Graph</a>
 <a href="/ecosystem/network/events">Events</a>
 <a href="/ecosystem/network/relationships">Relationships</a>
+<details class="eco-more-views"><summary>More</summary><div>
+<a href="/ecosystem/network/performance">Performance</a>
+<a href="/ecosystem/network/interventions">Interventions</a>
+<a href="/ecosystem/network/nonprofits">Nonprofits</a>
 <a href="/ecosystem/network/funding">Funding gap</a>
 <a href="/ecosystem/network/help">Sources &amp; help</a>
-<a href="/orgs">Directory ↗</a>
+<a href="/orgs">Organization directory ↗</a>
+</div></details>
 </nav>
 </header>
 <div class="eco-network-shell">
 <section class="eco-network-sidebar" aria-label="Network search, visualization, settings and details">
 <div class="eco-panel-tabs" role="tablist" aria-label="Network panel">
-<button type="button" id="network-search-tab" role="tab" data-panel="search" aria-controls="network-search-panel" aria-selected="false" tabindex="-1" aria-label="Search" title="Search">🔍</button>
-<button type="button" id="network-visualization-tab" role="tab" data-panel="visualization" aria-controls="network-visualization-panel" aria-selected="false" tabindex="-1" aria-label="Visualization" title="Visualization">🎨</button>
-<button type="button" id="network-settings-tab" role="tab" data-panel="controls" aria-controls="network-settings-panel" aria-selected="false" tabindex="-1" aria-label="Settings" title="Settings">⚙️</button>
-<button type="button" id="network-details-tab" role="tab" data-panel="inspector" aria-controls="network-detail" aria-selected="true" aria-label="Details" title="Details">ℹ️</button>
+<button type="button" id="network-search-tab" role="tab" data-panel="search" aria-controls="network-search-panel" aria-selected="false" tabindex="-1" aria-label="Search" title="Search"><span class="eco-tab-icon" aria-hidden="true">🔍</span><span>Search</span></button>
+<button type="button" id="network-visualization-tab" role="tab" data-panel="visualization" aria-controls="network-visualization-panel" aria-selected="false" tabindex="-1" aria-label="Visualization" title="Visualization"><span class="eco-tab-icon" aria-hidden="true">🎨</span><span>Visualization</span></button>
+<button type="button" id="network-settings-tab" role="tab" data-panel="controls" aria-controls="network-settings-panel" aria-selected="false" tabindex="-1" aria-label="Settings" title="Settings"><span class="eco-tab-icon" aria-hidden="true">⚙️</span><span>Settings</span></button>
+<button type="button" id="network-details-tab" role="tab" data-panel="inspector" aria-controls="network-detail" aria-selected="true" aria-label="Details" title="Details"><span class="eco-tab-icon" aria-hidden="true">ℹ️</span><span>Details</span></button>
+<button id="network-close-panel" type="button" aria-label="Close panel" title="Close panel">×</button>
 </div>
 <aside id="network-search-panel" role="tabpanel" aria-labelledby="network-search-tab" hidden>
 <h2>Search</h2>
@@ -96,6 +99,8 @@
 </span>General entrepreneurship</label>
 <label><input type="checkbox" name="node-category" value="federal-government" checked><span class="eco-category-dot" data-class="federal-government"></span>Federal government</label>
 <label><input type="checkbox" name="node-category" value="state-government" checked><span class="eco-category-dot" data-class="state-government"></span>State government</label>
+<label><input type="checkbox" name="node-category" value="not-applicable" checked><span class="eco-category-dot" data-class="not-applicable"></span>Not applicable</label>
+<label><input type="checkbox" name="node-category" value="government" checked><span class="eco-category-dot" data-class="government"></span>Other government</label>
 </fieldset>
 <label>Map view<select id="network-view">
 <option value="all">All relationships</option>
@@ -135,15 +140,20 @@
 </aside>
 </section>
 <section class="eco-graph-panel" aria-label="Interactive relationship network">
+<div id="network-canvas" role="group" aria-label="Interactive organization network. Use the organization list and Relationships view for keyboard access.">
 <div class="eco-graph-top">
-<div><output id="network-status" aria-live="polite">Preparing interactive network…</output><output id="network-source" class="eco-note">Loading public evidence…</output></div>
+<div><output id="network-status" aria-live="polite">Preparing interactive network…</output><details class="eco-snapshot"><summary>Data snapshot</summary><output id="network-source" class="eco-note">Loading public evidence…</output></details></div>
 <div>
 <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
 <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
 <button id="network-fit" type="button">Fit</button>
 </div>
 </div>
-<div id="network-canvas" role="img" aria-label="Interactive organization network. Use the organization list and Relationships view for keyboard access.">
+<div class="eco-network-relevance" aria-label="Relevant organizations">
+<label>Top nodes <select id="network-node-limit"><option value="25">25</option><option value="50">50</option><option value="100">100</option><option value="250">250</option></select></label>
+<button id="network-show-more" type="button">Show more nodes</button>
+<details class="eco-ranking-info"><summary>Why these nodes?</summary><output id="network-ranking" aria-live="polite">Start at the most connected organization and grow through relevant counterparties. Select a node to explore its neighborhood.</output></details>
+</div>
 <div id="network-labels">
 </div>
 </div>

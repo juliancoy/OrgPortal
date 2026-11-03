@@ -187,6 +187,11 @@ html.eco-map-open .portal-footer, html.eco-map-open .tb-shell-footer { display:n
 .portal-ecosystem .eco-view-content { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:20px clamp(16px,3vw,40px); }
 .portal-ecosystem .eco-view-content p { max-width:90ch; }
 .portal-ecosystem .eco-view-filters { display:flex; flex-wrap:wrap; gap:16px; margin:16px 0; }
+.portal-ecosystem .eco-network-relevance { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; padding:8px 14px; border-bottom:1px solid var(--line); font-size:12px; }
+.portal-ecosystem .eco-network-relevance label { display:flex; align-items:center; gap:6px; }
+.portal-ecosystem .eco-network-relevance select { width:auto; min-height:34px; }
+.portal-ecosystem .eco-network-relevance button { min-height:34px; padding:5px 10px; }
+.portal-ecosystem .eco-network-relevance output { flex:1 1 240px; color:var(--muted); line-height:1.4; }
 .portal-ecosystem .eco-view-filters label { display:grid; gap:6px; flex:1; min-width:min(250px,100%); }
 .portal-ecosystem .eco-view-filters input, .portal-ecosystem .eco-view-filters select { width:100%; min-height:38px; padding:6px 10px; border:1px solid var(--line); background:var(--paper); color:var(--ink); border-radius:5px; }
 .portal-ecosystem .eco-view-content #event-results { padding-left:22px; }

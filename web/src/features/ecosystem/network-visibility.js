@@ -14,10 +14,11 @@ export function mountVisibilityControls(root){
  <label><input type="checkbox" id="network-clustering" checked>Community clustering</label>
  <label>Grouping<select id="network-grouping"><option value="community">Connected communities</option><option value="sector">Sector</option><option value="county">Published county</option><option value="municipality">Published municipality</option></select></label>
  <label>Background edge opacity<input id="network-edge-opacity" type="range" min="0" max="1" step="0.05" value="0.2"></label>
+ <label>Edge count exponent<input id="network-edge-count-exponent" type="range" min="0.1" max="1" step="0.1" value="0.5"><output id="network-edge-count-exponent-value">0.5</output></label>
  <label>Node size<select id="network-size-metric"><option value="connections">Connections</option><option value="incoming">Recorded incoming USD</option><option value="outgoing">Recorded outgoing USD</option><option value="uniform">Uniform</option></select></label>
  <label>Edge encoding<select id="network-edge-encoding"><option value="neutral">Neutral</option><option value="type">Relationship type</option><option value="amount">Recorded USD amount</option></select></label>
  <label><input id="network-funding-arrows" type="checkbox">Show documented financial direction</label>
- <p class="eco-note">Organization radius 3–10 units; aggregate markers 5–14 by member count. Organization area scales with the selected metric. Missing amounts use minimum size. Recorded USD is not proof of payment. Overview shows one relationship per community pair; expand a community to inspect its records.</p>
+ <p class="eco-note">Organization radius 3–10 units; aggregate markers 5–14 by member count. Organization area scales with the selected metric. Missing amounts use minimum size. Recorded USD is not proof of payment. Rows with the same source and destination share one edge. Thickness scales with row count raised to the edge count exponent (default 0.5: square root). Counts cover the displayed transaction page. Reverse directions stay separate; inspect an edge for its records.</p>
  <div id="network-community-list" aria-label="Communities"></div>
  <button type="button" id="network-clear-selection">Clear selection</button>
  <button type="button" id="network-reset-visibility">Reset visibility</button>`

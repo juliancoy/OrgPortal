@@ -1,4 +1,5 @@
 import {frameTargetMs} from './frame-budget.js'
+import {transactionEdgePath,TRANSACTION_EDGE_SEGMENTS} from './transaction-edge-path.js'
 import {WebGPURenderer,Scene,PerspectiveCamera,OrthographicCamera,AmbientLight,DirectionalLight,InstancedMesh,SphereGeometry,CylinderGeometry,ConeGeometry,MeshStandardNodeMaterial,MeshBasicNodeMaterial,MeshBasicMaterial,DataTexture,InstancedBufferAttribute,SRGBColorSpace,NearestFilter,BackSide,Object3D,Vector3,Vector2,Euler,Quaternion,Color,Raycaster,Box3,WebGLCoordinateSystem} from 'three/webgpu'
 import {attribute,texture,uv,vec2} from 'three/tsl'
 import {spherePieAtlas} from './sphere-pies.js'
@@ -94,8 +95,11 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    const previousNodes=renderedNodes,previousEdges=renderedEdges
    renderedNodes=nodes.filter(n=>visible.has(n.id)&&!n.clipped4D);renderedEdges=edges.filter(e=>visibleEdges.has(e.id)&&!e.source.clipped4D&&!e.target.clipped4D)
    if(updated&&(previousNodes.length!==renderedNodes.length||previousEdges.length!==renderedEdges.length||renderedNodes.some((n,i)=>n.id!==previousNodes[i]?.id)||renderedEdges.some((e,i)=>e.id!==previousEdges[i]?.id)))updated=null
-   for(const index of [1,2])geometries[index].setAttribute('edgeOpacity',new InstancedBufferAttribute(Float32Array.from(renderedEdges,e=>e.opacity??.2),1))
-   const spheres=mesh(0,renderedNodes.length),bodies=mesh(1,renderedEdges.length),arrows=mesh(2,renderedEdges.length)
+   geometries[1].setAttribute('edgeOpacity',new InstancedBufferAttribute(Float32Array.from({length:renderedEdges.length*TRANSACTION_EDGE_SEGMENTS},(_,i)=>renderedEdges[Math.floor(i/TRANSACTION_EDGE_SEGMENTS)].opacity??.2),1))
+   geometries[2].setAttribute('edgeOpacity',new InstancedBufferAttribute(Float32Array.from(renderedEdges,e=>e.opacity??.2),1))
+   const spheres=mesh(0,renderedNodes.length),bodies=mesh(1,renderedEdges.length*TRANSACTION_EDGE_SEGMENTS),arrows=mesh(2,renderedEdges.length)
+   canvas.dataset.transactionEdges=String(renderedEdges.length)
+   canvas.dataset.transactionEdgeSegments=String(bodies.count)
    if(atlasNodes.length!==renderedNodes.length||renderedNodes.some((n,i)=>atlasNodes[i].id!==n.id||atlasNodes[i].pie!==n.financialPie)){
     const atlas=spherePieAtlas(renderedNodes,device?.limits.maxTextureDimension2D||4096)
     if(pieTexture.image.width!==atlas.width||pieTexture.image.height!==atlas.height)pieTexture.dispose()
@@ -111,12 +115,14 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    renderedNodes.forEach((n,i)=>{if(updated&&!updated.has(n.id))return;a.set(n.x,n.y,n.z||0);scale.setScalar(n.renderRadius);place(spheres,i,a,scale,identity,n.financialPie?.slices.length?0xffffff:n.id===selected?0xe56d3c:n.opacity<1?0x606c76:colors[n.category]??0x77878c)})
    renderedEdges.forEach((e,i)=>{
     if(updated&&!updated.has(e.source.id)&&!updated.has(e.target.id))return
-    a.set(e.source.x,e.source.y,e.source.z||0);b.set(e.target.x,e.target.y,e.target.z||0);direction.subVectors(b,a)
-    const distance=direction.length();direction.normalize();const gap=Math.max(.01,distance-e.source.renderRadius-e.target.renderRadius-8)
-    a.addScaledVector(direction,e.source.renderRadius+2);object.quaternion.setFromUnitVectors(up,direction)
-    const rotation=object.quaternion.clone(),tint=edgeColor(e),thickness=(e.quantityWidth||1.4)/2
-    b.copy(a).addScaledVector(direction,gap/2);scale.set(thickness,gap,thickness);place(bodies,i,b,scale,rotation,tint)
-    b.copy(a).addScaledVector(direction,gap+3);scale.set(e.directional?thickness*2.5:0,e.directional?6:0,e.directional?thickness*2.5:0);place(arrows,i,b,scale,rotation,tint)
+    const points=transactionEdgePath(e),tint=edgeColor(e),thickness=(e.quantityWidth||1.4)/2
+    for(let segment=0;segment<TRANSACTION_EDGE_SEGMENTS;segment++){
+     a.copy(points[segment]);b.copy(points[segment+1]);direction.subVectors(b,a)
+     const length=Math.max(.01,direction.length());direction.normalize();object.quaternion.setFromUnitVectors(up,direction)
+     b.add(a).multiplyScalar(.5);scale.set(thickness,length,thickness)
+     place(bodies,i*TRANSACTION_EDGE_SEGMENTS+segment,b,scale,object.quaternion,tint)
+    }
+    b.copy(points.at(-1)).addScaledVector(direction,3);scale.set(e.directional?thickness*2.5:0,e.directional?6:0,e.directional?thickness*2.5:0);place(arrows,i,b,scale,object.quaternion,tint)
    })
    for(const m of meshes){m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;m.boundingSphere=null}
   },
@@ -157,9 +163,18 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
   zoomLevel(){return (camera.isOrthographicCamera?camera.zoom:1)*referenceDistance/Math.max(.01,camera.position.distanceTo(controls.target))},
   hit(event){
    if(!meshes[0])return {}
+   camera.updateMatrixWorld();scene.updateMatrixWorld(true)
    const rect=canvas.getBoundingClientRect();ray.setFromCamera(new Vector2((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2),camera)
-   const first=ray.intersectObjects(meshes.filter(Boolean),false)[0];if(!first)return {}
-   return first.object===meshes[0]?{node:renderedNodes[first.instanceId]}:first.object===meshes[3]?{node:outlinedNodes[first.instanceId]}:{edge:renderedEdges[first.instanceId]}
+   // Connected cylinders can overlap an orb. Nodes take priority over edges.
+   const nodeHit=ray.intersectObjects([meshes[0],meshes[3]].filter(Boolean),false)[0]
+   if(nodeHit)return {node:nodeHit.object===meshes[0]?renderedNodes[nodeHit.instanceId]:outlinedNodes[nodeHit.instanceId]}
+   // Keep small, distant orbs usable without requiring a subpixel-perfect click.
+   const tolerance=event.pointerType==='touch'?12:8,x=event.clientX-rect.left,y=event.clientY-rect.top
+   let nearest=null,best=tolerance*tolerance
+   for(const node of renderedNodes){const point=api.project(node);if(!point.visible)continue;const distance=(point.x-x)**2+(point.y-y)**2;if(distance<best){nearest=node;best=distance}}
+   if(nearest)return {node:nearest}
+   const first=ray.intersectObjects([meshes[1],meshes[2]].filter(Boolean),false)[0];if(!first)return {}
+   return {edge:renderedEdges[first.object===meshes[1]?Math.floor(first.instanceId/TRANSACTION_EDGE_SEGMENTS):first.instanceId]}
   },
   dispose(){cancelAnimationFrame(transitionFrame);disposed=true;stopMovement();input.abort();if(previousTabIndex===null)canvas.removeAttribute('tabindex');else canvas.setAttribute('tabindex',previousTabIndex);if(previousLabel===null)canvas.removeAttribute('aria-label');else canvas.setAttribute('aria-label',previousLabel);controls.dispose();const release=()=>{for(const m of meshes)if(m)m.dispose();geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());pieTexture.dispose();renderer.dispose()};if(compilePromise&&compiling)void compilePromise.finally(release);else release()},
  };return api

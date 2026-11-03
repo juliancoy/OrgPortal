@@ -43,3 +43,19 @@ test('directory aliases require exact unique portal slugs and never matching nam
  const result=projectNativeEvidence(input,[native('linked','native-org'),native('unrelated','other-org')],[{id:'native-org',slug:'verified-slug',name:'Current name'},{id:'other-org',slug:'other-slug',name:'Same name'}]);
  assert.equal(result.relationships[0].source,'source-org');assert.equal(result.relationships[1].source,'other-org');assert.equal(result.organizations.find(o=>o.id==='source-org').name,'Current name');
 });
+
+test('not-applicable source records share a placeholder class while preserving every signed observation',()=>{
+ const legacy='source-label:maryland_comptroller:recipient:legacy';
+ const input={organizations:[{id:'agency',name:'Agency'},{id:legacy,name:'Not applicable',entityType:'source_label'}],relationships:[{id:'old',source:'agency',target:legacy,targetLabel:'Not applicable',amount:5}],financing:[{id:'old-financing',recipientId:legacy,amount:5}]};
+ const records=['Not applicable','NOT APPLICABLE','N/A'].map((label,i)=>({id:'md-view:'+i,record_id:'record:'+i,record_type:'external_financial_observation',from_organization_id:'agency',to_label:label,amount:i===1?-10:20,currency:'USD'}));
+ const result=projectNativeEvidence(input,records);
+ const placeholders=result.organizations.filter(o=>o.nodeClass==='not-applicable');
+ assert.equal(result.financing[0].recipientId,placeholders[0].id);assert.equal(result.financing[0].amount,5);
+ assert.equal(placeholders.length,1);assert.equal(placeholders[0].entityType,'placeholder');assert.equal(placeholders[0].directory,false);
+ assert.equal(result.relationships.length,4);assert.equal(new Set(result.relationships.map(e=>e.target)).size,1);
+ assert.deepEqual(result.relationships.map(e=>e.targetLabel),['Not applicable',...records.map(r=>r.to_label)]);
+ assert.deepEqual(result.relationships.map(e=>e.amount),[5,20,-10,20]);
+ assert.equal(result.organizations.some(o=>o.id===legacy),false);
+ const identified=projectNativeEvidence({organizations:[],relationships:[],financing:[]},[{...records[0],to_organization_id:'real-org',to_label:'Not applicable'}]);
+ assert.equal(identified.relationships[0].target,'real-org');assert.equal(identified.organizations.find(o=>o.id==='real-org').entityType,'organization');
+});
