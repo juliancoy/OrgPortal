@@ -1,3 +1,4 @@
+import { directoryExcludedAccountIds } from './peopleDirectoryExclusions';
 import { qcashWalletRoutes } from './qcashWalletLinks';
 import { pqcoinRoutes } from './pqcoin';
 import { requestMembership, hasMembershipRequest, membershipRequests, removeMembershipRequest } from './membershipRequests';
@@ -3033,7 +3034,7 @@ type DirectoryPerson = {
   contact_slug: string | null; contact_enabled: number; headline: string | null;
 };
 
-async function directoryRows(env: Env, query: string, limit: number, offset: number) {
+export async function directoryRows(env: Env, query: string, limit: number, offset: number) {
   const terms = query.slice(0,254).trim().toLowerCase().split(/\s+/).filter(Boolean);
   const filter = terms.map(() => "instr(lower(p.user_name), ?) > 0").join(' AND ') || '1=1';
   // Presence in People is independent of permission to read contact details.
@@ -3050,8 +3051,9 @@ async function directoryRows(env: Env, query: string, limit: number, offset: num
     COALESCE(c.enabled,0) AS contact_enabled,
     CASE WHEN c.enabled=1 THEN c.headline ELSE NULL END AS headline
     FROM people p LEFT JOIN user_contact_pages c ON c.user_id=p.user_id
-    WHERE ${filter} ORDER BY lower(p.user_name),p.user_id LIMIT ? OFFSET ?`)
-    .bind(...terms, limit, offset).all<DirectoryPerson>()).results || [];
+    WHERE p.user_id NOT IN (${directoryExcludedAccountIds.map(() => '?').join(',')})
+      AND ${filter} ORDER BY lower(p.user_name),p.user_id LIMIT ? OFFSET ?`)
+    .bind(...directoryExcludedAccountIds, ...terms, limit, offset).all<DirectoryPerson>()).results || [];
 }
 
 function directoryPerson(row: DirectoryPerson) {
@@ -3092,8 +3094,9 @@ app.get('/api/admin/people', async c => {
   ) SELECT p.*,c.slug AS contact_slug,COALESCE(c.enabled,0) AS contact_enabled,
       a.last_active_at FROM people p LEFT JOIN user_contact_pages c ON c.user_id=p.user_id
       LEFT JOIN portal_account_activity a ON a.user_id=p.user_id
-      WHERE ${filter} ORDER BY lower(p.user_name),p.user_id LIMIT ? OFFSET ?`)
-    .bind(...terms,limit+1,offset).all();
+      WHERE p.user_id NOT IN (${directoryExcludedAccountIds.map(() => '?').join(',')})
+        AND ${filter} ORDER BY lower(p.user_name),p.user_id LIMIT ? OFFSET ?`)
+    .bind(...directoryExcludedAccountIds,...terms,limit+1,offset).all();
   const people = rows.results || [];
   return c.json({users:people.slice(0,limit).map(person => ({...person,contact_enabled:Boolean(person.contact_enabled)})),nextOffset:people.length>limit?offset+limit:null});
 });

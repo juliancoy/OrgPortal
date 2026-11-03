@@ -57,3 +57,25 @@ test('a failed connection leaves a usable retry and readable error', async ({ pa
   await button.click()
   await expect(page.getByText('Connection pending', { exact: true })).toBeVisible()
 })
+
+for (const response of [{ status: 200, json: { is_sysadmin: false } }, { status: 403, json: { error: 'Forbidden' } }]) {
+  test(`a late regular-account admin check (${response.status}) preserves loaded people`, async ({ page }) => {
+    let complete!: () => void
+    const ready = new Promise<void>(resolve => { complete = resolve })
+    let finished!: () => void
+    const finishedResponse = new Promise<void>(resolve => { finished = resolve })
+    await page.route('**/api/org/admin/me', async route => {
+      await ready
+      await route.fulfill(response)
+      finished()
+    })
+    await page.goto('/people')
+    await expect(page.getByRole('heading', { name: 'Jordan Contact' })).toBeVisible()
+    complete()
+    await finishedResponse
+    await page.waitForTimeout(400)
+    await expect(page.getByRole('heading', { name: 'Jordan Contact' })).toBeVisible()
+    await expect(page.getByText('No people found.', { exact: true })).toHaveCount(0)
+    await expect(page.getByLabel('Show admin details')).toHaveCount(0)
+  })
+}

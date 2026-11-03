@@ -1,3 +1,4 @@
+import { directoryExcludedAccountIds } from '../src/peopleDirectoryExclusions';
 import { FullSchemaDb } from './helpers/fullSchemaDb';
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -268,8 +269,10 @@ class FakeD1 {
         })) as T[];
     }
     if (sql.includes('WITH known AS (') && sql.includes('FROM people p')) {
-      const terms = params.slice(0, -2).map(String);
+      const excluded = params.slice(0, directoryExcludedAccountIds.length).map(String);
+      const terms = params.slice(directoryExcludedAccountIds.length, -2).map(String);
       return [...this.contacts]
+        .filter(row => !excluded.includes(String(row.user_id)))
         .filter(row => terms.every(term => String(row.user_name).toLowerCase().includes(term)))
         .sort((a,b) => String(a.user_name).toLowerCase().localeCompare(String(b.user_name).toLowerCase()) || String(a.user_id).localeCompare(String(b.user_id)))
         .slice(Number(params.at(-1)), Number(params.at(-1)) + Number(params.at(-2)))

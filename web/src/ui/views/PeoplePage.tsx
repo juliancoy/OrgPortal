@@ -48,7 +48,7 @@ export function PeoplePage() {
     setOffset(0)
     if (token) fetch(orgUrl('/admin/me'), {headers:{Authorization:`Bearer ${token}`},signal:controller.signal})
       .then(response => response.ok ? response.json() : null)
-      .then(data => {if (!controller.signal.aborted) {setIsAdmin(Boolean(data?.is_sysadmin));setAdminView(false);setUsers([]);setOffset(0)}})
+      .then(data => {if (!controller.signal.aborted) setIsAdmin(Boolean(data?.is_sysadmin))})
       .catch(() => {})
     return () => controller.abort()
   }, [token])
