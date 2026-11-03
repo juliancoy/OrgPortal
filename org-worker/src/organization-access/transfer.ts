@@ -19,6 +19,28 @@ export async function transferOrganizationOwnership(db: D1Database, actor: Organ
   if (!actor.isOperator) throw new EventIntegrationError(403, 'Superadmin access required');
   const args = ownershipTransferSchema.parse(input);
   await enforceEventRateLimit(db, actor.id);
+  // A committed audit is authoritative when a previous response/receipt failed.
+  // Recover only the same actor's uncertain operation with identical arguments.
+  if (args.confirm && args.previewId) {
+    const audit = await db.prepare(`SELECT a.id,a.metadata_json FROM event_mcp_operations op
+      JOIN audit_events a ON a.actor_user_id=op.actor_user_id AND a.resource_id=op.organization_id
+        AND a.action='organization.ownership_transferred' AND json_extract(a.metadata_json,'$.previewId')=op.id
+      WHERE op.id=? AND op.actor_user_id=? AND op.organization_id=? AND op.event_id='organization:transfer_ownership'
+        AND op.status='uncertain' AND a.subject_user_id=? AND json_extract(a.metadata_json,'$.reason')=?`)
+      .bind(args.previewId, actor.id, args.organizationId, args.userId, args.reason).first<{id:string;metadata_json:string}>();
+    if (audit) {
+      const receipt = await db.prepare(`UPDATE event_mcp_operations SET status='completed',completed_at=?,completed_steps_json='["transfer_ownership"]'
+        WHERE id=? AND actor_user_id=? AND organization_id=? AND status='uncertain'
+        AND EXISTS(SELECT 1 FROM audit_events WHERE id=?) RETURNING id`)
+        .bind(Date.now(), args.previewId, actor.id, args.organizationId, audit.id).first();
+      if (!receipt) throw new EventIntegrationError(409, 'Receipt changed; inspect the operation status');
+      const metadata = JSON.parse(audit.metadata_json);
+      return { organizationId: args.organizationId, previewId: args.previewId, ownershipId: metadata.ownershipId,
+        recovered: true, effects: { newOwnerUserId: args.userId, newOwnerRole: 'owner',
+          previousOwnerUserId: metadata.previousOwnerUserId, previousOwnerRole: 'member',
+          otherMemberships: 'unchanged', directoryAndPortal: 'preserved', resolvedChallengeIds: metadata.resolvedChallengeIds, sendsEmail: false } };
+    }
+  }
   const before = await db.prepare(`SELECT o.id,o.name,o.updated_at AS organization_updated_at,
     own.id AS ownership_id,own.owner_user_id,old.updated_at AS owner_updated_at,
     target.user_id AS target_user_id,target.user_name AS target_name,target.role AS target_role,target.updated_at AS target_updated_at
@@ -43,7 +65,7 @@ export async function transferOrganizationOwnership(db: D1Database, actor: Organ
   const auditId = crypto.randomUUID(), ownershipId = crypto.randomUUID(), now = new Date().toISOString();
   const guard = 'EXISTS(SELECT 1 FROM audit_events WHERE id=?)';
   try {
-    const results = await db.batch([
+    const results = await db.batch<{id:string}>([
       // All mutations share this compare-and-swap guard in one D1 transaction.
       db.prepare(`INSERT INTO audit_events(id,actor_user_id,action,resource_type,resource_id,subject_user_id,metadata_json,created_at)
         SELECT ?,?,'organization.ownership_transferred','organization',o.id,?,?,? FROM organizations o
@@ -53,7 +75,7 @@ export async function transferOrganizationOwnership(db: D1Database, actor: Organ
         WHERE o.id=? AND o.updated_at IS ? AND own.id=? AND own.owner_user_id=?
         AND old.role='owner' AND old.status='active' AND old.updated_at IS ?
         AND target.status='active' AND target.role=? AND target.updated_at IS ?
-        AND (SELECT group_concat(id,',') FROM (SELECT id FROM organization_ownership_challenges WHERE organization_id=o.id AND status='open' ORDER BY id)) IS ?`)
+        AND (SELECT group_concat(id,',') FROM (SELECT id FROM organization_ownership_challenges WHERE organization_id=o.id AND status='open' ORDER BY id)) IS ? RETURNING id`)
         .bind(auditId, actor.id, args.userId, JSON.stringify({ previousOwnerUserId: before.owner_user_id,
           previousOwnershipId: before.ownership_id, ownershipId, reason: args.reason, previewId: args.previewId,
           resolvedChallengeIds: challenges, authority: 'superadmin' }), now,
@@ -72,7 +94,7 @@ export async function transferOrganizationOwnership(db: D1Database, actor: Organ
         .bind(args.userId, actor.id, now, before.id, auditId),
       db.prepare(`UPDATE organizations SET updated_at=? WHERE id=? AND ${guard}`).bind(now, before.id, auditId),
     ]);
-    if (results[0].meta.changes !== 1) throw new EventIntegrationError(409, 'Authority changed; request a new preview');
+    if (!results[0].results.some(row => row.id === auditId)) throw new EventIntegrationError(409, 'Authority changed; request a new preview');
     await finishEventOperation(db, args.previewId, true, ['transfer_ownership']);
     return { organizationId: before.id, previewId: args.previewId, ownershipId, effects };
   } catch (error) {
