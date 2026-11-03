@@ -5,8 +5,8 @@ import type { NativeChatApi } from '../../../chat/nativeChatApi'
 export function ChatEncryptionBadge({ mode }: { mode: ChatEncryptionMode }) {
   const descriptor = CHAT_ENCRYPTION_LABELS[mode]
   const level = descriptor.label
-  return <span className={`chat-encryption-badge chat-encryption-${descriptor.color}`}
-    role="img" aria-label={`Encryption: ${level}`} title={level} tabIndex={0} />
+  return <span className={`chat-encryption-dot chat-encryption-${descriptor.color}`}
+    role="img" aria-label={level} title={level} tabIndex={0} />
 }
 
 export function ChatSecurityControls({ api, conversationId, initialMode = 'none', onChange, onKeysForgotten, onPendingChange }: {

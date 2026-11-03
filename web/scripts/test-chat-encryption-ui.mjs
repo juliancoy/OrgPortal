@@ -79,7 +79,7 @@ try {
       await select.selectOption(value)
       await protection.getByRole('status').filter({hasText:'Saved'}).waitFor()
     }
-    await protection.locator(`.chat-encryption-badge.chat-encryption-${color}`).waitFor()
+    await protection.locator(`.chat-encryption-dot.chat-encryption-${color}`).waitFor()
     const secret=`Message using ${value}`
     await page.getByRole('textbox',{name:'Message',exact:true}).fill(secret)
     await page.getByRole('button',{name:'Send',exact:true}).click()
@@ -99,15 +99,15 @@ try {
   failSave=true
   await select.selectOption('rsa')
   await page.getByRole('button',{name:'Retry protection change'}).waitFor()
-  await protection.locator('.chat-encryption-purple.chat-encryption-badge').waitFor()
+  await protection.locator('.chat-encryption-purple.chat-encryption-dot').waitFor()
   await page.getByRole('button',{name:'Retry protection change'}).click()
-  await protection.locator('.chat-encryption-green.chat-encryption-badge').waitFor()
+  await protection.locator('.chat-encryption-green.chat-encryption-dot').waitFor()
   // An edit made while a save is running must be saved afterwards.
   delaySave=true
   await select.selectOption('rsa-mlkem')
   await protection.getByText('Saving chat protection…',{exact:true}).waitFor()
   await select.selectOption('none')
-  await protection.locator('.chat-encryption-blue.chat-encryption-badge').waitFor()
+  await protection.locator('.chat-encryption-blue.chat-encryption-dot').waitFor()
   assert.equal(mode,'none');delaySave=false
   // Queue several messages while device readiness is pending.
   mode='rsa-mlkem';revision++;missing=['bob'];admin=false
