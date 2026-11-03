@@ -85,3 +85,11 @@ test('reviewed archive deletion cascades source copies while active datasets sta
  assert.equal((await publicEcosystemRecords(db.asD1(),'relationships')).datasetId,second.datasetId);
  }finally{db.sqlite.close();}
 });
+
+test('explicit federal cumulative obligations normalize to master fact and measurement fields without classifying non-fiscal records',async()=>{
+ const db=setup();try{
+ const input=await fixture({financialMeasure:'cumulative_obligations',awardKey:'usaspending:TEST',amount:-12,currency:'USD',kind:'transfer'});await apply(db,input);await apply(db,{...input,action:'publish',rows:[]});
+ const row=db.sqlite.prepare("SELECT * FROM master_transaction_records WHERE record_type='ecosystem_relationship'").get()!;
+ assert.equal(row.financial_fact_type,'obligation');assert.equal(row.financial_measurement,'cumulative');assert.equal(row.financial_scope,'award');assert.equal(row.amount,-12);
+ }finally{db.sqlite.close();}
+});

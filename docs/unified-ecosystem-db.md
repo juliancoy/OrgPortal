@@ -8,7 +8,7 @@ in-kind support, incubation, acceleration, collaboration and affiliation; moneta
 amounts are nullable. These records join `master_transaction_records` alongside
 ledger, company financing, nonprofit grants and external financial observations.
 
-Migrations 0132–0133 add versioned public source records to that same database.
+Migrations 0132–0134 add versioned public source records to that same database.
 Collections preserve source organizations, relationships, financing presentations,
 events, nonprofit profiles, performance evidence/assessments, funding research, metadata and saved
 positions. Relationships are projected into the master transaction view, excluding
@@ -63,6 +63,14 @@ endpoints use compact integer references. Individual graph responses retain the
 the full paginated Relationships evidence still available. Approvals are a distinct
 edge kind and do not enter payment sizing. Voided records remain evidence but do
 not become graph edges. Unresolved counterparties remain source-label groups.
+
+Production builds no longer regenerate the tracked archival layout snapshot.
+Saved positions are read from the database export. The standalone position
+generator remains an explicit bootstrap/research tool.
+
+0134 maps explicit federal cumulative obligations to `obligation` / `cumulative`
+in the master view, while preserving signed amounts and leaving non-fiscal records
+unclassified. Original source JSON remains intact.
 
 ## Lifecycle and corrections
 
