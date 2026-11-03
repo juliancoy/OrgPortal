@@ -51,7 +51,7 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
  graphRequest?.abort();const controller=new AbortController();graphRequest=controller
  const sequence=++graphSequence,parameters={depth:$('#network-hop-depth').value||'1',offset:String(scope.offset||0),edgeOffset:String(scope.edgeOffset||0),nodeLimit:$('#network-node-limit').value}
  if(data?.version)parameters.version=data.version
- if(scope.org){parameters.org=scope.org;parameters.direction=scope.direction}
+ if(scope.org){parameters.org=scope.org;parameters.direction=scope.direction;if(scope.include)parameters.include=scope.include}
  if(scope.group)parameters[scope.group[0]]=scope.group[1]
  const mode=$('#network-analysis-mode').value;parameters.mode=mode
  if(mode==='funding')for(const [key,id] of [['kind','network-flow-kind'],['category','network-flow-category'],['from','network-flow-from'],['to','network-flow-to']]){const value=$('#'+id).value;if(value&&value!=='all')parameters[key]=value}
@@ -186,6 +186,7 @@ function updateProjectionControls(){
  $('#life-w-position').textContent=(simulation?.axisPosition(fourthPosition,Number(select.value))??rotateND(fourthPosition.slice(0,dimensions),projectionAngles())[Number(select.value)]).toFixed(2)
 }
 function moveFourth(delta){
+ if(selected&&$('#network-navigation-mode').value==='centered')return
  const world=simulation?.movement(delta,Number($('#projection-axis').value));if(!world)return
  world.forEach((v,i)=>fourthPosition[i]+=v);applyProjection()
 }
@@ -201,6 +202,12 @@ reducedMotion.addEventListener('change',motionChange,{signal:abort.signal})
 let gpuReady = false, view = { x: -400, y: -400, w: 800, h: 800 }
 const radius = n => n.renderRadius
 let cameraTransition=0
+function centerSelection(){
+ if($('#network-navigation-mode').value!=='centered'||!selected)return
+ const node=nodes.find(n=>n.id===selected);if(!node||node.clipped4D)return
+ if(spatial)renderer.follow?.(node)
+ else{cancelAnimationFrame(cameraTransition);view.x=node.x-view.w/2;view.y=node.y-view.h/2}
+}
 function focusView(node){
  if(spatial){renderer.focus?.(node,reducedMotion.matches);return}
  cancelAnimationFrame(cameraTransition);const x=view.x,y=view.y,endX=node.x-view.w/2,endY=node.y-view.h/2,start=performance.now()
@@ -227,17 +234,29 @@ function bindNodePreview(button,node) {
  button.addEventListener('pointerenter',()=>previewNode(node))
  button.addEventListener('focus',()=>previewNode(node))
 }
-function activateNode(id){if(id===selected){const direction=graphScope.direction==='parents'?'children':'parents';void loadGraph({...graphScope,org:id,direction,offset:0},{keepView:true}).then(()=>{if(!disposed&&graphScope.org===id&&graphScope.direction===direction)select(id)}).catch(()=>{});return}const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
+function activateNode(id){if(id===selected){const direction=graphScope.direction==='parents'?'children':'parents';void loadGraph({...graphScope,org:id,direction,offset:0,edgeOffset:0},{keepView:true}).then(()=>{if(!disposed&&graphScope.org===id&&graphScope.direction===direction)select(id)}).catch(()=>{});return}const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
+function syncSelectionURL(id,direction,include){
+ const url=new URL(location.href)
+ for(const [key,value] of [['org',id],['direction',id?direction:null],['include',id?include:null]]){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key)}
+ history.replaceState(history.state,'',url)
+ for(const link of root.querySelectorAll('[data-graph-type]')){
+  const next=new URL(link.href,location.origin)
+  for(const key of ['org','direction','include']){const value=url.searchParams.get(key);if(value)next.searchParams.set(key,value);else next.searchParams.delete(key)}
+  link.href=next.href
+ }
+}
 function select(id,openInspector=true) {
- if(data?.version&&graphScope.org!==id){
+ const previous=selected
+ if(data?.version&&(graphScope.org!==id||(previous&&previous!==id))){
   const org=data.organizations.find(o=>o.id===id)
   selected=id;inspectorKey='node:'+id
   if(org)$('#network-detail').innerHTML=organizationPreview(org,previewSummaries)
   else $('#network-detail').replaceChildren()
   const pending=document.createElement('p');pending.setAttribute('role','status');pending.textContent='Loading relevant organizations…';$('#network-detail').append(pending)
-  const url=new URL(location.href);url.searchParams.set('org',id);history.replaceState(history.state,'',url)
+  const include=previous&&previous!==id?previous:undefined
+  syncSelectionURL(id,'children',include)
   refreshSelection();if(openInspector)selectPanel('inspector')
-  void loadGraph({org:id}).then(()=>{if(!disposed&&graphScope.org===id)select(id,openInspector)}).catch(error=>{
+  void loadGraph({org:id,direction:'children',include}).then(()=>{if(!disposed&&graphScope.org===id)select(id,openInspector)}).catch(error=>{
    if(!disposed&&selected===id){pending.textContent=error.message||'The neighborhood could not load. Select the organization to retry.'}
   });return
  }
@@ -248,9 +267,9 @@ function select(id,openInspector=true) {
  selected = id;$('#network-detail-mode').value='focus';$('#network-detail-mode').dispatchEvent(new Event('input',{bubbles:true})); inspectorKey='node:'+id; $('#neighbors').disabled=false
  $('#network-detail').innerHTML = organizationPreview(org,previewSummaries);if(analysis)appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin);appendEvidenceLink(org);rewriteLinks();
  if(openInspector)selectPanel('inspector')
- const u = new URL(location.href); u.searchParams.set('org',id);u.searchParams.set('direction',graphScope.direction||'children'); history.replaceState(history.state,'',u)
+ syncSelectionURL(id,graphScope.direction||'children',graphScope.include)
  refreshSelection()
- const point=nodes.find(n=>n.id===id);if(point)focusView(point)
+ const point=nodes.find(n=>n.id===id);if(point&&$('#network-navigation-mode').value==='centered')focusView(point)
 }
 function appendEvidenceLink(org){const link=document.createElement('a');link.href=portalPath('/ecosystem/network/relationships?org='+encodeURIComponent(org.id));link.textContent='All relationships and source evidence →';$('#network-detail').append(link)}
 function refreshSelection(){
@@ -263,7 +282,7 @@ function unpin() {
  selected=null;inspectorKey=null
  $('#neighbors').checked=false;$('#neighbors').disabled=true
  $('#network-detail').innerHTML='<h2>Select an organization</h2><p>Hover a node or edge to preview it, or click a node to pin its details.</p>'
- const u=new URL(location.href);u.searchParams.delete('org');u.searchParams.delete('direction');history.replaceState(history.state,'',u)
+ syncSelectionURL(null)
  if(filtered)rebuild();else refreshSelection()
 }
 function closeDetails() {
@@ -334,7 +353,7 @@ function rebuild({incremental=false}={}) {
   button.setAttribute('aria-label',`${n.name} · ${financialLabel(n)}`);button.setAttribute('aria-pressed',String(n.id===selected));button.addEventListener('click',()=>activateNode(n.id));bindNodePreview(button,n);labels.append(button);labelItems.push({button,n,width:Math.min(155,button.textContent.length*5.5+10)})
  }
  if(selected&&analysis.byId.has(selected)){const org=analysis.byId.get(selected);$('#network-detail').innerHTML=organizationPreview(org,previewSummaries);appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin);appendEvidenceLink(org);rewriteLinks()}
- if(!fitted){fit();fitted=true;if(selected){const point=nodes.find(n=>n.id===selected);if(point)focusView(point)}}requestRender()
+ if(!fitted){fit();fitted=true;if(selected){const point=nodes.find(n=>n.id===selected);if(point&&$('#network-navigation-mode').value==='centered')focusView(point)}}requestRender()
 }
 function fit(){
  if(spatial){renderer.fit(analysisLayout?nodes.filter(n=>analysisLayout.positions.has(n.id)):nodes);requestRender();return}
@@ -352,6 +371,7 @@ function render(time=0) {
  previousFrame=time
  const updated=analysisLayout?new Set():simulation?.consume(physicsEnabled()?frameBudget.count(nodes.length):nodes.length)||new Set()
  if(four&&projectionNeedsFit&&!simulation.projectionPending()){projectionNeedsFit=false;renderer.fit(nodes)}
+ centerSelection()
 
  const zoom=spatial?renderer.zoomLevel():fittedWidth/view.w
  const key=[zoom,selected,$('#show-links').checked,$('#zoom-sparse').checked,$('#visibility-factor').value,$('#network-detail-mode').value,$('#network-hop-depth').value,$('#network-grouping').value,$('#network-clustering').checked].join('|')
@@ -505,7 +525,7 @@ async function start(){
  try {
   await settingsReady
   await initGPU();if(disposed)return
-  await loadGraph({org:new URL(location.href).searchParams.get('org')||undefined,direction:new URL(location.href).searchParams.get('direction')==='parents'?'parents':'children'})
+  await loadGraph({org:new URL(location.href).searchParams.get('org')||undefined,direction:new URL(location.href).searchParams.get('direction')==='parents'?'parents':'children',include:new URL(location.href).searchParams.get('include')||undefined})
   search();if(disposed)return
   root.addEventListener('wheel',event=>{
    if(!host.contains(event.target)||event.target.closest('button,select,input,summary,details'))return
@@ -517,7 +537,7 @@ async function start(){
   $('#network-detail').addEventListener('error',event=>{if(event.target.tagName==='IMG'){event.target.hidden=true;const note=document.createElement('p');note.className='eco-note';note.textContent='Published image is currently unavailable.';event.target.after(note)}},true)
   $('#network-search').addEventListener('input',search,{signal:abort.signal})
   for(const id of ['network-analysis-mode','network-hop-depth','network-flow-kind','network-flow-category','network-flow-from','network-flow-to'])$('#'+id).addEventListener('change',()=>{void loadGraph(id==='network-analysis-mode'?{offset:0}:{...graphScope,offset:0,edgeOffset:0,bbox:undefined}).catch(()=>{})},{signal:abort.signal})
-  for(const control of visibilityControls.querySelectorAll('select,input'))control.addEventListener('input',()=>{if(control.id==='network-expanded-communities')restoreExpanded();if(control.id==='network-grouping'){expandedCommunities.clear();saveExpanded();updateCommunityList()}if(control.id==='network-size-metric')updateNodeSizes();if(control.id==='network-theme')applyTheme();if(control.id==='network-camera-mode')renderer.setCameraMode?.(control.value);if(control.id==='network-analysis-mode'||control.id.startsWith('network-flow-')||($('#network-analysis-mode').value==='geography'&&['network-grouping','network-expanded-communities'].includes(control.id))){updateAnalysisLayout();if(control.id!=='network-expanded-communities')fit()}updateDisclosure()},{signal:abort.signal})
+  for(const control of visibilityControls.querySelectorAll('select,input'))control.addEventListener('input',()=>{if(control.id==='network-expanded-communities')restoreExpanded();if(control.id==='network-grouping'){expandedCommunities.clear();saveExpanded();updateCommunityList()}if(control.id==='network-size-metric')updateNodeSizes();if(control.id==='network-theme')applyTheme();if(control.id==='network-camera-mode')renderer.setCameraMode?.(control.value);if(control.id==='network-navigation-mode'){if(control.value==='free'){cancelAnimationFrame(cameraTransition);renderer.stopFocus?.()}centerSelection();requestRender()}if(control.id==='network-analysis-mode'||control.id.startsWith('network-flow-')||($('#network-analysis-mode').value==='geography'&&['network-grouping','network-expanded-communities'].includes(control.id))){updateAnalysisLayout();if(control.id!=='network-expanded-communities')fit()}updateDisclosure()},{signal:abort.signal})
   $('#network-home').addEventListener('click',()=>{unpin();fit()},{signal:abort.signal})
   $('#network-focus').addEventListener('click',()=>{const node=nodes.find(n=>n.id===selected);if(node)focusView(node)},{signal:abort.signal})
   $('#network-clear-selection').addEventListener('click',unpin,{signal:abort.signal})

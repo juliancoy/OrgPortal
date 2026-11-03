@@ -88,6 +88,13 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    cancelAnimationFrame(transitionFrame);const start=camera.position.clone(),targetStart=controls.target.clone(),endTarget=new Vector3(node.x,node.y,node.z||0),offset=start.clone().sub(targetStart),end=endTarget.clone().add(offset),started=performance.now()
    const tick=now=>{const t=immediate?1:Math.min(1,(now-started)/350),ease=t*t*(3-2*t);camera.position.lerpVectors(start,end,ease);controls.target.lerpVectors(targetStart,endTarget,ease);controls.update();changed();if(t<1&&!disposed)transitionFrame=requestAnimationFrame(tick)};tick(started)
   },
+  stopFocus(){cancelAnimationFrame(transitionFrame)},
+  follow(node){
+   cancelAnimationFrame(transitionFrame)
+   const target=new Vector3(node.x,node.y,node.z||0),delta=target.clone().sub(controls.target)
+   if(delta.lengthSq()<1e-12)return false
+   camera.position.add(delta);controls.target.copy(target);controls.update();camera.updateMatrixWorld();return true
+  },
   cameraPosition(){camera.updateMatrixWorld();return {x:camera.position.x,y:camera.position.y,z:camera.position.z}},
   update(nodes,edges,visible,visibleEdges,selected,colors,edgeColor,updated=null){
    if(compiling){pendingUpdate=[nodes,edges,visible,visibleEdges,selected,colors,edgeColor,null];return}

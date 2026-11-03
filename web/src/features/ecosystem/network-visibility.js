@@ -7,6 +7,7 @@ export function mountVisibilityControls(root){
  <label>Theme<select id="network-theme"><option value="auto">Automatic</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
  <label>Node color<select id="network-color-metric"><option value="sector">Sector</option><option value="community">Community</option></select></label>
  <label>Camera<select id="network-camera-mode"><option value="perspective">Perspective</option><option value="orthographic">Orthographic</option></select></label>
+ <label>Navigation<select id="network-navigation-mode"><option value="centered">Center selected node</option><option value="free">Free fly</option></select></label>
  <button type="button" id="network-home">Home</button><button type="button" id="network-focus">Focus selection</button>
  <label>Network detail<select id="network-detail-mode"><option value="overview">Overview</option><option value="focus">Focus</option><option value="all">All relationships (cluttered)</option></select></label>
  <label>Organization labels<select id="network-label-mode"><option value="hover">Hover</option><option value="priority" selected>Priority</option><option value="all">All (overlaps suppressed)</option></select></label>

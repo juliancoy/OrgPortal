@@ -123,6 +123,8 @@ export async function queryEcosystem(read,section,params){
    const membership=new URLSearchParams(nodeParams);membership.delete('category');membership.delete('org');ids=matching(index,membership).filter(i=>endpoints.has(index.rows[i].id)&&(!selectedIds||selectedIds.has(i)))
   }
   const ranked=graphRelevance(index,topology,ids,selected,distances,offset+nodeLimit);ids=ranked.ids
+  const included=params.get('include'),includedIndex=included&&included!==selected?ids.findIndex(i=>index.rows[i].id===included):-1
+  if(selected&&includedIndex>0){const [context]=ids.splice(includedIndex,1);ids.splice(1,0,context)}
   const page=ids.slice(offset,offset+nodeLimit),organizations=(await readRows(read,version,'organizations',page)).map((org,i)=>({...org,relevance:{...ranked.scores.get(page[i]),rank:offset+i+1}}))
   const visible=new Set(organizations.map(o=>o.id)),edgeIds=new Set()
   for(const id of visible)for(const edge of topology.edgesByOrg[id]||[])edgeIds.add(edge)
