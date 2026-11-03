@@ -12,12 +12,13 @@ case "${1:-}" in
 esac
 packages=(org-worker)
 if [[ "${2:-all}" != api ]]; then packages+=(web); fi
-if [[ "${2:-all}" == all ]]; then packages+=(chat-worker); fi
+if [[ "$1" == check && "${2:-all}" != web ]]; then packages+=(chat-worker); fi
 for package in "${packages[@]}"; do
   fingerprint="$(sha256sum "$package/package-lock.json" cloudflare/release-image.txt | sha256sum)"
   marker="$package/node_modules/.orgportal-release-dependencies"
   if [[ ! -f "$marker" ]] || [[ "$(cat "$marker")" != "$fingerprint" ]]; then
     options=()
+    if [[ "$package" == chat-worker ]]; then options+=(--omit=dev --ignore-scripts); fi
     npm ci --prefix "$package" --no-audit --no-fund "${options[@]}"
     printf '%s\n' "$fingerprint" > "$marker"
   fi

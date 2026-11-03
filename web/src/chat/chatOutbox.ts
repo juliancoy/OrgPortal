@@ -26,7 +26,7 @@ async function transaction<T>(mode: IDBTransactionMode, action: (store: IDBObjec
 }
 export function queuedMessageReady(message: QueuedChatMessage, security: ChatSecurity): boolean {
   return message.userId === security.current_user_id && message.mode === security.mode &&
-    message.createdAt + lifetime > Date.now() && Array.isArray(security.missing_acknowledgments) && !security.missing_acknowledgments.length && (security.mode === 'none' || !security.missing_members.length)
+    message.createdAt + lifetime > Date.now() && (security.mode === 'none' || !security.missing_members.length)
 }
 export async function queueChatMessage(message: QueuedChatMessage): Promise<void> {
   if (!message.body.trim() || message.body.length > 4000) throw new Error('Messages must contain between 1 and 4000 characters.')

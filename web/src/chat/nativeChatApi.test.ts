@@ -173,18 +173,16 @@ describe('NativeChatApi', () => {
 })
 
 describe('queued message delivery guards', () => {
-  it('never posts a queued message under another account, a changed mode or unacknowledged security', async () => {
+  it('never posts a queued message under another account, a changed mode or encryption that is not ready', async () => {
     const fetcher=vi.fn()
     vi.stubGlobal('fetch',fetcher)
     const api=new NativeChatApi(async () => 'test-token')
-    const state={mode:'none' as const,revision:1,current_user_id:'alice',can_manage:false,devices:[],missing_members:[],missing_acknowledgments:[]}
+    const state={mode:'none' as const,revision:1,current_user_id:'alice',can_manage:false,devices:[],missing_members:[]}
     const prepare=vi.spyOn(api,'prepareEncryption').mockResolvedValue(state)
     await expect(api.sendMessage('room','id','Private queue',{expectedMode:'rsa-mlkem',expectedUserId:'alice'})).rejects.toThrow('security level changed')
     await expect(api.sendMessage('room','id','Private queue',{expectedMode:'none',expectedUserId:'bob'})).rejects.toThrow('different account')
-    prepare.mockResolvedValue({...state,missing_acknowledgments:['bob']})
-    await expect(api.sendMessage('room','id','Private queue',{expectedMode:'none',expectedUserId:'alice'})).rejects.toThrow('Queued until')
-    prepare.mockResolvedValue({...state,missing_acknowledgments:undefined})
-    await expect(api.sendMessage('room','id','Private queue',{expectedMode:'none',expectedUserId:'alice'})).rejects.toThrow('Queued until')
+    prepare.mockResolvedValue({...state,mode:'rsa-mlkem',missing_members:['bob']})
+    await expect(api.sendMessage('room','id','Private queue',{expectedMode:'rsa-mlkem',expectedUserId:'alice'})).rejects.toThrow('Queued until')
     expect(fetcher).not.toHaveBeenCalled()
   })
 })

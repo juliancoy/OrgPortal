@@ -628,7 +628,7 @@ export function NativeChatPage() {
 
   async function sendMessage() {
     const body = draft.trim(), owner = user?.id, destination = roomId
-    if (!body || !owner || !destination || isQueueing) return
+    if (!body || !owner || !destination || !currentSecurity || isQueueing) return
     const queued: QueuedChatMessage = { id: uuid(), userId: owner, roomId: destination, body, mode: selectedMode, createdAt: Date.now() }
     setIsQueueing(true); setError(null)
     try {
@@ -876,7 +876,7 @@ export function NativeChatPage() {
             }}>Jump to latest messages</button>}
             {listingContext && <aside className="tb-chat-context"><a href={portalUrl(timebankListingPath(listingContext.id))}>Regarding: {listingContext.title}</a><span>Your draft is editable. It sends only when you press Send.</span></aside>}
             {listingError && <p role="status" className="portal-chat-muted">{listingError}</p>}
-            <p className="portal-chat-muted" role="status">Messages queue in this browser until the chat request and security level are accepted. Keep this chat open to send automatically. Queued messages expire after 7 days.</p>
+            <p className="portal-chat-muted" role="status">Messages queue in this browser until everyone is ready for the selected encryption level. Keep this chat open to send automatically. Queued messages expire after 7 days.</p>
             <footer className="portal-chat-composer">
               <textarea
                 value={draft}
@@ -891,7 +891,7 @@ export function NativeChatPage() {
                   }
                 }}
               />
-              <button type="button" className="btn-primary" disabled={isQueueing || !draft.trim()} onClick={() => sendMessage().catch(() => {})}>
+              <button type="button" className="btn-primary" disabled={isQueueing || !currentSecurity || !draft.trim()} onClick={() => sendMessage().catch(() => {})}>
                 {isQueueing ? 'Queueing…' : 'Send'}
               </button>
             </footer>
