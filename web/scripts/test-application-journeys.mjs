@@ -1,3 +1,4 @@
+import {browserLaunch} from './browser-launch.mjs'
 import {createRequire} from 'node:module'
 import {createServer} from 'node:http'
 import {readFile,writeFile,mkdir} from 'node:fs/promises'
@@ -37,7 +38,7 @@ const server=createServer(async(req,res)=>{try{
  res.setHeader('Content-Type','text/html');res.end('<!doctype html><html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/fixture.css"><body><div id="root"></div><script type="module" src="/fixture.js"></script></body></html>')
 }catch(error){res.writeHead(500);res.end(String(error));}})
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));base=`http://127.0.0.1:${server.address().port}`
-const browser=await chromium.launch({headless:true});const journeys=[]
+const browser=await chromium.launch(browserLaunch());const journeys=[]
 async function context(width,signedIn=false){const c=await browser.newContext({viewport:{width,height:1000},reducedMotion:'reduce'});if(signedIn)await c.addInitScript(()=>localStorage.setItem('fixture-signed-in','yes'));await c.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());return c}
 async function capture(page,name,steps,expectation){await page.evaluate(()=>document.fonts.ready);if(!process.env.APPLICATION_COMPACT_CAPTURES||['guest-390-form','guest-390-receipt','registered-390-filled','registered-390-receipt'].includes(name))await page.screenshot({path:join(out,name+'.png'),fullPage:true});steps.push({step:name,expectation,observed:{path:new URL(page.url()).pathname,heading:await page.locator('h1,h2').allTextContents(),labels:await page.getByRole('link').allTextContents()},capture:name+'.png'})}
 function ensure(value,message){if(!value)throw Error(message)}

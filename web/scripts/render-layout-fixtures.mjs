@@ -1,3 +1,4 @@
+import {browserLaunch} from './browser-launch.mjs'
 import {testSlowConnection} from './slow-connection-checks.mjs'
 import {testEventApplicants} from './event-applicants-checks.mjs'
 import {testEventStandings} from './event-standings-checks.mjs'
@@ -50,7 +51,7 @@ try{
  execFileSync(process.execPath,[join(root,'scripts/test-application-journeys.mjs'),output],{cwd:root,stdio:'inherit',env:{...process.env,APPLICATION_COMPACT_CAPTURES:'1'}})
  const report=await renderLayouts(process.env.SUBMISSION_REVIEW_ONLY?submissionLayouts:[...layouts,accountMenuLayout,...supportLayouts,...submissionLayouts],output)
  // Exercise actual controls against synthetic, in-memory vote responses only.
- const browser=await chromium.launch({headless:true})
+ const browser=await chromium.launch(browserLaunch())
  const interactionResults=[]
  const userReviews=[]
  try{

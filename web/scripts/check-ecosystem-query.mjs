@@ -1,9 +1,10 @@
+import {browserLaunch} from './browser-launch.mjs'
 import assert from 'node:assert/strict'
 import {mkdir,writeFile} from 'node:fs/promises'
 import {chromium} from 'playwright'
 const origin=process.env.NETWORK_TEST_ORIGIN||'http://127.0.0.1:5193'
 assert(['127.0.0.1','localhost'].includes(new URL(origin).hostname))
-const browser=await chromium.launch({headless:true}),receipt=[]
+const browser=await chromium.launch(browserLaunch()),receipt=[]
 try{
  for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   const page=await browser.newPage({viewport,ignoreHTTPSErrors:true}),errors=[],requests=[]

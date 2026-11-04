@@ -1,3 +1,4 @@
+import {browserLaunch} from './browser-launch.mjs'
 import assert from 'node:assert/strict'
 import {chromium} from 'playwright'
 import {createServer} from 'vite'
@@ -6,7 +7,7 @@ import {queryEcosystem} from '../server/ecosystem-query.mjs'
 import {directionFixture} from './graph-direction-fixture.mjs'
 const server=await createServer({configFile:false,root:new URL('..',import.meta.url).pathname,cacheDir:'/tmp/orgportal-parent-check',plugins:[react()],optimizeDeps:{include:['react','react-dom/client','react-router-dom','d3-force','d3-force-3d']},define:{__APP_VERSION__:JSON.stringify('test'),__APP_BUILD_NUMBER__:1},server:{host:'127.0.0.1',port:5199,strictPort:true}})
 await server.listen()
-const browser=await chromium.launch({headless:true,args:['--enable-unsafe-webgpu','--use-angle=swiftshader','--enable-features=Vulkan','--enable-unsafe-swiftshader']})
+const browser=await chromium.launch(browserLaunch({args:['--enable-unsafe-webgpu','--use-angle=swiftshader','--enable-features=Vulkan','--enable-unsafe-swiftshader']}))
 const fixture=directionFixture()
 try{
  for(const view of process.argv.length>2?process.argv.slice(2):['graph','graph3d','graph4d']){

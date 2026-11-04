@@ -122,7 +122,7 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
   $('#network-ranking').textContent=scope.org?`Relevant to ${focusedName||'the selected organization'}: nearest neighbors, transaction activity, shared counterparties, then overall connectivity. ${next.total} organizations in this ${parameters.depth}-hop neighborhood.`:`Top ${next.organizations.length} relevant connected nodes: start at the most connected organization, then its most connected counterparties. Select a node to rerank around it.`
   $('#network-show-more').disabled=next.organizations.length>=250||((next.total<=next.organizations.length)&&(!scope.org||Number(parameters.depth)>=3))
   const message=next.communityOverview?`${next.organizations.length} of ${next.total} community markers representing ${next.totalOrganizations} organizations. Select a community to load its organizations and source connections.`:next.clustered?`${next.organizations.length} county aggregate markers from ${next.geography.located} organizations with published Maryland coordinates; ${next.geography.missing} missing or outside Maryland. Select a county or zoom in to load organizations.`:`Loaded ${next.organizations.length} of ${next.total} matching organizations; ${next.totalOrganizations} in the full network. ${next.relationships.length} transaction rows consolidated into directed edges (${next.matchingEdges} matching rows between these organizations).${next.truncated?' Use transaction row paging to see the remaining edges.':''} Financial summaries use the full snapshot.`
-  $('#network-data-status').textContent=message
+  $('#network-data-status').textContent=(scope.org?(scope.direction==='parents'?'Parents (incoming relationships). ':'Children (outgoing relationships). '):'')+message
   $('#network-source').textContent='Evidence snapshot built '+new Date(next.generatedAt).toLocaleString()
   if(!keepView)fitted=false
   analysisLayout=null;networkCoordinates.clear();previewSummaries=preparedData.summaries
@@ -281,8 +281,8 @@ function bindNodePreview(button,node) {
  button.addEventListener('pointerenter',()=>{previewNode(node);warmNeighborhood(node.id)})
  button.addEventListener('focus',()=>{previewNode(node);warmNeighborhood(node.id)})
 }
-connectionDirection.addEventListener('change',()=>{if(!graphScope.org)return;const url=new URL(location.href);url.searchParams.set('direction',connectionDirection.value);history.replaceState(history.state,'',url);void loadGraph({...graphScope,offset:0,edgeOffset:0}).then(()=>select(graphScope.org,false)).catch(()=>{})},{signal:abort.signal})
-function activateNode(id){if(id===selected){connectionDirection.value=connectionDirection.value==='parents'?'children':'parents';connectionDirection.dispatchEvent(new Event('change'));return}const clicked=nodes.find(point=>point.id===id);if(clicked)focusView(clicked);const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]},{keepView:true}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]},{keepView:true}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
+connectionDirection.addEventListener('change',()=>{if(!graphScope.org)return;const url=new URL(location.href);url.searchParams.set('direction',connectionDirection.value);history.replaceState(history.state,'',url);void loadGraph({...graphScope,direction:connectionDirection.value,offset:0,edgeOffset:0}).then(()=>select(graphScope.org,false)).catch(()=>{})},{signal:abort.signal})
+function activateNode(id){if(id===selected){connectionDirection.value=connectionDirection.value==='parents'?'children':'parents';connectionDirection.dispatchEvent(new Event('change'));return}const clicked=nodes.find(point=>point.id===id);if(clicked&&$('#network-navigation-mode').value==='centered')focusView(clicked);const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]},{keepView:true}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]},{keepView:true}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
 function syncSelectionURL(id,direction,include){
  const url=new URL(location.href)
  for(const [key,value] of [['org',id],['direction',id?direction:null],['include',id?include:null]]){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key)}
@@ -304,7 +304,7 @@ function select(id,openInspector=true) {
   const pending=document.createElement('p');pending.setAttribute('role','status');pending.textContent='Loading relevant organizations…';$('#network-detail').append(pending)
   const include=previous&&previous!==id?previous:undefined;connectionDirection.value='children';syncSelectionURL(id,'children',include)
   refreshSelection();if(openInspector)selectPanel('inspector')
-  const clicked=nodes.find(point=>point.id===id);if(clicked)focusView(clicked)
+  const clicked=nodes.find(point=>point.id===id);if(clicked&&$('#network-navigation-mode').value==='centered')focusView(clicked)
   void loadGraph({org:id,direction:'children',include},{keepView:true}).then(()=>{if(!disposed&&graphScope.org===id)select(id,openInspector)}).catch(error=>{
    if(!disposed&&selected===id){pending.textContent=error.message||'The neighborhood could not load. Select the organization to retry.'}
   });return
@@ -444,7 +444,7 @@ function render(time=0) {
  status.textContent=`${visible.size} visible / ${nodes.length} organizations · ${visibleEdges.size} visible links · ${disclosed?.clusters.size||0} groups${$('#network-detail-mode').value==='focus'&&!selected?' · Select an organization to explore':''}`
  }
  if(geometryDirty||visibilityChanged||updated.size){updatePositions(geometryDirty||visibilityChanged?null:updated);geometryDirty=false}
- if(!spatial&&centeredNode&&!centering){const point=nodes.find(n=>n.id===centeredNode);if(point){view.x=point.x-view.w/2;view.y=point.y-view.h/2}}
+ if(!spatial&&centeredNode&&!centering&&$('#network-navigation-mode').value==='centered'){const point=nodes.find(n=>n.id===centeredNode);if(point){view.x=point.x-view.w/2;view.y=point.y-view.h/2}}
  const painted=renderer.render(view)
  if(painted!==false&&spatial)frameRate.frame(performance.now())
  // Read layout once before changing any label styles or visibility.
@@ -655,7 +655,7 @@ async function start(){
    $('#network-detail').innerHTML='<h2>Select an organization</h2>'
    history.replaceState(history.state,'',location.pathname);updateProjectionControls();void loadGraph({}).catch(()=>{})
   })
-  const initial=visualOrganizationId(new URL(location.href).searchParams.get('org'),$('#network-separate-duplicates').checked);if(initial&&data.organizations.some(n=>n.id===initial)){select(initial,false);rebuild()}else rebuild()
+  const initial=visualOrganizationId(new URL(location.href).searchParams.get('org'),$('#network-separate-duplicates').checked);if(initial&&data.organizations.some(n=>n.id===initial)){select(initial,false);rebuild({incremental:true})}else rebuild({incremental:true})
 
  }catch(error){if(disposed)return;status.textContent=error.message || 'WebGPU network unavailable.';showNetworkError(error,graphScope);host.hidden=true;console.error(error)}
 }
