@@ -1,6 +1,7 @@
 import {createGraphPageBuffer} from './graph-page-buffer.js'
 import {visualDuplicateGroup,visualOrganizationId,combineVisualOrganizations} from './visual-organization-groups.js'
 import {loadNeighborhoodPages} from './network-neighborhood.js'
+import {progressiveGraph,nextGraphFrame,retainLayoutNodes} from './progressive-graph.js'
 import {readEvidenceResponse} from './readEvidenceResponse.js'
 import {bundleRenderedEdges,layoutConnections} from './network-edge-bundles.js'
 import {appendNetworkInspection,applyNetworkFinancialSummary} from './network-inspection.js'
@@ -71,6 +72,7 @@ function warmNeighborhood(id){
 }
 
 async function loadGraph(scope=graphScope,{keepView=false}={}){
+ if(scope.org)scope={...scope,direction:scope.direction||graphScope.direction||'children'}
  graphRequest?.abort();const controller=new AbortController();graphRequest=controller
  const separate=$('#network-separate-duplicates').checked
  scope={...scope,org:visualOrganizationId(scope.org,separate)}
@@ -82,7 +84,7 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
  for(const link of root.querySelectorAll('[data-graph-type]')){const url=new URL(link.href,location.origin);if(fiscalYear==='all')url.searchParams.delete('fy');else url.searchParams.set('fy',fiscalYear);link.href=url.href}
  $('#network-fiscal-note').textContent=fiscalYear==='all'?'':fiscalYear==='unassigned'?'Records without an assigned source fiscal year. Missing dates are not inferred.':`FY${fiscalYear} uses each source’s calendar: Maryland July–June; federal October–September; other documented reporting periods. Lifetime cumulative obligations are excluded from annual totals.`
  if(data?.version)parameters.version=data.version
- if(scope.org){parameters.org=scope.org;parameters.direction=connectionDirection.value;parameters.nodeLimit='249';if(connectionDirection.value!=='both')parameters.depth='1'}
+ if(scope.org){if(scope.direction)connectionDirection.value=scope.direction;scope.direction=connectionDirection.value;parameters.org=scope.org;if(scope.include)parameters.include=scope.include;parameters.direction=connectionDirection.value;parameters.nodeLimit='249';if(connectionDirection.value!=='both')parameters.depth='1'}
  if(scope.group)parameters[scope.group[0]]=scope.group[1]
  const mode=$('#network-analysis-mode').value;parameters.mode=mode
  if(mode==='funding')for(const [key,id] of [['kind','network-flow-kind'],['category','network-flow-category'],['from','network-flow-from'],['to','network-flow-to']]){const value=$('#'+id).value;if(value&&value!=='all')parameters[key]=value}
@@ -124,7 +126,7 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
   $('#network-source').textContent='Evidence snapshot built '+new Date(next.generatedAt).toLocaleString()
   if(!keepView)fitted=false
   analysisLayout=null;networkCoordinates.clear();previewSummaries=preparedData.summaries
-  if(gpuReady){if(!partial)search();rebuild()}
+  if(gpuReady){if(!partial)search();rebuild({incremental:true})}
   if(partial){neighborhoodStatus.textContent=`Loading ${next.organizations.length} of ${next.total} organizations · ${next.relationships.length} records…`;$('#network-data-status').textContent='Showing the first neighborhood page; remaining connections are loading.'}
  }
  try{
@@ -135,7 +137,8 @@ async function loadGraph(scope=graphScope,{keepView=false}={}){
   if(visualGroup)pages.push(...await Promise.all(visualGroup.members.filter(id=>id!==scope.org).map(member=>{const values={...parameters,org:member,version:next.version,offset:'0',edgeOffset:'0'};return loadNeighborhoodPages(requestPage,values)})))
   next=combineVisualOrganizations(pages,{separate})
   for(const year of [...(next.fiscalYears||[])].sort((a,b)=>b-a))if(![...$('#network-fiscal-year').options].some(option=>option.value===String(year)))$('#network-fiscal-year').add(new Option('FY'+year,String(year)),$('#network-fiscal-year').querySelector('[value=unassigned]'))
-  applyLoaded(next)
+  const stream=progressiveGraph(next);let batchSize=24
+  do{await nextGraphFrame(controller.signal);if(disposed||sequence!==graphSequence)return;const started=performance.now();const frame=stream.take(batchSize);applyLoaded(frame,stream.pending);const elapsed=performance.now()-started,target=1000/minimumFPS();batchSize=Math.max(4,Math.min(48,Math.floor(batchSize*(elapsed>target*.5?.65:1.15))))}while(stream.pending)
  }catch(error){if(!disposed&&!controller.signal.aborted){$('#network-data-status').textContent=error.message;neighborhoodStatus.textContent='Neighborhood load incomplete.';showNetworkError(error,scope)}throw error}
 }
 function scheduleGeography(){
@@ -225,6 +228,7 @@ function updateProjectionControls(){
  $('#life-w-position').textContent=(simulation?.axisPosition(fourthPosition,Number(select.value))??rotateND(fourthPosition.slice(0,dimensions),projectionAngles())[Number(select.value)]).toFixed(2)
 }
 function moveFourth(delta){
+ if(selected&&$('#network-navigation-mode').value==='centered')return
  const world=simulation?.movement(delta,Number($('#projection-axis').value));if(!world)return
  world.forEach((v,i)=>fourthPosition[i]+=v);applyProjection()
 }
@@ -278,19 +282,30 @@ function bindNodePreview(button,node) {
  button.addEventListener('focus',()=>{previewNode(node);warmNeighborhood(node.id)})
 }
 connectionDirection.addEventListener('change',()=>{if(!graphScope.org)return;const url=new URL(location.href);url.searchParams.set('direction',connectionDirection.value);history.replaceState(history.state,'',url);void loadGraph({...graphScope,offset:0,edgeOffset:0}).then(()=>select(graphScope.org,false)).catch(()=>{})},{signal:abort.signal})
-function activateNode(id){const clicked=nodes.find(point=>point.id===id);if(clicked)focusView(clicked);const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]},{keepView:true}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]},{keepView:true}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
+function activateNode(id){if(id===selected){connectionDirection.value=connectionDirection.value==='parents'?'children':'parents';connectionDirection.dispatchEvent(new Event('change'));return}const clicked=nodes.find(point=>point.id===id);if(clicked)focusView(clicked);const marker=data.organizations.find(o=>o.id===id);if(marker?.serverCommunity){void loadGraph({group:['community',marker.serverCommunity]},{keepView:true}).catch(()=>{});return}if(marker?.serverCluster){void loadGraph({group:['county',marker.serverCluster]},{keepView:true}).catch(()=>{});return}const geographic=analysisLayout?.geographicGroups?.get(id);if(geographic){expandedCommunities.add(geographic.id);saveExpanded();updateCommunityList();updateAnalysisLayout();return}const group=disclosed?.membership.get(id);if(!analysisLayout&&data.communityOverview&&$('#network-detail-mode').value==='overview'&&$('#network-clustering').checked&&!expandedCommunities.has(group)&&disclosed.clusters.get(group)?.members.length>1){expandedCommunities.add(group);saveExpanded();updateCommunityList();updateDisclosure()}else select(id)}
+function syncSelectionURL(id,direction,include){
+ const url=new URL(location.href)
+ for(const [key,value] of [['org',id],['direction',id?direction:null],['include',id?include:null]]){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key)}
+ history.replaceState(history.state,'',url)
+ for(const link of root.querySelectorAll('[data-graph-type]')){
+  const next=new URL(link.href,location.origin)
+  for(const key of ['org','direction','include']){const value=url.searchParams.get(key);if(value)next.searchParams.set(key,value);else next.searchParams.delete(key)}
+  link.href=next.href
+ }
+}
 function select(id,openInspector=true) {
+ const previous=selected
  id=visualOrganizationId(id,$('#network-separate-duplicates').checked)
- if(data?.version&&graphScope.org!==id){
+ if(data?.version&&(graphScope.org!==id||(previous&&previous!==id))){
   const org=data.organizations.find(o=>o.id===id)
   selected=id;inspectorKey='node:'+id
   if(org)$('#network-detail').innerHTML=organizationPreview(org,previewSummaries)
   else $('#network-detail').replaceChildren()
   const pending=document.createElement('p');pending.setAttribute('role','status');pending.textContent='Loading relevant organizations…';$('#network-detail').append(pending)
-  const url=new URL(location.href);url.searchParams.set('org',id);history.replaceState(history.state,'',url)
+  const include=previous&&previous!==id?previous:undefined;connectionDirection.value='children';syncSelectionURL(id,'children',include)
   refreshSelection();if(openInspector)selectPanel('inspector')
   const clicked=nodes.find(point=>point.id===id);if(clicked)focusView(clicked)
-  void loadGraph({org:id},{keepView:true}).then(()=>{if(!disposed&&graphScope.org===id)select(id,openInspector)}).catch(error=>{
+  void loadGraph({org:id,direction:'children',include},{keepView:true}).then(()=>{if(!disposed&&graphScope.org===id)select(id,openInspector)}).catch(error=>{
    if(!disposed&&selected===id){pending.textContent=error.message||'The neighborhood could not load. Select the organization to retry.'}
   });return
  }
@@ -301,9 +316,9 @@ function select(id,openInspector=true) {
  selected = id;$('#network-detail-mode').value='focus';$('#network-detail-mode').dispatchEvent(new Event('input',{bubbles:true})); inspectorKey='node:'+id; $('#neighbors').disabled=false
  $('#network-detail').innerHTML = organizationPreview(org,previewSummaries);if(analysis)appendNetworkInspection($('#network-detail'),org,analysis,recordEdges,unpin,{loadEvidence:evidenceLoader(org)});appendEvidenceLink(org);rewriteLinks();
  if(openInspector)selectPanel('inspector')
- const u = new URL(location.href); u.searchParams.set('org',id); history.replaceState(history.state,'',u)
+ syncSelectionURL(id,graphScope.direction||'children',graphScope.include)
  refreshSelection()
- const point=nodes.find(n=>n.id===id);if(point)focusView(point)
+ const point=nodes.find(n=>n.id===id);if(point&&$('#network-navigation-mode').value==='centered')focusView(point)
 }
 function evidenceLoader(org){
  const members=org.visualGroup?.map(member=>member.id)||[org.id],base={...bufferParameters,detail:'full',recordLimit:'30',evidenceOnly:'1',version:data.version}
@@ -315,7 +330,7 @@ function evidenceLoader(org){
 }
 function appendEvidenceLink(org){const link=document.createElement('a');link.href=portalPath('/ecosystem/network/relationships?org='+encodeURIComponent(org.id));link.textContent='All relationships and source evidence →';$('#network-detail').append(link)}
 function refreshSelection(){
- for(const {button,n} of labelItems)button.setAttribute('aria-pressed',String(n.id===selected))
+ for(const {button,n} of labelItems){button.setAttribute('aria-pressed',String(n.id===selected));button.title=n.id===selected?`Show ${graphScope.direction==='parents'?'children':'parents'} of ${n.name}`:`Select ${n.name}`}
  updateDisclosure()
 }
 function unpin() {
@@ -324,7 +339,7 @@ function unpin() {
  selected=null;inspectorKey=null
  $('#neighbors').checked=false;$('#neighbors').disabled=true
  $('#network-detail').innerHTML='<h2>Select an organization</h2><p>Hover a node or edge to preview it, or click a node to pin its details.</p>'
- const u=new URL(location.href);u.searchParams.delete('org');history.replaceState(history.state,'',u)
+ syncSelectionURL(null)
  if(filtered)rebuild();else refreshSelection()
 }
 function closeDetails() {
@@ -347,11 +362,12 @@ function search() {
  },150)
 }
 
-function rebuild() {
+function rebuild({incremental=false}={}) {
  if (!data || !gpuReady) return
  inspectorKey=null
  previewSummaries=preparedData?.data===data?preparedData.summaries:networkPreviewSummaries(data)
- simulation?.stop()
+ if(!incremental||simulation?.dimensions!==dimensionCount()){simulation?.stop();simulation=null}
+ const previousNodes=nodes
  nodes.forEach(n=>savedPositions.set(n.id,{q:n.q,velocityND:n.velocityND,x:n.x,y:n.y,z:n.z,vx:n.vx,vy:n.vy,vz:n.vz}))
  visibilityKey=null;geometryDirty=true;labelPriority=[]
  const cats=selectedCategories(), rels=selectedRelationships(), context=$('#include-context').checked
@@ -373,6 +389,7 @@ function rebuild() {
  const amounts=new Map(graphData.organizations.map(n=>[n.id,n.networkMetrics?.amount||0]))
  const widths=quantityEdgeWidths(graphRelationships(graphData,{includeCapitalization:context}),$('#scale-edge-quantity').checked)
  nodes=visible.map(n=>({...n,...(savedPositions.get(n.id)||defaultPositions[n.id]?.[four?'4d':spatial?'3d':'2d']),financialAmount:amounts.get(n.id) ?? null,financialPie:pies.get(n.id) || null})); edges=edges.map(e=>({...e,quantityWidth:widths.get(e.id) ?? 1.4}))
+ if(incremental)nodes=retainLayoutNodes(previousNodes,nodes)
  const scaleFinances=$('#scale-node-finances').checked
  const sizing={algorithm:$('#node-size-algorithm').value,alpha:Number($('#node-size-alpha').value),maxAmount:Math.max(0,...amounts.values())}
  nodes.forEach(n=>{n.renderRadius=financialNodeRadius(scaleFinances?n.financialAmount:null,sizing)})
@@ -381,7 +398,9 @@ function rebuild() {
  const categorySelect=$('#network-flow-category');for(const category of new Set(nodes.map(n=>n.category)))if(![...categorySelect.options].some(o=>o.value===category)){const option=document.createElement('option');option.value=category;option.textContent=category;categorySelect.append(option)}
  status.textContent=`${nodes.length} organizations · ${edges.length} links`
  labels.replaceChildren();labelItems=[]
- simulation=createNetworkLayout(nodes,layoutConnections(edges),forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()});applyProjection()
+ if(simulation)simulation.update(nodes,layoutConnections(edges),forceOptions(),physicsEnabled())
+ else simulation=createNetworkLayout(nodes,layoutConnections(edges),forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()})
+ applyProjection()
  const recordNodes=new Map(nodes.map(n=>[n.id,n]));recordEdges=recordEdges.map(e=>({...e,source:recordNodes.get(endpoint(e.source)),target:recordNodes.get(endpoint(e.target))}));assignEdgeCurvature(recordEdges)
  assignEdgeCurvature(edges);updateAnalysisLayout();applyTheme()
  for(const n of nodes){
@@ -404,11 +423,12 @@ function fit(){
 }
 function render(time=0) {
  frame=0;
- if(!gpuReady||document.hidden){previousFrame=0;frameBudget.reset();frameRate.reset();return}
+ if(!gpuReady||!analysis||document.hidden){previousFrame=0;frameBudget.reset();frameRate.reset();return}
  const started=performance.now(),interval=previousFrame?time-previousFrame:0
  previousFrame=time
  const updated=analysisLayout?new Set():simulation?.consume(physicsEnabled()?frameBudget.count(nodes.length):nodes.length)||new Set()
  if(four&&projectionNeedsFit&&!simulation.projectionPending()){projectionNeedsFit=false;renderer.fit(nodes)}
+ centerSelection()
 
  centerSelection()
  const zoom=spatial?renderer.zoomLevel():fittedWidth/view.w
@@ -565,8 +585,9 @@ async function start(){
  try {
   await settingsReady
   const fiscalParam=new URL(location.href).searchParams.get('fy');if(fiscalParam&&(/^(19|20|21)\d{2}$/.test(fiscalParam)||fiscalParam==='unassigned'||fiscalParam==='all')){if(![...$('#network-fiscal-year').options].some(option=>option.value===fiscalParam))$('#network-fiscal-year').add(new Option('FY'+fiscalParam,fiscalParam));$('#network-fiscal-year').value=fiscalParam}
-  await loadGraph({org:new URL(location.href).searchParams.get('org')||undefined})
-  search();await initGPU();if(disposed)return
+  await initGPU();if(disposed)return
+  await loadGraph({org:new URL(location.href).searchParams.get('org')||undefined,direction:new URL(location.href).searchParams.get('direction')||'children',include:new URL(location.href).searchParams.get('include')||undefined})
+  search();if(disposed)return
   root.addEventListener('wheel',event=>{
    if(!host.contains(event.target)||event.target.closest('button,select,input,summary,details'))return
    event.preventDefault();event.stopPropagation()
@@ -593,7 +614,9 @@ async function start(){
   for(const name of ['attraction','repulsion','proximity','central-gravity','dither','attraction-law','repulsion-law','attraction-alpha','repulsion-alpha'])$('#'+name).addEventListener('input',()=>{
    const output=$('#'+name+'-value');if(output)output.textContent=Number($('#'+name).value).toFixed(1)
    simulation?.stop()
-   simulation=createNetworkLayout(nodes,layoutConnections(edges),forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()});applyProjection()
+   if(simulation)simulation.update(nodes,layoutConnections(edges),forceOptions(),physicsEnabled())
+ else simulation=createNetworkLayout(nodes,layoutConnections(edges),forceOptions(),physicsEnabled(),reprojected=>{geometryDirty ||= reprojected;requestRender()})
+ applyProjection()
    motionChange()
   })
   if(four){

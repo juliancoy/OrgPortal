@@ -21,7 +21,9 @@ export function createNetworkND(nodes,edges=[],options={}){
  const dimensions=options.dimensions??4
  if(!Number.isInteger(dimensions)||dimensions<4)throw new Error('Dimensions must be an integer of at least 4')
  const extent=options.extent??Math.max(180,90*Math.pow(nodes.length,1/dimensions)),radius=Math.max(50,Math.min(600,Number(options.lifeRadius)||300)),friction=Math.max(.1,Math.min(.98,Number(options.lifeFriction)||.85))
- const byId=new Map(nodes.map((n,i)=>[n.id,i])),pairs=new Map()
+ let pairs=new Map()
+ const configure=()=>{
+ const byId=new Map(nodes.map((n,i)=>[n.id,i]));pairs=new Map()
  for(const edge of edges){
   const a=byId.get(edge.source?.id??edge.source),b=byId.get(edge.target?.id??edge.target)
   if(a===undefined||b===undefined||a===b)continue
@@ -33,12 +35,13 @@ export function createNetworkND(nodes,edges=[],options={}){
  }
  nodes.forEach((n,i)=>{
   if(!n.q?.every(Number.isFinite)||n.q.length!==dimensions){let state=Math.imul(i+1,2654435761)>>>0;n.q=Array.from({length:dimensions},()=>{state=(Math.imul(1664525,state)+1013904223)>>>0;return (state/4294967296*2-1)*extent*.8})}
-  n.q=n.q.map(v=>Math.max(-extent,Math.min(extent,v)))
   if(!n.velocityND?.every(Number.isFinite)||n.velocityND.length!==dimensions)n.velocityND=Array(dimensions).fill(0)
  })
+ }
+ configure()
  let randomState=42
  const random=()=>{randomState=(Math.imul(1664525,randomState)+1013904223)>>>0;return randomState/4294967296-.5}
- return {extent,tick(){
+ return {extent,update(nextNodes,nextEdges){nodes=nextNodes;edges=nextEdges;configure()},tick(){
   const acceleration=nodes.map(()=>Array(dimensions).fill(0))
   // Sweep one axis, then check full N-dimensional distance. No 3^N cells.
   const order=nodes.map((_,i)=>i).sort((a,b)=>nodes[a].q[0]-nodes[b].q[0])

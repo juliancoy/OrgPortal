@@ -1,5 +1,6 @@
 import {transactionTime,dateCoverage} from '../src/features/ecosystem/transaction-time.js'
 import {fiscalMetrics} from './fiscal-metrics.mjs'
+import {budgetAppropriations} from '../src/features/ecosystem/budget-appropriations.js'
 import {isNotApplicableNode} from '../src/features/ecosystem/node-classes.js'
 import {exportUnifiedEcosystem} from './unified-ecosystem.mjs'
 import {readFile,writeFile,mkdir,rename,rm,readdir,mkdtemp,stat} from 'node:fs/promises'
@@ -46,8 +47,9 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
   let angle=-Math.PI/2;for(const slice of slices){slice.share=slice.amount/pie.total;slice.startAngle=angle;angle+=slice.share*Math.PI*2;slice.endAngle=angle}
   return {...pie,slices}
  }
+ const budgets=budgetAppropriations(folded.organizations,edges)
  const counts=transactionCounts(edges)
- const organizations=folded.organizations.map(o=>({...o,sourceRows:undefined,publicEmails:undefined,positions:positions.organizations?.[o.id],networkMetrics:{pie:compactPie(summaries.pies.get(o.id)),contextPie:compactPie(contextPies.get(o.id)),totals:summaries.totals.get(o.id),counterparties:summaries.counterparties.get(o.id),obligations:summaries.obligationIds.has(o.id),incoming:analysis.incoming.get(o.id),outgoing:analysis.outgoing.get(o.id),amount:amounts.get(o.id),connections:analysis.adjacency.get(o.id)?.size||0,recordCount:counts.get(o.id)||0}})).sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id))
+ const organizations=folded.organizations.map(o=>({...o,sourceRows:undefined,publicEmails:undefined,positions:positions.organizations?.[o.id],networkMetrics:{budgetAppropriations:budgets.get(o.id),pie:compactPie(summaries.pies.get(o.id)),contextPie:compactPie(contextPies.get(o.id)),totals:summaries.totals.get(o.id),counterparties:summaries.counterparties.get(o.id),obligations:summaries.obligationIds.has(o.id),incoming:analysis.incoming.get(o.id),outgoing:analysis.outgoing.get(o.id),amount:amounts.get(o.id),connections:analysis.adjacency.get(o.id)?.size||0,recordCount:counts.get(o.id)||0}})).sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id))
 
  await mkdir(folder,{recursive:true})
  const temp=new URL('file://'+(await mkdtemp(fileURLToPath(new URL(`.${version}-`,folder))))+'/'),target=new URL(`${version}/`,folder)
@@ -117,7 +119,7 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
   topology.adjacency=Object.fromEntries(Object.entries(topology.adjacency).map(([id,neighbors])=>[id,neighbors.map(n=>ids.get(n))]))
  }
  await write('topology.json',topology)
- const manifest={version,temporalIndexVersion:1,fiscalYears,dateCoverage:dateCoverage(data.relationships),generatedAt:new Date().toISOString(),governmentCoverage:data.governmentCoverage,nonprofitCoverage:data.nonprofitCoverage,transactionalCoverage:{datasetId:snapshot.datasetId,exportedAt:snapshot.exportedAt,...data.transactionalCoverage},totals:{organizations:organizations.length,relationships:edges.length},metricMax:{connections:Math.max(1,...Object.values(topology.degree)),incoming:Math.max(1,...analysis.incoming.values()),outgoing:Math.max(1,...analysis.outgoing.values())},groups,performance:performanceMeta}
+ const manifest={version,temporalIndexVersion:1,fiscalYears,dateCoverage:dateCoverage(data.relationships),generatedAt:new Date().toISOString(),governmentCoverage:data.governmentCoverage,marylandBudgetCoverage:data.marylandBudgetCoverage,nonprofitCoverage:data.nonprofitCoverage,transactionalCoverage:{datasetId:snapshot.datasetId,exportedAt:snapshot.exportedAt,...data.transactionalCoverage},totals:{organizations:organizations.length,relationships:edges.length},metricMax:{connections:Math.max(1,...Object.values(topology.degree)),incoming:Math.max(1,...analysis.incoming.values()),outgoing:Math.max(1,...analysis.outgoing.values())},groups,performance:performanceMeta}
  await mkdir(folder,{recursive:true});try{await rename(temp,target)}catch(error){if(!['EEXIST','ENOTEMPTY'].includes(error.code))throw error;await rm(temp,{recursive:true,force:true})}
  const manifestTemp=new URL(`manifest-${version}-${randomUUID()}.tmp`,folder);await writeFile(manifestTemp,JSON.stringify(manifest));await rename(manifestTemp,new URL('manifest.json',folder))
  const versions=(await readdir(folder)).filter(name=>/^[a-f0-9]{24}$/.test(name)&&name!==version)

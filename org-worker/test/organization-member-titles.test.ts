@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {EventTestDb} from './event-test-db';
 import {runMemberTitlesOperation,organizationMemberTitleRoutes,organizationTitlePeople} from '../src/organizationMemberTitles';
 const identity={userId:'pidp-user',scopes:['org:portal.read','org:portal.write']};
-function fixture(){return new EventTestDb(`CREATE TABLE organization_invitations(id TEXT,organization_id TEXT,email TEXT,purpose TEXT,status TEXT,expires_at INTEGER,created_at INTEGER);
+function fixture(){return new EventTestDb(`CREATE TABLE organization_invitations(id TEXT,organization_id TEXT,email TEXT,purpose TEXT,status TEXT,expires_at INTEGER,created_at INTEGER,intent_json TEXT);
 ALTER TABLE organization_memberships ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';
  ALTER TABLE organization_memberships ADD COLUMN user_name TEXT;
  ALTER TABLE organization_memberships ADD COLUMN user_email TEXT;
@@ -15,7 +15,7 @@ ALTER TABLE organization_memberships ADD COLUMN updated_at TEXT NOT NULL DEFAULT
  CREATE TABLE ledger_accounts(user_id TEXT,name TEXT,email TEXT,entity_type TEXT);
  INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status) VALUES('org-one','colleague','Dummy Colleague','member','active'),('org-one','inactive','Inactive','member','inactive');
  INSERT INTO organizations(id,name,slug) VALUES('other','Other','other');
- INSERT INTO user_contact_pages VALUES('pidp-user','Dummy Owner','private-owner@example.test','/private.png','private-owner',0,'Private biography','Private headline'),('colleague','Dummy Colleague','private-member@example.test','/public.png','dummy-colleague',1,'Public colleague biography','Public headline');
+ INSERT INTO user_contact_pages VALUES('pidp-user','Dummy Owner','private-owner@example.test','/owner.png','owner-profile',0,'Owner biography','Owner headline'),('colleague','Dummy Colleague','private-member@example.test','/public.png','dummy-colleague',1,'Public colleague biography','Public headline');
  `+readFileSync(new URL('../migrations/0102_organization_member_titles.sql',import.meta.url),'utf8')+readFileSync(new URL('../migrations/0104_organization_personnel_portraits.sql',import.meta.url),'utf8')+readFileSync(new URL('../migrations/0108_organization_member_descriptions.sql',import.meta.url),'utf8'))}
 test('titles apply to members and owners without changing authorization; clearing, preview and replay are safe',async()=>{
  const db=fixture(),d1=db as unknown as D1Database;
@@ -59,7 +59,7 @@ test('public Board exposes assigned roles and public portraits, not contact deta
   const routes=organizationMemberTitleRoutes(async()=>({id:'pidp-user'}),()=>new Response('Denied',{status:403}));
   const response=await routes.request('https://example.test/public/one/board',{}, {DB:d1} as Env);
   assert.equal(response.status,200);const data=await response.json() as {people:{name:string;photo_url:string|null;profile_slug:string|null;personnel_class:string}[]};
-  assert.equal(data.people.length,2);assert.equal(data.people[0].name,'Dummy Owner');assert.equal(data.people[0].photo_url,null);assert.equal(data.people[0].profile_slug,null);assert.equal(data.people[0].personnel_class,'organizer');
+  assert.equal(data.people.length,2);assert.equal(data.people[0].name,'Dummy Owner');assert.equal(data.people[0].photo_url,'/owner.png');assert.equal(data.people[0].profile_slug,'owner-profile');assert.equal(data.people[0].personnel_class,'organizer');
   assert.equal(data.people[1].photo_url,'/public.png');assert.equal(data.people[1].personnel_class,'member');
   assert.doesNotMatch(JSON.stringify(data),/private-owner|private-member|pidp-user|user_id|user_email/);
   await db.prepare("INSERT INTO organization_personnel_motions VALUES('excluded','org-one','colleague','exclude','passed','2026-10-23')").run();
@@ -99,7 +99,7 @@ test('descriptions publish without titles, use exact receipts, preserve profiles
   await runMemberTitlesOperation(d1,identity,{...clear,confirm:true,previewId:p4.previewId});
   assert.equal((await board()).people[0].description,'Public colleague biography');
   await db.prepare("UPDATE user_contact_pages SET enabled=0 WHERE user_id='colleague'").run();
-  assert.equal((await board()).people[0].description,null);
+  assert.equal((await board()).people[0].description,'Public colleague biography');
   for(const description of ['x'.repeat(601),'bad\0bio'])await assert.rejects(runMemberTitlesOperation(d1,identity,{...titleOnly,description}));
   await assert.rejects(runMemberTitlesOperation(d1,{...identity,userId:'colleague'},args));
   await assert.rejects(runMemberTitlesOperation(d1,identity,{...args,organizationId:'other'}));
@@ -117,7 +117,7 @@ test('Personnel includes public untitled members and sourced portraits, with exa
   const routes=organizationMemberTitleRoutes(async()=>({id:'pidp-user'}),()=>new Response('Denied',{status:403}));
   const read=async(view:string)=>(await(await routes.request('https://example.test/public/one/'+view,{}, {DB:d1} as Env)).json()) as {people:{name:string;photo_url:string|null;photo_source_url:string|null;titles:string[]}[]};
   assert.equal((await read('board')).people.length,0);
-  const roster=await read('personnel');assert.equal(roster.people.length,1);assert.equal(roster.people[0].name,'Dummy Colleague');
+  const roster=await read('personnel');assert.equal(roster.people.length,2);assert.equal(roster.people[0].name,'Dummy Owner');
   const portrait={url:'https://example.com/officer.jpg',source_url:'https://example.com/people/officer'};
   const args={organizationId:'org-one',user_id:'pidp-user',titles:['CEO'],portrait};
   const preview=await runMemberTitlesOperation(d1,identity,args) as {previewId:string};
@@ -130,11 +130,11 @@ test('Personnel includes public untitled members and sourced portraits, with exa
   const p=await runMemberTitlesOperation(d1,identity,titleOnly) as {previewId:string};await runMemberTitlesOperation(d1,identity,{...titleOnly,confirm:true,previewId:p.previewId});
   assert.equal((await read('board')).people[0].photo_url,portrait.url);
   const clear={...titleOnly,titles:[],portrait:null};const c=await runMemberTitlesOperation(d1,identity,clear) as {previewId:string};await runMemberTitlesOperation(d1,identity,{...clear,confirm:true,previewId:c.previewId});
-  assert.equal((await read('personnel')).people.length,1);
+  assert.equal((await read('personnel')).people.length,2);
   for(const url of ['javascript:alert(1)','http://example.com/p.jpg','https://user:secret@example.com/p.jpg'])await assert.rejects(runMemberTitlesOperation(d1,identity,{...args,portrait:{...portrait,url}}));
   await assert.rejects(runMemberTitlesOperation(d1,identity,{...args,portrait:{url:portrait.url}}));
   assert.equal((await db.prepare("SELECT role FROM organization_memberships WHERE user_id='pidp-user'").first() as {role:string}).role,'owner');
-  await db.prepare("UPDATE user_contact_pages SET enabled=0 WHERE user_id='colleague'").run();assert.equal((await read('personnel')).people.length,0);
+  await db.prepare("UPDATE user_contact_pages SET enabled=0 WHERE user_id='colleague'").run();assert.equal((await read('personnel')).people.length,2);
  }finally{db.close()}
 });
 
@@ -149,13 +149,13 @@ test('Personnel includes the public signup team and a pending teammate without l
    const response=await routes.request(`https://example.test/public/${slug}/${view}`,{}, {DB:d1} as Env);assert.equal(response.status,200);
    return await response.json() as {people:{id:string;name:string;pendingInvitation:boolean;photo_url:string|null;description:string|null}[]};
   };
-  await db.prepare("INSERT INTO organization_invitations VALUES('private-invite','org-one','private-teammate@example.test','member','pending',?,0)").bind(Date.now()+86400000).run();
-  assert.equal((await read()).people.length,0); // No publication of unrelated memberships.
+  await db.prepare("INSERT INTO organization_invitations(id,organization_id,email,purpose,status,expires_at,created_at) VALUES('private-invite','org-one','private-teammate@example.test','member','pending',?,0)").bind(Date.now()+86400000).run();
+  assert.equal((await read()).people.length,1); // Names are public without sharing contact information.
   await db.prepare("INSERT INTO events(id,ingest_key,title,slug,host_org_id,created_at,updated_at) VALUES('event-1','signup-event','Signup event','signup-event','org-one','2026-10-25','2026-10-25')").run();
   await db.prepare("INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,updated_at,expires_at) VALUES('event-1','application','org-one','pidp-user','Signup presentation','Summary','2026-10-25','2999-01-01')").run();
   const personnel=await read();assert.equal(personnel.people.length,2);
   assert.equal(personnel.people[0].name,'Signup owner');assert.equal(personnel.people[0].pendingInvitation,false);
-  assert.equal(personnel.people[0].photo_url,null);assert.equal(personnel.people[0].description,null);
+  assert.equal(personnel.people[0].photo_url,'/owner.png');assert.equal(personnel.people[0].description,'Owner biography');
   assert.equal(personnel.people[1].name,'Invited teammate');assert.equal(personnel.people[1].pendingInvitation,true);
   assert.doesNotMatch(JSON.stringify(personnel),/private-invite|private-teammate|private-owner|pidp-user|Private biography|user_id|user_email|email/);
   assert.equal((await read('other')).people.length,0);assert.equal((await read('one','board')).people.length,0);
@@ -163,7 +163,7 @@ test('Personnel includes the public signup team and a pending teammate without l
   await db.prepare("INSERT INTO organization_memberships(organization_id,user_id,user_name,role,status) VALUES('org-one','accepted-person','Accepted teammate','member','active')").run();
   const accepted=await read();assert.equal(accepted.people.length,2);assert.equal(accepted.people.filter(person=>person.pendingInvitation).length,0);
   await db.prepare("UPDATE organization_invitations SET status='pending',expires_at=0").run();assert.equal((await read()).people.length,2);
-  await db.prepare("UPDATE event_submissions SET expires_at='2000-01-01'").run();assert.equal((await read()).people.length,0);
+  await db.prepare("UPDATE event_submissions SET expires_at='2000-01-01'").run();assert.equal((await read()).people.length,2);
  }finally{db.close()}
 });
 

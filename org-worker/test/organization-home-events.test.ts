@@ -66,3 +66,24 @@ test('homepage can retrieve more than one full page of upcoming hosted events', 
   assert.equal(ids[0], 'future-000');
   assert.equal(ids.at(-1), 'future-204');
 });
+
+
+test('featured prize providers see the event without becoming hosts or matching a name alone', async t => {
+ const db=new EventTestDb();t.after(()=>db.close());
+ await db.prepare("UPDATE organizations SET source_url='https://formedinsight.com/' WHERE id='org-one'").run();
+ await db.prepare("INSERT INTO organizations(id,name,slug,source_url) VALUES('host','LifeTech','lifetech','https://lifetech.fyi/')").run();
+ const links=[{id:'prize',url:'https://formedinsight.com',label:'Winner’s prize',title:'FormedInsight',description:'One-hour consultation'}];
+ await db.prepare("INSERT INTO events(id,ingest_key,title,slug,host_org_id,starts_at,created_at,updated_at,event_links_json) VALUES('demo','demo','LifeTech Demo Day','demo','host','2099-01-01','','',?)").bind(JSON.stringify(links)).run();
+ const get=async(slug='one',query='')=>{
+  const r=await app.request(`https://example.test/api/network/orgs/public/${slug}/events?upcoming_only=true${query}`,{}, {DB:db} as unknown as Env);
+  assert.equal(r.status,200);return await r.json() as {id:string;host_org_id:string}[];
+ };
+ assert.deepEqual((await get()).map(e=>e.id),['demo']);
+ assert.equal((await get())[0].host_org_id,'host');
+ assert.deepEqual(await get('one','&hosted_only=true'),[]);
+ assert.deepEqual((await get('lifetech','&hosted_only=true')).map(e=>e.id),['demo']);
+ await db.prepare("UPDATE events SET event_links_json=? WHERE id='demo'").bind(JSON.stringify([{...links[0],url:'https://unrelated.test/'}])).run();
+ assert.deepEqual(await get(),[]);
+ await db.prepare("UPDATE events SET event_links_json='[]' WHERE id='demo'").run();
+ assert.deepEqual(await get(),[]);
+});

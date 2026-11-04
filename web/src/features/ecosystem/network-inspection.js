@@ -1,13 +1,20 @@
+import {budgetAppropriations} from './budget-appropriations.js'
 import {endpoint,financialEvidence} from './network-analysis.js'
 export function applyNetworkFinancialSummary(panel,node,analysis){
  panel.querySelector('.eco-preview-totals')?.remove()
+ panel.querySelector('.eco-budget-appropriations')?.remove()
+ panel.querySelector('.eco-government-members')?.remove()
  const totals=document.createElement('dl');totals.className='eco-preview-totals';totals.setAttribute('aria-label','Recorded directed USD; payment unverified')
  for(const [label,value] of [['Recorded incoming USD',analysis.incoming.get(node.id)],['Recorded outgoing USD',analysis.outgoing.get(node.id)]]){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value===undefined?'Unavailable':new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(value);totals.append(dt,dd)}
  panel.querySelector('.eco-fiscal-context')?.remove();if(node.networkMetrics?.fiscalYear){const note=document.createElement('p');note.className='eco-note eco-fiscal-context';note.textContent=node.networkMetrics.fiscalYear==='unassigned'?'Unassigned source fiscal year':`FY${node.networkMetrics.fiscalYear} · Source fiscal calendar. Lifetime cumulative obligations excluded.`;panel.prepend(note)}
+ const budgets=node.networkMetrics?.budgetAppropriations??[]
+ appendBudgetAppropriations(panel,budgets)
+ appendGovernmentMembers(panel,node)
  const heading=panel.querySelector('h2');if(heading)heading.after(totals);else panel.prepend(totals)
 }
 export function appendNetworkInspection(panel,node,analysis,edges,onClear,{loadEvidence}={}){
  applyNetworkFinancialSummary(panel,node,analysis)
+ if(!node.networkMetrics?.budgetAppropriations)appendBudgetAppropriations(panel,budgetAppropriations([node],edges).get(node.id))
  if(node.visualGroup?.length){const note=document.createElement('p');note.className='eco-note';note.textContent=`Visual group · ${node.visualGroup.length} organization records. Enable “Separate visual duplicates” in controls to show them individually.`;panel.append(note)}
  const section=document.createElement('details'),heading=document.createElement('summary');section.className='eco-organization-records';heading.textContent='Organization records';section.append(heading);if(onClear){const close=document.createElement('button');close.type='button';close.textContent='Clear selection';close.addEventListener('click',onClear);panel.append(close)}
  if(node.visualGroup){const members=document.createElement('ul');for(const member of node.visualGroup){const item=document.createElement('li');item.textContent=member.name+' · '+member.id;members.append(item)}section.append(members)}
@@ -36,4 +43,31 @@ export function appendNetworkInspection(panel,node,analysis,edges,onClear,{loadE
  more.addEventListener('click',()=>{if(loadEvidence)void fetchEvidence();else add()});section.append(more)
  if(loadEvidence){more.hidden=true;status.textContent='Source attribution is shown above. Expand to load evidence.';section.addEventListener('toggle',()=>{if(section.open&&!started)void fetchEvidence();else if(!section.open&&loading)controller?.abort()})}else add()
  panel.append(section)
+}
+
+export function appendBudgetAppropriations(panel,groups=[]){
+ if(!groups.length)return
+ panel.querySelector('.eco-budget-appropriations')?.remove()
+ const section=document.createElement('section');section.className='eco-budget-appropriations'
+ const heading=document.createElement('h3');heading.textContent='State budget funding';section.append(heading)
+ const format=value=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(value)
+ for(const group of groups){
+  const title=document.createElement('p');title.textContent=`FY${group.fiscalYear} · ${group.budgetStatus.replaceAll('_',' ')} · ${group.direction==='incoming'?'Incoming budget authority':'Outgoing budget authority'}: ${format(group.amount)}`;section.append(title)
+  const list=document.createElement('ul');for(const fund of group.funds){const item=document.createElement('li');item.textContent=`${fund.name}: ${format(fund.amount)}`;list.append(item)}section.append(list)
+ }
+ const note=document.createElement('p');note.className='eco-note';note.textContent='Budget authority, not cash received or paid. Shown separately from recorded transactions. Coverage is limited to the imported operating-budget rows.';section.append(note);const anchor=panel.querySelector('.eco-preview-totals')||panel.querySelector('h2');if(anchor)anchor.after(section);else panel.append(section)
+}
+
+export function appendGovernmentMembers(panel,node){
+ if(!node.governmentMembers?.length)return
+ const section=document.createElement('section');section.className='eco-government-members'
+ const title=document.createElement('h3');title.textContent='Maryland departments and budget agencies';section.append(title)
+ const count=document.createElement('p');count.textContent=`All ${node.governmentMembers.length} entries in the FY2027 budget agency listing. The graph may show a relevance-ranked subset; choose more nodes to expand it.`;section.append(count)
+ for(const [classification,label] of [['department','Departments'],['agency','Other agencies, offices and branches'],['budget_heading','Budget headings']]){
+  const members=node.governmentMembers.filter(m=>m.classification===classification);if(!members.length)continue
+  const details=document.createElement('details');details.open=classification==='department';const heading=document.createElement('summary');heading.textContent=`${label} (${members.length})`;details.append(heading)
+  const list=document.createElement('ul');for(const member of members){const item=document.createElement('li'),link=document.createElement('a');link.textContent=member.name;link.href='/ecosystem/network?'+new URLSearchParams({org:member.id,direction:'children',panel:'inspector'});item.append(link);list.append(item)}details.append(list);section.append(details)
+ }
+ const source=document.createElement('a');source.textContent='Official Maryland agency directory';source.href='https://www.maryland.gov/your-government/state-agencies-and-departments';source.target='_blank';source.rel='noopener noreferrer';section.append(source)
+ const anchor=panel.querySelector('.eco-budget-appropriations')||panel.querySelector('.eco-preview-totals')||panel.querySelector('h2');if(anchor)anchor.after(section);else panel.append(section)
 }

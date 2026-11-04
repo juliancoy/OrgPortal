@@ -6,6 +6,7 @@ export const categories = {
   funding: 'Funding & commercialization', general: 'General entrepreneurship',
 }
 export const semantics = {
+  appropriation: 'Budget appropriation / authority; not a payment',
   transfer: 'Documented funding / award', terms: 'Per-company program terms',
   capitalization: 'Fund capitalization', portfolio: 'Portfolio aggregate',
   coinvestment: 'Co-investment aggregate',

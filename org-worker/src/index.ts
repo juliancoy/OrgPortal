@@ -3016,19 +3016,29 @@ app.post("/api/network/connections/:id/decline", async (c) => c.json(await respo
 async function publicContact(env: Env, request: Request, slug: string) {
   const requestedSlug = String(slug || "").trim();
   if (!requestedSlug) fail(404, "Public profile not found");
-  const row = await env.DB.prepare("SELECT * FROM user_contact_pages WHERE slug = ?")
-    .bind(requestedSlug)
-    .first<ContactRow>();
-  if (!row) fail(404, "Public profile not found");
-  if (!row.enabled) {
-    try {
-      const user = await currentUser(env, request);
-      if (user.id !== row.user_id) fail(404, "Public profile not found");
-    } catch {
-      fail(404, "Public profile not found");
-    }
+  let row = await env.DB.prepare("SELECT * FROM user_contact_pages WHERE slug = ? OR user_id = ?")
+    .bind(requestedSlug, requestedSlug).first<ContactRow>();
+  if (!row) {
+    // Existing account profiles do not require an opt-in contact-page row.
+    const member = await env.DB.prepare("SELECT user_id,user_name FROM (SELECT user_id,user_name,1 AS priority FROM portal_account_activity UNION ALL SELECT user_id,user_name,2 FROM organization_memberships WHERE status='active' UNION ALL SELECT user_id,name AS user_name,3 FROM ledger_accounts WHERE entity_type='individual') WHERE user_id=? ORDER BY priority LIMIT 1")
+      .bind(requestedSlug).first<{user_id:string;user_name:string|null}>();
+    if (!member) fail(404, "Public profile not found");
+    row = {id:member.user_id,user_id:member.user_id,user_name:member.user_name&&!member.user_name.includes('@')?member.user_name:'User',
+      user_email:null,slug:member.user_id,enabled:0,headline:null,bio:null,photo_url:null,email_public:null,phone_public:null,
+      linkedin_url:null,github_url:null,x_url:null,website_url:null,links:'[]',source_profile_url:null,source_profile_imported_at:null,
+      created_at:'',updated_at:''};
   }
-  return mapContact(env, request, row);
+  let owner = false;
+  if (request.headers.has('Authorization')) {
+    try { owner = (await currentUser(env, request)).id === row.user_id; } catch { /* Basic profiles remain public. */ }
+  }
+  const profile = await mapContact(env, request, row);
+  if (!row.enabled && !owner) {
+    profile.email_public = null; profile.phone_public = null;
+    profile.linkedin_url = null; profile.github_url = null; profile.x_url = null; profile.website_url = null;
+    profile.links = []; profile.source_profile_url = null; profile.source_profile_imported_at = null;
+  }
+  return profile;
 }
 
 type DirectoryPerson = {
@@ -3049,9 +3059,9 @@ export async function directoryRows(env: Env, query: string, limit: number, offs
     SELECT user_id,COALESCE(MAX(CASE WHEN priority=1 THEN NULLIF(user_name,'') END),MAX(NULLIF(user_name,'')),'Portal member') AS user_name
     FROM known WHERE user_id IS NOT NULL AND trim(user_id)<>'' GROUP BY user_id
   ) SELECT p.user_id,p.user_name,c.photo_url,
-    CASE WHEN c.enabled=1 THEN c.slug ELSE NULL END AS contact_slug,
+    COALESCE(c.slug,p.user_id) AS contact_slug,
     COALESCE(c.enabled,0) AS contact_enabled,
-    CASE WHEN c.enabled=1 THEN c.headline ELSE NULL END AS headline
+    c.headline AS headline
     FROM people p LEFT JOIN user_contact_pages c ON c.user_id=p.user_id
     WHERE p.user_id NOT IN (${directoryExcludedAccountIds.map(() => '?').join(',')})
       AND ${filter} ORDER BY lower(p.user_name),p.user_id LIMIT ? OFFSET ?`)
@@ -3389,6 +3399,10 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
      LEFT JOIN organizations o ON o.id = e.host_org_id
      WHERE (e.host_org_id = ? OR (? = 0 AND (
        EXISTS (SELECT 1 FROM event_organizations eo WHERE eo.event_id = e.id AND eo.organization_id = ?)
+       OR EXISTS (SELECT 1 FROM json_each(CASE WHEN json_valid(e.event_links_json) THEN e.event_links_json ELSE '[]' END) link
+         WHERE json_extract(CASE WHEN link.type = 'object' THEN link.value ELSE '{}' END, '$.url') LIKE 'https://%'
+         AND NULLIF(?, '') IS NOT NULL
+         AND rtrim(lower(json_extract(CASE WHEN link.type = 'object' THEN link.value ELSE '{}' END, '$.url')), '/') = rtrim(lower(?), '/'))
        OR EXISTS (SELECT 1 FROM event_submissions s JOIN organization_support_records r
          ON r.id = 'presentation:' || s.event_id || ':' || s.submission_id
          WHERE s.event_id = e.id AND s.organization_id = ? AND s.status IN ('submitted','accepted')
@@ -3398,7 +3412,7 @@ app.get("/api/network/orgs/public/:slug/events", async (c) => {
      ORDER BY COALESCE(e.starts_at,e.event_date,e.created_at) ${upcomingOnly ? "ASC" : "DESC"}, e.id ASC
      LIMIT ? OFFSET ?`,
   )
-    .bind(org.id, hostedOnly ? 1 : 0, org.id, org.id, limit, offset)
+    .bind(org.id, hostedOnly ? 1 : 0, org.id, org.source_url || "", org.source_url || "", org.id, limit, offset)
     .all<EventRow>();
   return c.json(await Promise.all((rows.results || []).map((row) => mapEvent(c.env, c.req.raw, row))));
 });
@@ -5645,15 +5659,14 @@ app.post("/api/governance/motions/:motionId/comments", async (c) => {
   return c.json(await executeGovernanceAction(c.env.DB, user, "comment", c.req.param("motionId"), await c.req.json().catch(() => ({})), adminUser(user, c.env)), 201);
 });
 
-app.get("/api/network/contact/:slug", async (c) => c.json(await publicContact(c.env, c.req.raw, c.req.param("slug"))));
+app.get("/api/network/contact/:slug", async (c) => { c.header("Cache-Control", "no-store"); return c.json(await publicContact(c.env, c.req.raw, c.req.param("slug"))); });
 app.get('/api/network/users/by-id/:userId/profile', async c => {
   c.header('Cache-Control', 'no-store');
   const row = await c.env.DB.prepare('SELECT slug FROM user_contact_pages WHERE user_id = ?').bind(c.req.param('userId')).first<{slug:string}>();
-  if (!row) fail(404, 'Public profile not found');
-  await publicContact(c.env, c.req.raw, row.slug);
-  return c.redirect(`/users/${encodeURIComponent(row.slug)}`, 302);
+  const profile = await publicContact(c.env, c.req.raw, row?.slug || c.req.param('userId'));
+  return c.redirect(`/users/${encodeURIComponent(profile.slug)}`, 302);
 });
-app.get("/api/network/users/public/:slug", async (c) => c.json(await publicContact(c.env, c.req.raw, c.req.param("slug"))));
+app.get("/api/network/users/public/:slug", async (c) => { c.header("Cache-Control", "no-store"); return c.json(await publicContact(c.env, c.req.raw, c.req.param("slug"))); });
 app.get("/api/network/users/public/:slug/favorite-companies", async c => {
   c.header('Cache-Control', 'no-store');
   const contact = await publicContact(c.env, c.req.raw, c.req.param('slug'));
@@ -5672,6 +5685,11 @@ app.get("/api/network/users/public/:slug/events", async (c) => {
   const limit = Math.max(1, Math.min(Number.parseInt(c.req.query("limit") || "60", 10) || 60, 200));
   const upcomingOnly = (c.req.query("upcoming_only") || "true").toLowerCase() !== "false";
   const registered = c.req.query('participation') === 'registered';
+  if (registered && !contact.enabled) {
+    let owner = false;
+    if (c.req.header('Authorization')) { try { owner = (await currentUser(c.env,c.req.raw)).id === contact.user_id; } catch {} }
+    if (!owner) return c.json([]);
+  }
   const rows = await profileEvents<EventRow>(c.env.DB, contact.user_id, registered, upcomingOnly, limit);
   return c.json(await Promise.all(rows.map((row) => mapEvent(c.env, c.req.raw, row))));
 });

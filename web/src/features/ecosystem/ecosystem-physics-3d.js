@@ -1,14 +1,15 @@
 import {forceDistanceLaw} from './force-law.js'
 import {forceSimulation,forceLink,forceCollide,forceX,forceY,forceZ} from 'd3-force-3d'
 import {financialPull} from './ecosystem-physics.js'
-export function layoutNetwork3D(nodes,edges,{attraction=1,repulsion=1,attractionLaw="power",repulsionLaw="power",attractionAlpha=1,repulsionAlpha=1,proximity=1,centralGravity=0,dither=0}={}){
+export function layoutNetwork3D(nodes,edges,{attraction=1,repulsion=1,attractionLaw="power",repulsionLaw="power",attractionAlpha=1,repulsionAlpha=1,proximity=1,centralGravity=0,dither=0,existingSimulation}={}){
  const pairs=new Map(),size=n=>n.renderRadius
  for(const edge of edges){
   if(edge.source===edge.target)continue
   const key=JSON.stringify([edge.source,edge.target].sort()),pull=financialPull(edge),support=['transfer','incubation','acceleration','mentoring','services','in_kind'].includes(edge.kind),old=pairs.get(key)
   if(old){old.pull=Math.max(old.pull,pull);old.support ||= support}else pairs.set(key,{source:edge.source,target:edge.target,pull,support})
  }
- const sim=forceSimulation(nodes,3).stop().velocityDecay(.45)
+ if(existingSimulation)for(const name of ['link','attraction','charge','x','y','z','collision','dither'])existingSimulation.force(name,null)
+ const sim=(existingSimulation?existingSimulation.nodes(nodes):forceSimulation(nodes,3)).stop().velocityDecay(.45)
  const gravity=n=>.006*centralGravity*(size(n)/10)**2
  let random=()=>.5
  const current=alpha=>{const amplitude=.7*dither*Math.sqrt(alpha);if(!amplitude)return;for(const n of nodes)for(const axis of ['x','y','z'])if(n['f'+axis]==null)n['v'+axis]+=(random()*2-1)*amplitude}
@@ -18,5 +19,5 @@ export function layoutNetwork3D(nodes,edges,{attraction=1,repulsion=1,attraction
   .force('charge',forceDistanceLaw({strength:()=>-80*repulsion,law:repulsionLaw,exponent:repulsionAlpha,min:30,max:180,dimensions:3}))
   .force('x',forceX(0).strength(gravity)).force('y',forceY(0).strength(gravity)).force('z',forceZ(0).strength(gravity))
   .force('collision',forceCollide(n=>size(n)+12).strength(1).iterations(2)).force('dither',current)
-  .alpha(.35).alphaDecay(.025).alphaTarget(dither>0?.04:0)
+  .alpha(Math.max(existingSimulation?.alpha()??.35,.15)).alphaDecay(.025).alphaTarget(dither>0?.04:0)
 }

@@ -1,7 +1,7 @@
 import {isNotApplicableNode} from '../src/features/ecosystem/node-classes.js'
 // Relevance uses transaction topology, never dollar totals or names as identities.
 export function graphRelevance(index,topology,ids,selected,distances=new Map(),limit=ids.length){
- ids=ids.filter(i=>selected||!isNotApplicableNode(index.rows[i]))
+ ids=ids.filter(i=>index.rows[i].id===selected||!isNotApplicableNode(index.rows[i]))
  const nodeId=value=>typeof value==='number'?topology.nodeIds[value]:value
  const direct=new Map(),neighbors=new Set((topology.adjacency[selected]||[]).map(nodeId))
  if(selected)for(const i of topology.edgesByOrg[selected]||[]){

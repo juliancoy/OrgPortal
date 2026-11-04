@@ -28,6 +28,7 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
   const searchId = useId()
   const [requests, setRequests] = useState<NetworkUser[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [invited,setInvited]=useState<{id:string;email:string;publicName?:string|null;status:string;intent?:{publicName?:string}|null}[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
@@ -72,6 +73,22 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
       .catch(err=>{if(!controller.signal.aborted)setError(toUserFacingErrorMessage(err,'Could not load join requests.'))})
     return ()=>controller.abort()
   }, [organizationId, token, canManage, revision])
+
+  useEffect(()=>{
+    setInvited([])
+    if(!token||!canManage)return
+    const controller=new AbortController()
+    void fetch(`/api/org/api/network/orgs/${encodeURIComponent(organizationId)}/invitations`,{headers:{Authorization:`Bearer ${token}`},signal:controller.signal,cache:'no-store'})
+      .then(readResponse<{invitations:typeof invited}>).then(data=>{if(!controller.signal.aborted)setInvited(data.invitations.filter(item=>['pending','expired'].includes(item.status)))})
+      .catch(reason=>{if(!controller.signal.aborted)setError(toUserFacingErrorMessage(reason,'Could not load invited people.'))})
+    return()=>controller.abort()
+  },[organizationId,token,canManage,revision])
+  useEffect(()=>{
+    const refresh=(event:Event)=>{if((event as CustomEvent).detail?.organizationId===organizationId)setRevision(value=>value+1)}
+    window.addEventListener('organization-invitations-updated',refresh)
+    window.addEventListener('organization-member-titles-updated',refresh)
+    return()=>{window.removeEventListener('organization-invitations-updated',refresh);window.removeEventListener('organization-member-titles-updated',refresh)}
+  },[organizationId])
 
   async function declineRequest(person: NetworkUser) {
     if (!token || adding) return
@@ -160,6 +177,7 @@ export function OrganizationMembers({ organizationId, name, canRead, canManage, 
         </li>)}
       </ul> : <p className="muted">No {memberType} members yet.</p>)}
     </>}
+    {canManage&&invited.length>0&&<section aria-label="Invited people"><h3>Invited people</h3><ul className="organization-members-list">{invited.map(person=><li key={person.id}><div className="organization-member-identity">{person.publicName||person.intent?.publicName||person.email}<small className="muted" style={{display:'block'}}>{person.status==='expired'?'Invitation expired. No active access.':'Awaiting acceptance. No active access.'}</small></div><span className="pill">Invited</span></li>)}</ul></section>}
     {canRead && <OrganizationPersonnelActions organizationId={organizationId} canManage={canManage} />}
     {canManage && <div className="organization-member-search">
       <label htmlFor={searchId}>Add people by email or portal member name</label>

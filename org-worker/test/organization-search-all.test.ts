@@ -70,7 +70,7 @@ test('global search returns event cards without querying per-event details', asy
  assert.equal(suggestions.events[0].title,'TEDCO Demo Day');
  assert.equal(suggestions.events[0].host_org_name,'TEDCO');
  assert.deepEqual(suggestions.users.map((row:any)=>row.user_id),['hidden']);
- assert.equal(suggestions.users[0].contact_slug,null);
+ assert.equal(suggestions.users[0].contact_slug,'hidden');
  assert.equal(suggestions.users[0].contact_enabled,false);
  assert.deepEqual(suggestions.orgs.map((row:any)=>row.id),['tedco']);
  assert.equal(queries.length,5); // Organization match/details, event candidates, contacts and account activity.

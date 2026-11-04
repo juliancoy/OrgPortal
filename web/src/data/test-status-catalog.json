@@ -73,6 +73,20 @@
       ]
     },
     {
+      "id": "suite-cloudflare-graph-direction-test-mjs",
+      "label": "cloudflare/graph-direction.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "cloudflare/graph-direction.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "graph-direction.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-cloudflare-identity-test-mjs",
       "label": "cloudflare/identity.test.mjs",
       "category": "Identity and access",
@@ -684,6 +698,10 @@
       "source": "org-worker/test/event-presentations.test.ts",
       "kind": "node",
       "cases": [
+        {
+          "id": "MCP form discovery shares live settings and schema without exposing or writing applications",
+          "label": "MCP form discovery shares live settings and schema without exposing or writing applications"
+        },
         {
           "id": "final round host controls, immutable shortlist, tenant isolation and private single-choice ballots",
           "label": "final round host controls, immutable shortlist, tenant isolation and private single-choice ballots"
@@ -2229,6 +2247,20 @@
       ]
     },
     {
+      "id": "suite-scripts-release-policy-test-mjs",
+      "label": "scripts/release-policy.test.mjs",
+      "category": "Deployment and infrastructure",
+      "source": "scripts/release-policy.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "release-policy.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-scripts-run-local-mcp-test-py",
       "label": "scripts/run-local-mcp-test.py",
       "category": "User interface and integrations",
@@ -2439,6 +2471,48 @@
       ]
     },
     {
+      "id": "suite-web-scripts-graph-relevance-test-mjs",
+      "label": "web/scripts/graph-relevance.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/graph-relevance.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "graph-relevance.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-maryland-budget-test-mjs",
+      "label": "web/scripts/maryland-budget.test.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/maryland-budget.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "maryland-budget.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-maryland-state-government-test-mjs",
+      "label": "web/scripts/maryland-state-government.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/maryland-state-government.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "maryland-state-government.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-navigation-practice-test-mjs",
       "label": "web/scripts/navigation-practice.test.mjs",
       "category": "User interface and integrations",
@@ -2589,6 +2663,20 @@
         {
           "id": "suite",
           "label": "portal-ecosystem.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-progressive-graph-test-mjs",
+      "label": "web/scripts/progressive-graph.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/progressive-graph.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "progressive-graph.test.mjs"
         }
       ]
     },
@@ -3223,6 +3311,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-transaction-graph-test-mjs",
+      "label": "web/scripts/transaction-graph.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/transaction-graph.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "transaction-graph.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-unified-ecosystem-test-mjs",
       "label": "web/scripts/unified-ecosystem.test.mjs",
       "category": "Ecosystem and data",
@@ -3713,6 +3815,20 @@
       ]
     },
     {
+      "id": "suite-web-src-features-ecosystem-budgetAppropriations-test-ts",
+      "label": "web/src/features/ecosystem/budgetAppropriations.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/budgetAppropriations.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "budgetAppropriations.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-features-ecosystem-companyRetention-test-ts",
       "label": "web/src/features/ecosystem/companyRetention.test.ts",
       "category": "Privacy and security",
@@ -3737,6 +3853,20 @@
         {
           "id": "suite",
           "label": "ecosystem-query.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-ecosystem-vite-test-ts",
+      "label": "web/src/features/ecosystem/ecosystem-vite.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/ecosystem-vite.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "ecosystem-vite.test.ts"
         }
       ]
     },
@@ -3769,6 +3899,34 @@
       ]
     },
     {
+      "id": "suite-web-src-features-ecosystem-graphDirection-test-ts",
+      "label": "web/src/features/ecosystem/graphDirection.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/graphDirection.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "graphDirection.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-graphRelevance-test-ts",
+      "label": "web/src/features/ecosystem/graphRelevance.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/graphRelevance.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "graphRelevance.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-features-ecosystem-interventions-test-ts",
       "label": "web/src/features/ecosystem/interventions.test.ts",
       "category": "Ecosystem and data",
@@ -3783,6 +3941,20 @@
       ]
     },
     {
+      "id": "suite-web-src-features-ecosystem-marylandGovernment-test-ts",
+      "label": "web/src/features/ecosystem/marylandGovernment.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/marylandGovernment.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "marylandGovernment.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-features-ecosystem-performance-test-ts",
       "label": "web/src/features/ecosystem/performance.test.ts",
       "category": "Ecosystem and data",
@@ -3793,6 +3965,34 @@
         {
           "id": "suite",
           "label": "performance.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-progressiveGraph-test-ts",
+      "label": "web/src/features/ecosystem/progressiveGraph.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/progressiveGraph.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "progressiveGraph.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-readEvidenceResponse-test-ts",
+      "label": "web/src/features/ecosystem/readEvidenceResponse.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/readEvidenceResponse.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "readEvidenceResponse.test.ts"
         }
       ]
     },
@@ -4619,6 +4819,20 @@
         {
           "id": "suite",
           "label": "eventFeed.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-views-public-eventPreviewText-test-ts",
+      "label": "web/src/ui/views/public/eventPreviewText.test.ts",
+      "category": "Events and services",
+      "source": "web/src/ui/views/public/eventPreviewText.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "eventPreviewText.test.ts"
         }
       ]
     },

@@ -52,3 +52,19 @@ test('lookup requires a valid portal session and validates query and pagination'
   assert.deepEqual((await response.json() as {people:{user_id:string}[]}).people.map(p=>p.user_id),['private']);
  } finally {globalThis.fetch=originalFetch}
 });
+
+test('an active member without a contact page has a public basic profile and canonical link without contact data',async t=>{
+ const {app}=await import('../src/index');const sql=new DatabaseSync(':memory:');t.after(()=>sql.close());
+ sql.exec(`CREATE TABLE user_contact_pages(user_id TEXT,slug TEXT);CREATE TABLE portal_account_activity(user_id TEXT,user_name TEXT);
+ CREATE TABLE organization_memberships(user_id TEXT,user_name TEXT,status TEXT);CREATE TABLE ledger_accounts(user_id TEXT,name TEXT,entity_type TEXT);
+ INSERT INTO organization_memberships VALUES('new-owner','Dummy Owner','active'),('inactive','Hidden former member','inactive');`);
+ const db={prepare:(query:string)=>({bind:(...args:unknown[])=>({first:async()=>sql.prepare(query).get(...args as [])||null})})} as unknown as D1Database;
+ const environment={DB:db,PUBLIC_PORTAL_BASE_URL:'https://org.example.test'} as Env;
+ const response=await app.request('https://org.example.test/api/network/users/public/new-owner',{},environment);
+ assert.equal(response.status,200,await response.clone().text());const profile=await response.json() as Record<string,unknown>;
+ assert.equal(profile.user_name,'Dummy Owner');assert.equal(profile.enabled,false);
+ for(const key of ['email_public','phone_public','linkedin_url','github_url','website_url'])assert.equal(profile[key],null);
+ const link=await app.request('https://org.example.test/api/network/users/by-id/new-owner/profile',{},environment);
+ assert.equal(link.status,302);assert.equal(link.headers.get('location'),'/users/new-owner');
+ assert.equal((await app.request('https://org.example.test/api/network/users/public/inactive',{},environment)).status,404);
+});

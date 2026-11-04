@@ -35,6 +35,9 @@ test('profile favorites require opt-in and a public profile, deduplicate, isolat
     assert.equal((await profileFavoriteCompanies(d1,'alice',true,false)).public,false);
     for (const payload of [null,[],{}, {public:'true'}, {public:true,user_id:'bob'}])
       await assert.rejects(() => setFavoriteCompaniesSharing(d1,'alice',payload));
+    await db.prepare('CREATE TABLE portal_account_activity(user_id TEXT,user_name TEXT)').run();
+    await db.prepare('ALTER TABLE organization_memberships ADD COLUMN user_name TEXT').run();
+    await db.prepare('CREATE TABLE ledger_accounts(user_id TEXT,name TEXT,entity_type TEXT)').run();
     await db.prepare("DELETE FROM user_contact_pages WHERE user_id='alice'").run();
     assert.equal(await db.prepare("SELECT public FROM profile_favorite_company_settings WHERE user_id='alice'").first(),null);
   } finally { db.close(); }
@@ -59,7 +62,8 @@ test('event registration does not publish a private profile or its favorite comp
     const env = { DB: db, PUBLIC_PORTAL_BASE_URL:'https://portal.test' } as unknown as Env;
     const request = () => app.fetch(new Request('https://portal.test/api/network/users/public/alice/favorite-companies'),env);
     const privateResponse = await request();
-    assert.equal(privateResponse.status,404);
+    assert.equal(privateResponse.status,200);
+    assert.deepEqual(((await privateResponse.json()) as {companies:unknown[]}).companies,[]);
     await db.prepare("UPDATE user_contact_pages SET enabled=1 WHERE user_id='alice'").run();
     const publicResponse = await request();
     assert.equal(publicResponse.status,200);
@@ -67,6 +71,9 @@ test('event registration does not publish a private profile or its favorite comp
     assert.equal((await app.fetch(new Request('https://portal.test/api/network/contact/me/favorite-companies', {
       method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({public:true}),
     }),env)).status,401);
+    await db.prepare('CREATE TABLE portal_account_activity(user_id TEXT,user_name TEXT)').run();
+    await db.prepare('ALTER TABLE organization_memberships ADD COLUMN user_name TEXT').run();
+    await db.prepare('CREATE TABLE ledger_accounts(user_id TEXT,name TEXT,entity_type TEXT)').run();
     await db.prepare("DELETE FROM user_contact_pages WHERE user_id='alice'").run();
     assert.equal((await request()).status,404);
   } finally { db.close(); }

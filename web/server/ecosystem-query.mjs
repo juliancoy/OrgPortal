@@ -1,5 +1,6 @@
 import {fiscalTopology,fiscalMatches} from '../src/features/ecosystem/transaction-time.js'
 import {graphSummary} from './graph-summary.mjs'
+import {graphNeighborhood} from '../src/features/ecosystem/graph-neighborhood.js'
 import {isNotApplicableNode} from '../src/features/ecosystem/node-classes.js'
 import {compileFunding,companyKey,fundingSummary,fundingCsv} from '../src/features/ecosystem/fundingStatistics.ts'
 import {compareAttainment} from '../src/features/ecosystem/performance.ts'
@@ -35,7 +36,7 @@ export async function queryEcosystem(read,section,params){
  if(params.get('version')&&params.get('version')!==version)return {status:409,body:{error:'Evidence snapshot changed. Reload this view.'}}
  const fy=params.get('fy');if(fy&&fy!=='all'&&fy!=='unassigned'&&!/^(19|20|21)\d{2}$/.test(fy))throw Error('Invalid fiscal year')
  if(fy&&fy!=='all'&&!manifest.temporalIndexVersion)throw Error('Fiscal-year indexes are refreshing. Retry shortly.')
- const meta={version,fy:fy||'all',fiscalYears:manifest.fiscalYears||[],dateCoverage:manifest.dateCoverage,generatedAt:manifest.generatedAt,governmentCoverage:manifest.governmentCoverage,nonprofitCoverage:manifest.nonprofitCoverage,transactionalCoverage:manifest.transactionalCoverage}
+ const meta={version,fy:fy||'all',fiscalYears:manifest.fiscalYears||[],dateCoverage:manifest.dateCoverage,generatedAt:manifest.generatedAt,governmentCoverage:manifest.governmentCoverage,marylandBudgetCoverage:manifest.marylandBudgetCoverage,nonprofitCoverage:manifest.nonprofitCoverage,transactionalCoverage:manifest.transactionalCoverage}
  if(section==='overview')return {body:{...meta,...await read(`${version}/overview.json`)}}
  if(section==='funding'){
   const input=await read(`${version}/funding.json`),asOf=params.get('asOf')||new Date().toISOString().slice(0,10)
@@ -100,6 +101,7 @@ export async function queryEcosystem(read,section,params){
   if(!depth)throw new Error('Invalid depth')
   const offset=integer(params,'offset',0,1e7)
   const nodeLimit=integer(params,'nodeLimit',25,MAX_NODES);if(!nodeLimit)throw new Error('Invalid nodeLimit')
+  let neighborhood
   const distances=new Map(selected?[[selected,0]]:[])
   if((!fy||fy==='all')&&params.get('summary')==='community'&&!selected&&!geographic&&mode==='network'&&!['q','community','category','county','municipality','kind','from','to'].some(key=>params.get(key))){
    const rankedClusters=topology.overview.organizations.filter(o=>!isNotApplicableNode(o)),clusters=rankedClusters.slice(offset,offset+MAX_NODES),visible=new Set(clusters.map(o=>o.id)),links=topology.overview.relationships.filter(e=>visible.has(e.source)&&visible.has(e.target))
@@ -108,15 +110,9 @@ export async function queryEcosystem(read,section,params){
   // An org selects an indexed neighborhood, not just its own directory row.
   if(selected){
    if(!topology.adjacency[selected])throw new Error('Unknown organization')
-   const seen=new Set([selected]);let frontier=[selected]
-   for(let hop=0;hop<depth;hop++){
-    const next=[]
-    for(const id of frontier){
-     const neighbors=direction==='both'?(topology.adjacency[id]||[]).map(nodeId):[...new Set((topology.edgesByOrg[id]||[]).map(i=>topology.edges[i]).filter(e=>edgeAllowed(e)&&(direction==='parents'?nodeId(e[1])===id:nodeId(e[0])===id)).map(e=>nodeId(e[direction==='parents'?0:1])))]
-     for(const neighbor of neighbors)if(!seen.has(neighbor)){seen.add(neighbor);distances.set(neighbor,hop+1);next.push(neighbor)}
-    }
-    frontier=next
-   }
+   neighborhood=graphNeighborhood(topology,selected,depth,direction,edgeAllowed)
+   const seen=neighborhood.nodes
+   for(const [id,distance] of neighborhood.distances)distances.set(id,distance)
    const scoped=new URLSearchParams(nodeParams);scoped.delete('org');ids=matching(index,scoped).filter(i=>seen.has(index.rows[i].id))
    if(geographic)ids=ids.filter(i=>{const r=index.rows[i];return Number.isFinite(r.latitude)&&Number.isFinite(r.longitude)&&(!bbox||(r.longitude>=bbox[0]&&r.latitude>=bbox[1]&&r.longitude<=bbox[2]&&r.latitude<=bbox[3]))})
    ids.sort((a,b)=>Number(index.rows[b].id===selected)-Number(index.rows[a].id===selected)||topology.degree[index.rows[b].id]-topology.degree[index.rows[a].id]||index.rows[a].id.localeCompare(index.rows[b].id))
@@ -129,10 +125,12 @@ export async function queryEcosystem(read,section,params){
    const selectedIds=selected?new Set(ids):null
    const categoryIds=params.get('category')?new Set(index.filters.category?.[params.get('category')]?.map(i=>index.rows[i].id)||[]):null
    fundingCategoryIds=categoryIds
-   const endpoints=new Set(topology.edges.filter(e=>fiscalMatches(e[4],fy)&&['transfer','grant','donation','contract'].includes(e[2])&&(!params.get('kind')||e[2]===params.get('kind'))&&(!categoryIds||categoryIds.has(nodeId(e[0]))||categoryIds.has(nodeId(e[1])))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))).flatMap(e=>[nodeId(e[0]),nodeId(e[1])]))
+   const endpoints=new Set(topology.edges.filter(e=>fiscalMatches(e[4],fy)&&['transfer','grant','donation','contract','appropriation'].includes(e[2])&&(!params.get('kind')||e[2]===params.get('kind'))&&(!categoryIds||categoryIds.has(nodeId(e[0]))||categoryIds.has(nodeId(e[1])))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))).flatMap(e=>[nodeId(e[0]),nodeId(e[1])]))
    const membership=new URLSearchParams(nodeParams);membership.delete('category');membership.delete('org');ids=matching(index,membership).filter(i=>endpoints.has(index.rows[i].id)&&(!selectedIds||selectedIds.has(i)))
   }
   const ranked=graphRelevance(index,topology,ids,selected,distances,offset+nodeLimit);ids=ranked.ids
+  const included=params.get('include'),includedIndex=included&&included!==selected?ids.findIndex(i=>index.rows[i].id===included):-1
+  if(selected&&includedIndex>0){const [context]=ids.splice(includedIndex,1);ids.splice(1,0,context)}
   const page=ids.slice(offset,offset+nodeLimit)
   // Every neighborhood page carries its anchor so its directed edges remain renderable.
   if(selected&&!page.some(i=>index.rows[i].id===selected)){const anchor=index.rows.findIndex(r=>r.id===selected);if(anchor>=0)page.unshift(anchor)}
@@ -144,7 +142,7 @@ export async function queryEcosystem(read,section,params){
   }
   const visible=new Set(organizations.map(o=>o.id)),edgeIds=new Set()
   for(const id of visible)for(const edge of topology.edgesByOrg[id]||[])edgeIds.add(edge)
-  const candidates=[...edgeIds].sort((a,b)=>a-b).filter(i=>{const e=topology.edges[i];return fiscalMatches(e[4],fy)&&visible.has(nodeId(e[0]))&&visible.has(nodeId(e[1]))&&(!selected||direction==='both'||depth!==1||(direction==='parents'?nodeId(e[1])===selected:nodeId(e[0])===selected))&&(mode!=='funding'||(['transfer','grant','donation','contract'].includes(e[2])&&(!fundingCategoryIds||fundingCategoryIds.has(nodeId(e[0]))||fundingCategoryIds.has(nodeId(e[1])))))&&(!params.get('kind')||e[2]===params.get('kind'))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))})
+  const candidates=[...edgeIds].sort((a,b)=>a-b).filter(i=>{const e=topology.edges[i];return fiscalMatches(e[4],fy)&&visible.has(nodeId(e[0]))&&visible.has(nodeId(e[1]))&&(!neighborhood?.edges||neighborhood.edges.has(i))&&(mode!=='funding'||(['transfer','grant','donation','contract'].includes(e[2])&&(!fundingCategoryIds||fundingCategoryIds.has(nodeId(e[0]))||fundingCategoryIds.has(nodeId(e[1])))))&&(!params.get('kind')||e[2]===params.get('kind'))&&(!params.get('from')||(e[3]&&e[3]>=params.get('from')))&&(!params.get('to')||(e[3]&&e[3].slice(0,10)<=params.get('to')))})
   if(selected)candidates.sort((a,b)=>Number(nodeId(topology.edges[b][0])===selected||nodeId(topology.edges[b][1])===selected)-Number(nodeId(topology.edges[a][0])===selected||nodeId(topology.edges[a][1])===selected)||a-b)
   const spread=spreadTransactionRows(candidates,topology)
   const edgeOffset=integer(params,'edgeOffset',0,1e7)
@@ -152,7 +150,7 @@ export async function queryEcosystem(read,section,params){
   const recordLimit=integer(params,'recordLimit',MAX_EDGES,MAX_EDGES);if(!recordLimit)throw Error('Invalid record limit')
   const rows=await readRows(read,version,'graph',spread.rows.slice(edgeOffset,edgeOffset+recordLimit))
   const relationships=detail==='summary'?rows.map(row=>graphSummary(fy&&fy!=='all'&&row.annualAmountEligible===false?{...row,amount:undefined,amountLabel:'Cumulative/lifetime amount; excluded from FY totals'}:row)):rows
-  const body={...meta,metricMax:manifest.metricMax,geography:geographic?{located:topology.geography.located,missing:topology.geography.missing}:undefined,organizations,relationships,financing:[],nodeLimit,neighborhood:selected?{direction,depth}:undefined,ranking:{basis:selected?'selected-neighborhood':'connected-counterparties',selected:selected||null,description:selected?'Nearest neighbors, then transactions with the selected node, shared counterparties, and overall connectivity.':'Start at the most connected organization, then grow through the most connected counterparties; transaction count breaks ties.'},total:ids.length,totalOrganizations:manifest.totals.organizations,totalRelationships:manifest.totals.relationships,offset,nextOffset:offset+nodeLimit<ids.length?offset+nodeLimit:null,edgeOffset,nextEdgeOffset:null,matchingEdges:candidates.length,matchingLinks:spread.pairs,truncated:false,groups:manifest.groups}
+  const body={...meta,direction,metricMax:manifest.metricMax,geography:geographic?{located:topology.geography.located,missing:topology.geography.missing}:undefined,organizations,relationships,financing:[],nodeLimit,neighborhood:selected?{direction,depth}:undefined,ranking:{basis:selected?'selected-neighborhood':'connected-counterparties',selected:selected||null,description:selected?'Nearest neighbors, then transactions with the selected node, shared counterparties, and overall connectivity.':'Start at the most connected organization, then grow through the most connected counterparties; transaction count breaks ties.'},total:ids.length,totalOrganizations:manifest.totals.organizations,totalRelationships:manifest.totals.relationships,offset,nextOffset:offset+nodeLimit<ids.length?offset+nodeLimit:null,edgeOffset,nextEdgeOffset:null,matchingEdges:candidates.length,matchingLinks:spread.pairs,truncated:false,groups:manifest.groups}
   if(params.get('evidenceOnly')==='1'){body.organizations=[];body.groups={}}
   // The source table remains complete; bound graph response bytes as well as edge counts.
   let budget=2*1024*1024-new TextEncoder().encode(JSON.stringify({...body,relationships:[]})).byteLength-1024
