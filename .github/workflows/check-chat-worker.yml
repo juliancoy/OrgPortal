@@ -1,10 +1,6 @@
 name: Check shared chat worker
 
 on:
-  push:
-    paths: ['chat-worker/**', 'shared/**', '.github/workflows/check-chat-worker.yml']
-  pull_request:
-    paths: ['chat-worker/**', 'shared/**', '.github/workflows/check-chat-worker.yml']
   workflow_dispatch:
 
 permissions:

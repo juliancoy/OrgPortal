@@ -1,3 +1,4 @@
+import {edgeArrowGeometry} from './edge-arrows.js'
 // Native WebGPU: one instanced draw for circles/pie sectors and one batched draw for links.
 const shader = `
 struct View { rect: vec4f }
@@ -68,12 +69,13 @@ export async function createNetworkGPU(canvas,onLost,onPaint=()=>{}) {
    if(!updated){nodeRanges.clear();edgeRanges.clear()}
    const disks=[],vertices=[]
    const vertex=(p,color)=>vertices.push(p.x,p.y,...color)
-   for(const e of edges){if(!visibleEdges.has(e.id)||(updated&&!updated.has(e.source.id)&&!updated.has(e.target.id)))continue;const start=vertices.length;const points=curvePoints(e),color=rgba(edgeColor(e),e.opacity??.65),width=(e.quantityWidth||1.4)/2
+   for(const e of edges){if(!visibleEdges.has(e.id)||(updated&&!updated.has(e.source.id)&&!updated.has(e.target.id)))continue;const start=vertices.length;const geometry=edgeArrowGeometry(curvePoints(e),e.quantityWidth||1.4,e.directional),points=geometry.shaft,color=rgba(edgeColor(e),e.opacity??.65),width=geometry.width/2
     for(let i=1;i<points.length;i++){if(e.relationship!=='funding'&&i%(e.relationship==='affiliation'?4:2)===0)continue;const a=points[i-1],b=points[i],d=Math.hypot(b.x-a.x,b.y-a.y)||1,nx=-(b.y-a.y)/d*width,ny=(b.x-a.x)/d*width
      const p={x:a.x+nx,y:a.y+ny},q={x:a.x-nx,y:a.y-ny},r={x:b.x+nx,y:b.y+ny},s={x:b.x-nx,y:b.y-ny};for(const v of [p,q,r,r,q,s])vertex(v,color)
     }
-    const a=points.at(-2),b=points.at(-1),d=Math.hypot(b.x-a.x,b.y-a.y)||1,ux=(b.x-a.x)/d,uy=(b.y-a.y)/d
-    if(e.directional)for(const p of [b,{x:b.x-ux*8-uy*4,y:b.y-uy*8+ux*4},{x:b.x-ux*8+uy*4,y:b.y-uy*8-ux*4}])vertex(p,color)
+    if(geometry.head){const {tip:b,base,direction:{x:ux,y:uy},halfWidth}=geometry.head,headColor=rgba(edgeColor(e),Math.max(.55,e.opacity??.65))
+     for(const p of [b,{x:base.x-uy*halfWidth,y:base.y+ux*halfWidth},{x:base.x+uy*halfWidth,y:base.y-ux*halfWidth}])vertex(p,headColor)
+    }
     if(updated){const offset=edgeRanges.get(e.id);if(offset!==undefined)device.queue.writeBuffer(edgeBuffer,offset*4,new Float32Array(vertices.slice(start)))}else edgeRanges.set(e.id,start)
    }
    for(const n of nodes){if(!visible.has(n.id)||(updated&&!updated.has(n.id)))continue;const start=disks.length;const color=n.id===selected?0xe56d3c:colors[n.category]??0x77878c

@@ -156,7 +156,7 @@ Run the E2E suite in Docker (recommended for consistent CI/local runs):
 npm run test:e2e:docker
 ```
 
-This uses `docker/playwright/Dockerfile` and `docker/playwright/docker-compose.yml`.
+This uses `docker/playwright/Dockerfile` and `docker/playwright/run.sh`.
 
 Run real login/session persistence checks against a dedicated local Docker stack:
 

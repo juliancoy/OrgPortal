@@ -1,0 +1,130 @@
+/* The graph is the workspace; navigation and metadata support it. */
+html.eco-map-open:has(.eco-graph-workspace) .portal-header-inner {
+  display: grid; grid-template-columns: auto minmax(120px, 1fr) auto;
+  align-items: center; gap: 16px; padding-block: 10px;
+}
+html.eco-map-open:has(.eco-graph-workspace) .portal-brand { gap: 8px; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-brand img { width: 32px; height: 32px; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-brand-title { font-size: 1rem; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-brand-sub { display: none; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-middle { width: 100%; min-width: 0; margin: 0; order: initial; justify-self: stretch; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-search-input { min-height: 36px; padding: 6px 10px; font-size: 12px; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-auth { margin: 0; padding: 4px 8px; gap: 8px; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-auth button { min-height: 32px; min-width: 32px; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-avatar { width: 28px; height: 28px; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-explore-nav { gap: 20px; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-explore-nav .portal-nav-link { min-height: 32px; padding-block: 5px; font-size: 12px; }
+.portal-ecosystem.eco-graph-workspace .eco-network-heading { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 12px; padding: 12px 16px 8px; }
+.portal-ecosystem.eco-graph-workspace .eco-network-heading h1 { font-size: 19px; line-height: 1.3; }
+.eco-graph-workspace .eco-view-label { font-size: 11px; color: var(--muted); justify-self: end; }
+.portal-ecosystem.eco-graph-workspace .eco-network-heading nav { grid-column: 1 / -1; gap: 4px; flex-wrap: nowrap; }
+.portal-ecosystem.eco-graph-workspace .eco-network-heading nav > a,
+.portal-ecosystem.eco-graph-workspace .eco-more-views > summary { padding: 8px 10px; font-size: 12px; white-space: nowrap; text-decoration: none; }
+.eco-graph-workspace .eco-more-views { position: relative; margin-left: auto; }
+.eco-graph-workspace .eco-more-views > summary { cursor: pointer; border-radius: 6px; }
+.eco-graph-workspace .eco-more-views[open] > summary { background: var(--surface-subtle); }
+.eco-graph-workspace .eco-more-views > div { position: absolute; right: 0; top: 100%; z-index: 60; width: 210px; display: grid; padding: 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: 0 8px 24px #0003; }
+.eco-graph-workspace .eco-more-views a:hover { background: var(--surface-subtle); }
+.portal-ecosystem.eco-graph-workspace .eco-graph-top { padding: 6px 14px; gap: 12px; align-items: center; }
+.portal-ecosystem.eco-graph-workspace .eco-graph-top > div:first-child { display: flex; flex-direction: column; align-items: start; gap: 2px; min-width: 0; }
+.eco-graph-workspace #network-status { font-size: 11px; line-height: 1.4; }
+.eco-graph-workspace .eco-snapshot { position: relative; }
+.portal-ecosystem.eco-graph-workspace .eco-snapshot summary { font-size: 10px; font-weight: 400; color: var(--muted); }
+.portal-ecosystem.eco-graph-workspace .eco-snapshot #network-source { position: absolute; z-index: 50; left: 0; top: 100%; width: min(280px, 70vw); padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); margin: 4px 0 0; }
+.portal-ecosystem.eco-graph-workspace .eco-graph-top button { min-width: 34px; min-height: 34px; padding: 5px 8px; }
+.portal-ecosystem.eco-graph-workspace .eco-panel-tabs [role=tab] { display: flex; justify-content: center; align-items: center; gap: 6px; padding: 9px 6px; min-height: 40px; font-size: 11px; }
+.eco-graph-workspace .eco-tab-icon { font-size: 14px; }
+@media (max-width: 900px) {
+ .portal-ecosystem.eco-graph-workspace .eco-network-shell { grid-template-rows: minmax(0, 1fr) minmax(0, 28%); }
+ .portal-ecosystem.eco-graph-workspace .eco-network-heading { padding: 8px 12px 4px; }
+ .portal-ecosystem.eco-graph-workspace .eco-network-relevance { gap: 4px 10px; padding: 6px 12px; }
+ .portal-ecosystem.eco-graph-workspace .eco-network-relevance output { flex-basis: 100%; font-size: 10px; }
+}
+@media (max-width: 480px) {
+ html.eco-map-open:has(.eco-graph-workspace) .portal-header-inner { grid-template-columns: 1fr auto; gap: 6px 10px; padding-block: 8px; }
+ html.eco-map-open:has(.eco-graph-workspace) .portal-middle { grid-column: 1 / -1; grid-row: 2; }
+ .portal-ecosystem.eco-graph-workspace .eco-network-heading h1 { font-size: 16px; }
+ .portal-ecosystem.eco-graph-workspace .eco-network-heading nav > a,
+ .portal-ecosystem.eco-graph-workspace .eco-more-views > summary { font-size: 11px; padding-inline: 7px; }
+}
+
+/* Keep the title, view switcher and map tools in a tight workspace rhythm. */
+.portal-ecosystem.eco-graph-workspace .eco-network-heading { grid-template-columns: auto auto minmax(0,1fr); gap: 8px; padding: 6px 12px; min-height: 42px; }
+.portal-ecosystem.eco-graph-workspace .eco-network-heading nav { grid-column: auto; justify-content: end; }
+.portal-ecosystem.eco-graph-workspace .eco-network-heading h1 { font-size: 16px; }
+.portal-ecosystem.eco-graph-workspace .eco-graph-top > div:first-child { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
+.portal-ecosystem.eco-graph-workspace .eco-graph-top { padding-block: 4px; }
+@media (max-width: 520px) {
+ .portal-ecosystem.eco-graph-workspace .eco-network-heading { grid-template-columns: auto 1fr; gap: 0 8px; padding-block: 4px; }
+ .portal-ecosystem.eco-graph-workspace .eco-network-heading nav { grid-column: 1 / -1; justify-content: start; }
+ .portal-ecosystem.eco-graph-workspace .eco-network-heading nav > a,
+ .portal-ecosystem.eco-graph-workspace .eco-more-views > summary { padding-block: 5px; }
+}
+/* Primary destinations sit above the smaller, page-specific network views. */
+html.eco-map-open:has(.eco-graph-workspace) .portal-middle { grid-column: 2; grid-row: 1; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-auth { grid-column: 3; grid-row: 1; }
+html.eco-map-open:has(.eco-graph-workspace) .portal-explore-nav .portal-nav-link { font-size: 13px; font-weight: 600; }
+.portal-ecosystem.eco-graph-workspace .eco-network-heading nav > a { color: var(--muted); font-weight: 400; }
+.portal-ecosystem.eco-graph-workspace .eco-network-heading nav > a[aria-current] { color: var(--ink); font-weight: 650; }
+@media (max-width:480px) {
+ html.eco-map-open:has(.eco-graph-workspace) .portal-header-inner { grid-template-columns: 32px minmax(90px,1fr) auto; gap: 8px; }
+ html.eco-map-open:has(.eco-graph-workspace) .portal-brand-title { display: none; }
+ html.eco-map-open:has(.eco-graph-workspace) .portal-brand > img { width: 32px !important; height: 32px !important; flex-basis: 32px !important; }
+ html.eco-map-open:has(.eco-graph-workspace) .portal-auth { gap: 3px; padding: 3px; }
+ html.eco-map-open:has(.eco-graph-workspace) .portal-auth button { width: 32px !important; min-width: 32px !important; height: 32px !important; min-height: 32px !important; padding: 4px !important; }
+}
+
+@media (min-width:521px) and (max-width:1100px) {
+ .portal-ecosystem.eco-graph-workspace .eco-network-heading { grid-template-columns: auto minmax(0,1fr); }
+ .eco-graph-workspace .eco-view-label { display: none; }
+}
+
+/* Map controls float above the renderer rather than consuming its height. */
+.portal-ecosystem.eco-graph-workspace .eco-network-shell { position:relative; display:block; }
+.portal-ecosystem.eco-graph-workspace .eco-graph-panel { width:100%; height:100%; }
+.portal-ecosystem.eco-graph-workspace #network-canvas { width:100%; height:100%; flex:1; }
+.portal-ecosystem.eco-graph-workspace #network-canvas > canvas { position:absolute; inset:0; }
+.portal-ecosystem.eco-graph-workspace .eco-network-relevance { position:absolute; top:10px; left:10px; z-index:12; max-width:calc(100% - 72px); margin:0; padding:6px 8px; gap:6px 8px; border:1px solid var(--line); border-radius:8px; background:var(--paper); box-shadow:0 2px 8px #0002; }
+.portal-ecosystem.eco-graph-workspace .eco-network-relevance label { margin:0; font-size:11px; gap:6px; }
+.portal-ecosystem.eco-graph-workspace .eco-network-relevance select { min-height:32px; height:32px; padding:3px 6px; font-size:12px; }
+.portal-ecosystem.eco-graph-workspace .eco-network-relevance button { min-height:32px; padding:4px 8px; font-size:11px; }
+.portal-ecosystem.eco-graph-workspace .eco-ranking-info { position:relative; font-size:11px; }
+.portal-ecosystem.eco-graph-workspace .eco-ranking-info summary { cursor:pointer; padding:6px 2px; }
+.portal-ecosystem.eco-graph-workspace .eco-network-relevance #network-ranking { position:absolute; top:calc(100% + 10px); left:0; width:min(310px,calc(100vw - 100px)); padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); font-size:12px; line-height:1.5; box-shadow:0 4px 16px #0003; }
+.portal-ecosystem.eco-graph-workspace .eco-graph-top { position:absolute; z-index:12; left:10px; right:10px; bottom:10px; padding:0; border:0; pointer-events:none; background:none; }
+.portal-ecosystem.eco-graph-workspace .eco-graph-top > div:first-child { max-width:calc(100% - 185px); padding:6px 8px; gap:2px 8px; border:1px solid var(--line); border-radius:6px; background:var(--paper); pointer-events:auto; }
+.portal-ecosystem.eco-graph-workspace .eco-graph-top > div:last-child { position:absolute; right:48px; bottom:0; gap:4px; pointer-events:auto; }
+.portal-ecosystem.eco-graph-workspace .eco-snapshot #network-source { top:auto; bottom:calc(100% + 8px); }
+.portal-ecosystem.eco-graph-workspace .eco-network-fps { top:70px; left:10px; font-size:10px; padding:3px 5px; }
+.portal-ecosystem.eco-graph-workspace .eco-network-sidebar { position:absolute; z-index:25; top:10px; right:10px; bottom:auto; width:40px; height:auto; border:1px solid var(--line); border-radius:8px; background:var(--paper); box-shadow:0 3px 12px #0002; }
+.portal-ecosystem.eco-graph-workspace .eco-panel-tabs { flex-direction:column; border:0; }
+.portal-ecosystem.eco-graph-workspace .eco-panel-tabs [role=tab] { flex:none; width:38px; min-height:38px; padding:6px; border:0; border-radius:5px; }
+.portal-ecosystem.eco-graph-workspace .eco-panel-tabs [role=tab] > span:last-child { display:none; }
+.portal-ecosystem.eco-graph-workspace #network-close-panel { display:none; }
+.portal-ecosystem.eco-graph-workspace.eco-panel-open .eco-network-sidebar { bottom:10px; width:min(340px,calc(100% - 20px)); height:auto; }
+.portal-ecosystem.eco-graph-workspace.eco-panel-open .eco-panel-tabs { flex-direction:row; border-bottom:1px solid var(--line); padding:3px; }
+.portal-ecosystem.eco-graph-workspace.eco-panel-open .eco-panel-tabs [role=tab] { flex:1; width:auto; }
+.portal-ecosystem.eco-graph-workspace.eco-panel-open #network-close-panel { display:block; min-width:32px; padding:3px 8px; border:0; font-size:22px; }
+.portal-ecosystem.eco-graph-workspace.eco-panel-open .eco-panel-tabs [aria-selected=true] { background:var(--surface-subtle); outline:1px solid var(--teal); outline-offset:-2px; }
+@media (max-width:520px) {
+ .portal-ecosystem.eco-graph-workspace .eco-network-relevance { gap:3px 6px; }
+ .portal-ecosystem.eco-graph-workspace .eco-ranking-info { flex-basis:100%; }
+ .portal-ecosystem.eco-graph-workspace .eco-network-relevance #network-ranking { left:0; }
+ .portal-ecosystem.eco-graph-workspace .eco-network-fps { top:104px; }
+ .portal-ecosystem.eco-graph-workspace #network-status { font-size:10px; }
+}
+@media (max-height:700px) {
+ html.eco-map-open:has(.eco-graph-workspace) .portal-header-inner { padding-block:5px; }
+ html.eco-map-open:has(.eco-graph-workspace) .portal-explore-nav .portal-nav-link { min-height:28px; padding-block:3px; }
+ .portal-ecosystem.eco-graph-workspace .eco-network-heading { min-height:36px; padding-block:2px; }
+ .portal-ecosystem.eco-graph-workspace .eco-network-heading nav > a,
+ .portal-ecosystem.eco-graph-workspace .eco-more-views > summary { padding-block:4px; }
+}
+
+.portal-ecosystem [data-class="not-applicable"] { --node-color: #8b929a; }
+
+.portal-ecosystem .eco-network-error:not([hidden]) { position: absolute; top: 12px; left: 12px; right: 70px; z-index: 100; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; color: var(--ink); background: var(--paper); border: 2px solid #c7503d; border-radius: 8px; box-shadow: 0 4px 20px #0003; font-size: 13px; }
+.portal-ecosystem .eco-graph-panel { position: relative; }
+.portal-ecosystem #network-neighborhood-status { flex: 1 1 auto; font-size: 11px; }
+.portal-ecosystem .eco-neighborhood-direction select { max-width: 190px; }
+.portal-ecosystem .eco-network-relevance [hidden] { display: none !important; }

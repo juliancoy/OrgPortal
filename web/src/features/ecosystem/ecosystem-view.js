@@ -10,18 +10,35 @@ export function organizationPicture(org) {
  const image=safeUrl(org.imageUrl)
  return image ? `<figure class="eco-inspector-picture"><img src="${e(image)}" alt="Published image for ${e(org.name)}" loading="lazy" referrerpolicy="no-referrer"><figcaption>${e(org.name)}${org.imageCaption ? ` · ${e(org.imageCaption)}` : ''} · ${evidenceLink(org.imageSourceUrl || org.website,'Image source ↗')}</figcaption></figure>` : '<p class="eco-note">No published picture supplied.</p>'
 }
-export function organizationPreview(org, {pies,totals,counterparties=new Map(),obligationIds=new Set()}) {
+function previewPieLegend(pie,organizations,relationships=[],selected){
+ const incoming=pie.direction==='incoming',field=incoming?'source':'target',normalize=value=>String(value||'').trim().toLowerCase(),endpoint=value=>typeof value==='object'?value?.id:value
+ const represented=new Set(pie.slices.filter(slice=>slice.label!=='Other disclosed counterparties').map(slice=>normalize(slice.label)))
+ const representedIds=new Set(pie.slices.flatMap(slice=>slice.counterpartyIds||slice.records?.map(record=>endpoint(record[field]))||[]))
+ const bubble=(slice,id,name)=>`<button type="button" class="eco-pie-select" ${id?`data-network-select="${e(id)}"`:`data-network-find-name="${e(name)}"`} aria-label="Select ${e(name)}"><span class="eco-pie-bubble" style="background:${e(slice.color)}" aria-hidden="true"></span><span class="eco-pie-counterparty">${e(name)}</span></button>`
+ return `<ul class="eco-pie-legend" aria-label="${incoming?'Funding sources':'Funding destinations'}">${pie.slices.map(slice=>{
+  const ids=[...new Set(slice.counterpartyIds||slice.records?.map(record=>endpoint(record[field]))||[])].filter(Boolean)
+  if(!ids.length)for(const org of organizations.values())if(normalize(org.name)===normalize(slice.label))ids.push(org.id)
+  let content
+  if(slice.label==='Other disclosed counterparties'){
+   const others=new Map()
+   for(const record of relationships){const id=endpoint(record[field]),other=organizations.get(id);if(endpoint(record[incoming?'target':'source'])===selected&&other&&!representedIds.has(id)&&!represented.has(normalize(other.name))&&record.kind==='transfer'&&record.amount>0&&record.currency==='USD'&&record.status!=='voided')others.set(id,other.name)}
+   content=`<details><summary><span class="eco-pie-bubble" style="background:${e(slice.color)}" aria-hidden="true"></span>${e(slice.label)}</summary>${[...others].map(([id,name])=>bubble(slice,id,name)).join('')||'<p>Load the remaining connections to see these organizations.</p>'}</details>`
+  }else content=ids.length?ids.map(id=>bubble(slice,id,organizations.get(id)?.name||slice.label)).join(''):bubble(slice,null,slice.label)
+  return `<li>${content}<small>${incoming?'From':'To'} · ${e(formatPieAmount(slice.amount))} · ${(slice.share*100).toFixed(1)}%</small></li>`
+ }).join('')}</ul>`
+}
+export function organizationPreview(org, {pies,totals,counterparties=new Map(),obligationIds=new Set(),organizations=new Map(),relationships=[]}) {
  const image=safeUrl(org.imageUrl),pie=pies.get(org.id),amounts=totals.get(org.id) || {received:0,disbursed:0}
  const top=counterparties.get(org.id)
  const obligations=obligationIds.has(org.id),format=obligations?amount=>Number(amount).toLocaleString('en-US',{style:'currency',currency:'USD'}):formatPieAmount
  return `<section class="eco-organization-preview"><h2>${org.portalSlug || org.directory ? `<a href="${organizationPagePath(org)}">${e(org.name)}</a>` : e(org.name)}</h2>
  ${image?`<figure class="eco-inspector-picture"><a href="${organizationPagePath(org)}"><img src="${e(image)}" alt="${e(org.name)}" loading="lazy" referrerpolicy="no-referrer"></a></figure>`:''}
- ${pie?`<div class="eco-fund-breakdown"><svg viewBox="-52 -52 104 104" role="img" aria-label="${e(pie.basis)}">${pie.slices.map(slice=>`<path d="${pieWedgePath(0,0,50,slice.startAngle,slice.endAngle)}" fill="${e(slice.color)}"><title>${e(slice.label)}: ${e(formatPieAmount(slice.amount))}</title></path>`).join('')}</svg></div>`:''}
+ ${pie?`<div class="eco-fund-breakdown"><svg viewBox="-52 -52 104 104" role="img" aria-label="${e(pie.basis)}">${pie.slices.map(slice=>`<path d="${pieWedgePath(0,0,50,slice.startAngle,slice.endAngle)}" fill="${e(slice.color)}"><title>${e(slice.label)}: ${e(formatPieAmount(slice.amount))}</title></path>`).join('')}</svg>${previewPieLegend(pie,organizations,relationships,org.id)}</div>`:''}
  <dl class="eco-preview-totals" aria-label="Recorded USD funding"><dt>${obligations?'Net obligations to recipient':'Total received'}</dt><dd>${e(format(amounts.received))}</dd><dt>${obligations?'Net obligations by agency':'Total disbursed'}</dt><dd>${e(format(amounts.disbursed))}</dd>${top?.funder?`<dt>Top funder</dt><dd>${e(top.funder.name)} · ${e(format(top.funder.amount))}</dd>`:''}${top?.recipient?`<dt>Top recipient</dt><dd>${e(top.recipient.name)} · ${e(format(top.recipient.amount))}</dd>`:''}</dl>
  ${org.portalSlug || org.directory ? `<a href="${organizationPagePath(org)}">Full company breakdown →</a>` : `<p>${e(org.identifiers?.uei ? `UEI: ${org.identifiers.uei}` : org.sourceCategory || 'Public evidence')}</p>`}</section>`
 }
 export function networkPreviewSummaries(data) {
- return {pies:financialNodePies(data),totals:financialNodeTotals(data),counterparties:financialNodeCounterparties(data),obligationIds:new Set(data.relationships.filter(r=>r.financialMeasure==='cumulative_obligations').flatMap(r=>[r.source,r.target]))}
+ return {relationships:data.relationships,organizations:new Map(data.organizations.map(org=>[org.id,org])),pies:financialNodePies(data),totals:financialNodeTotals(data),counterparties:financialNodeCounterparties(data),obligationIds:new Set(data.relationships.filter(r=>r.financialMeasure==='cumulative_obligations').flatMap(r=>[r.source,r.target]))}
 }
 export function relationshipPreview(edge,data,summaries) {
  const id=value=>typeof value==='object'?value?.id:value
@@ -33,9 +50,18 @@ export function edgeDetails(edge,data) {
  return `<p class="eco-eyebrow">Relationship preview</p><h2>${e(edge.sourceLabel)} → ${e(edge.targetLabel)}</h2>
  ${safeUrl(edge.imageUrl) ? `<figure class="eco-inspector-picture"><img src="${e(safeUrl(edge.imageUrl))}" alt="Published relationship image" loading="lazy" referrerpolicy="no-referrer"><figcaption>${evidenceLink(edge.sourceUrl,'Image source ↗')}</figcaption></figure>` : organizations.map(org=>`<h3>${e(org.name)}</h3>${organizationPicture(org)}`).join('')}
  <p><strong>${e(edge.type || edge.description || edge.relationship)}</strong></p>
+ <p class="eco-note">Record ID: ${e(edge.transactionRecordId || edge.id)}</p>
  <p>${e(semantics[edge.kind] || edge.relationship)}${edge.amountLabel ? ` · ${e(edge.amountLabel)}` : ''}${edge.date ? ` · ${e(edge.date)}` : ''}</p>
  <p>${e(edge.evidence || 'Evidence description not supplied.')}</p><p>${e(edge.notes || edge.description || '')}</p>
  <p>${evidenceLink(edge.sourceUrl)}</p><p class="eco-note">${e(edge.provenance?.sheet || 'Public evidence')}${edge.provenance?.row ? ` · row ${e(edge.provenance.row)}` : ''}${edge.status ? ` · ${e(edge.status)}` : ''}. Awards and commitments do not establish payment. Organization pictures identify the endpoints, not the transaction.</p>`
+}
+export function edgeBundleDetails(edge,data){
+ const records=edge.records||[edge]
+ if(records.some(record=>record.evidenceDeferred))return `<p class="eco-eyebrow">Directed relationship</p><h2>${e(edge.sourceLabel)} → ${e(edge.targetLabel)}</h2><p>${records.length} recorded relationships</p><p>Source: ${e([...new Set(records.map(record=>record.attribution).filter(Boolean))].join(' · ')||'Public source')}</p><p>Expand Organization records on a selected node to load evidence.</p>`
+ if(records.length===1)return edgeDetails(records[0],data)
+ return `<p class="eco-eyebrow">Directed relationship</p><h2>${e(edge.sourceLabel)} → ${e(edge.targetLabel)}</h2>
+ <p>${records.length} transaction rows on the displayed page. Edge thickness scales with this count; amounts retain their individual meaning.</p>
+ <div class="eco-table-scroll"><table class="eco-table"><thead><tr><th>Record ID</th><th>Type / date</th><th>Reported amount</th><th>Source</th></tr></thead><tbody>${records.map(r=>`<tr><th>${e(r.transactionRecordId||r.id)}</th><td>${e(r.type||r.kind)}<br>${e(r.date)}</td><td>${e(r.amountLabel||(Number.isFinite(r.amount)?`${r.currency||''} ${r.amount}`:'—'))}</td><td>${evidenceLink(r.sourceUrl)}${r.evidence||r.notes?`<details><summary>Evidence</summary><p>${e(r.evidence)}</p><p>${e(r.notes)}</p></details>`:''}</td></tr>`).join('')}</tbody></table></div>`
 }
 export function orgDetails(org, data, options = {}) {
   applyFundHierarchy(data)

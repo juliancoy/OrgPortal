@@ -2,7 +2,7 @@ import {forceDistanceLaw} from './force-law.js'
 import { forceSimulation, forceLink, forceCollide, forceX, forceY } from 'd3-force'
 
 // Canonical pairing keeps reverse-direction reports in the same curve bundle.
-export function assignEdgeCurvature(edges) {
+export function assignEdgeCurvature(edges, maxOffset = Infinity) {
  const pairs=new Map()
  for(const edge of edges) {
   const a=typeof edge.source==='object'?edge.source.id:edge.source
@@ -13,7 +13,8 @@ export function assignEdgeCurvature(edges) {
  }
  for(const bundle of pairs.values()) {
   bundle.sort((a,b)=>String(a.edge.id).localeCompare(String(b.edge.id)))
-  bundle.forEach(({edge,direction},i)=>{edge.curveOffset=(i-(bundle.length-1)/2)*18*direction})
+  const spacing=Math.min(18,2*maxOffset/Math.max(1,bundle.length-1))
+  bundle.forEach(({edge,direction},i)=>{edge.curveOffset=(i-(bundle.length-1)/2)*spacing*direction})
  }
 }
 

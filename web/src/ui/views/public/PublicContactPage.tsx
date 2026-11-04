@@ -491,7 +491,7 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
 
       {self && user ? <HiddenCarouselImages key={user.id} /> : null}
 
-      <ConferenceNametag name={page.user_name} avatarUrl={page.photo_url || ''} publicPageUrl={shareUrl} />
+      <ConferenceNametag name={page.user_name} avatarUrl={page.photo_url || ''} publicPageUrl={shareUrl} websiteUrl={page.website_url} linkedinUrl={page.linkedin_url} endeavours={page.headline || ''} />
       {isOwner && <UserProfilePage detailsOnly embedded />}
 
       {(isOwner || Boolean(page.enabled && favorites?.public)) && <section className="public-id-events" aria-label="Favorite Companies">

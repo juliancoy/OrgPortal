@@ -1,3 +1,4 @@
+import {edgeArrowGeometry} from './edge-arrows.js'
 // The default graph uses batched 2D paths: no per-edge GPU meshes or raycast tubes.
 import { curvePoints } from './webgpu-renderer.js'
 const cssColor = color => typeof color === 'string' ? color : `#${color.toString(16).padStart(6, '0')}`
@@ -12,14 +13,15 @@ export function createNetworkCanvas(canvas) {
    if(!updated){edgePaths.clear();nodePaths.clear()}
    for(const edge of edges){
     if(!visibleEdges.has(edge.id)||(updated&&!updated.has(edge.source.id)&&!updated.has(edge.target.id)))continue
-    const points=curvePoints(edge),color=cssColor(edgeColor(edge)),width=edge.quantityWidth||1.4
+    const geometry=edgeArrowGeometry(curvePoints(edge),edge.quantityWidth||1.4,edge.directional),points=geometry.shaft,color=cssColor(edgeColor(edge)),width=geometry.width
     const opacity=edge.opacity??.65
     const dash=edge.relationship==='funding'?[]:edge.relationship==='affiliation'?[8,5]:[3,5]
     const path=new Path2D(),head=new Path2D()
     path.moveTo(points[0].x,points[0].y);for(const p of points.slice(1))path.lineTo(p.x,p.y)
-    const a=points.at(-2),b=points.at(-1),length=Math.hypot(b.x-a.x,b.y-a.y)||1,ux=(b.x-a.x)/length,uy=(b.y-a.y)/length
-    head.moveTo(b.x,b.y);head.lineTo(b.x-ux*8-uy*4,b.y-uy*8+ux*4);head.lineTo(b.x-ux*8+uy*4,b.y-uy*8-ux*4);head.closePath()
-    edgePaths.set(edge.id,{key:`${color}|${width}|${dash.join(',')}|${opacity}`,path,head,color,width,dash,opacity,directional:edge.directional})
+    if(geometry.head){const {tip:b,base,direction:{x:ux,y:uy},halfWidth}=geometry.head
+     head.moveTo(b.x,b.y);head.lineTo(base.x-uy*halfWidth,base.y+ux*halfWidth);head.lineTo(base.x+uy*halfWidth,base.y-ux*halfWidth);head.closePath()
+    }
+    edgePaths.set(edge.id,{key:`${color}|${width}|${dash.join(',')}|${opacity}`,path,head,color,width,dash,opacity,directional:!!geometry.head})
    }
    for(const n of nodes){
     if(!visible.has(n.id)||(updated&&!updated.has(n.id)))continue
@@ -35,7 +37,7 @@ export function createNetworkCanvas(canvas) {
     if(entry.directional){const key=entry.color+'|'+entry.opacity;if(!heads.has(key))heads.set(key,{color:entry.color,opacity:entry.opacity,path:new Path2D()});heads.get(key).path.addPath(entry.head)}
    }
    for(const pieces of nodePaths.values())for(const [color,path] of pieces){if(!fills.has(color))fills.set(color,new Path2D());fills.get(color).addPath(path)}
-   strokes=[...batches.values()];arrows=[...heads];disks=[...fills]
+   strokes=[...batches.values()];arrows=[...heads.values()];disks=[...fills]
   },
   render(view) {
    if (disposed) return
@@ -44,7 +46,7 @@ export function createNetworkCanvas(canvas) {
    context.globalAlpha = .65
    for (const {path, color, width, dash, opacity} of strokes) { context.globalAlpha=opacity; context.strokeStyle=color; context.lineWidth=width; context.setLineDash(dash); context.stroke(path) }
    context.setLineDash([])
-   for (const {color, path, opacity} of arrows) { context.globalAlpha=opacity; context.fillStyle=color; context.fill(path) }
+   for (const {color, path, opacity} of arrows) { context.globalAlpha=Math.max(.55,opacity); context.fillStyle=color; context.fill(path) }
    context.globalAlpha = 1
    for (const [color, path] of disks) { context.fillStyle=color; context.fill(path) }
   },

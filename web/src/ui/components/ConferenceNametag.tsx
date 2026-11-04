@@ -9,26 +9,33 @@ import './ConferenceNametag.css'
 import { downloadNametag } from '../utils/downloadNametag'
 import { printNametags } from '../utils/printNametags'
 
-type Props = { name: string; avatarUrl: string; publicPageUrl: string | null }
+type Props = { name: string; avatarUrl: string; publicPageUrl: string | null; profilePageUrl?: string | null; websiteUrl?: string | null; linkedinUrl?: string | null; endeavours?: string }
 
-export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef, side = 'front' }: Props & { badgeRef?: Ref<HTMLDivElement>; side?: 'front' | 'back' }) {
+export function NametagCard({ name, avatarUrl, publicPageUrl, profilePageUrl = publicPageUrl, endeavours = '', badgeRef, side = 'front' }: Props & { badgeRef?: Ref<HTMLDivElement>; side?: 'front' | 'back' }) {
   const qrSrc = useMemo(() => {
-    if (!publicPageUrl) return null
+    const destination = side === 'front' ? profilePageUrl : publicPageUrl
+    if (!destination) return null
     try {
-      const url = new URL(publicPageUrl, window.location.origin)
+      const url = new URL(destination, window.location.origin)
+      if (side === 'front') {
+        if (!/^\/users\/[^/]+\/?$/.test(url.pathname)) return null
+        url.protocol = 'https:'
+        url.host = 'lifetech.fyi'
+        url.search = ''
+        url.hash = ''
+      }
       if (!['http:', 'https:'].includes(url.protocol)) return null
       return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(createQrSvg(url.href))}`
     } catch {
       return null
     }
-  }, [publicPageUrl])
+  }, [publicPageUrl, profilePageUrl, side])
   const tenant = getGroupSite()
   const branding = tenant?.home_org_slug === 'lifetech' ? tenant : null
   const brandStyle = {
     '--nametag-accent': branding?.accent_color || '#0f6f8f',
     '--nametag-ink': branding?.theme_color || '#061a26',
   } as CSSProperties
-  const logo = branding?.brand_image_path || '/assets/images/lifetech-logo.png'
   const nameParts = name.trim().split(/\s+/).filter(Boolean)
   const firstName = nameParts[0] || 'User'
   const lastName = nameParts.slice(1).join(' ')
@@ -55,48 +62,59 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef, side = '
 
   return (
         <div className={`conference-nametag conference-nametag-${side}`} ref={badgeRef} aria-label={`${side === 'front' ? 'Front' : 'Back'} of ${name}’s nametag`} style={brandStyle}>
-          <img className="conference-nametag-background" src={portalPath('/assets/images/lifetech-hero.png')} alt="" aria-hidden="true" />
-          <div className="conference-nametag-brand">
-            <div className="conference-nametag-logo"><img src={logo.startsWith('/') ? portalPath(logo) : logo} alt="" /></div>
+          {side === 'front' && <img className="conference-nametag-background" src={portalPath('/assets/images/lifetech-hero.png')} alt="" aria-hidden="true" />}
+          {side === 'front' && <div className="conference-nametag-brand">
+            {qrSrc ? <img className="conference-nametag-front-qr" src={qrSrc} alt={`QR code linking to ${name}'s LifeTech public profile`} /> : <span className="conference-nametag-pending">Public profile needed for QR code</span>}
             <div className="conference-nametag-lockup">
               <span>{branding?.name || 'LifeTech'}</span>
               <small>{branding?.tagline && !/^Health\s*[×x]\s*Medicine\s*[×x]\s*Biotech$/i.test(branding.tagline) ? branding.tagline : lifetechBrand.tagline}</small>
             </div>
           </div>
+          }
           {side === 'back' && <p className="conference-nametag-connect">Let’s connect</p>}
           <strong ref={nameRef} className="conference-nametag-name" style={{ fontSize: nameSize }}>
             <span>{firstName}</span>
             {lastName && <span>{lastName}</span>}
           </strong>
+          {side === 'back' && endeavours.trim() && <p className="conference-nametag-endeavours">{endeavours}</p>}
           <div className="conference-nametag-footer">
             {side === 'front' && <div className="conference-nametag-avatar">
               {avatarUrl ? <img src={avatarUrl} alt={`${name}'s avatar`} /> : <span aria-label="Avatar initials">{initials || '?'}</span>}
             </div>}
-            {side === 'back' && (qrSrc ? <img className="conference-nametag-qr" src={qrSrc} alt={`QR code linking to ${name}'s public page`} /> : <span className="conference-nametag-pending">Public page needed for QR code</span>)}
+            {side === 'back' && (qrSrc ? <img className="conference-nametag-qr" src={qrSrc} alt={`QR code linking to ${name}'s selected destination`} /> : <span className="conference-nametag-pending">Public page needed for QR code</span>)}
           </div>
-          {side === 'back' && qrSrc && <div className="conference-nametag-profile-link"><span>Scan for my profile</span><small>{publicPageUrl?.replace(/^https?:\/\//, '')}</small></div>}
+          {side === 'back' && qrSrc && <div className="conference-nametag-profile-link"><span>Scan to connect</span><small>{publicPageUrl?.replace(/^https?:\/\//, '')}</small></div>}
         </div>
   )
 }
 
-export function ConferenceNametag({ name, avatarUrl, publicPageUrl }: Props) {
+export function ConferenceNametag({ name, avatarUrl, publicPageUrl, websiteUrl, linkedinUrl, endeavours = '' }: Props) {
+  const [destination, setDestination] = useState('default')
+  const [customWebsite, setCustomWebsite] = useState<string | null>(null)
+  const [customLinkedin, setCustomLinkedin] = useState<string | null>(null)
+  const [customEndeavours, setCustomEndeavours] = useState<string | null>(null)
+  const website = customWebsite ?? websiteUrl ?? ''
+  const linkedin = customLinkedin ?? linkedinUrl ?? ''
+  const selectedUrl = destination === 'website' ? website : destination === 'linkedin' ? linkedin : destination === 'orgportal' ? publicPageUrl : website || linkedin || publicPageUrl
+  let qrUrl: string | null = null
+  try { const parsed = new URL(selectedUrl || ''); if (['https:', 'http:'].includes(parsed.protocol)) qrUrl = parsed.href } catch { /* Invalid destinations cannot be exported. */ }
   const frontRef = useRef<HTMLDivElement>(null)
   const backRef = useRef<HTMLDivElement>(null)
-  const [side, setSide] = useState<'front' | 'back'>('front')
-  const badgeRef = side === 'front' ? frontRef : backRef
   const headingId = useId()
   const [printing, setPrinting] = useState(false)
   const [error, setError] = useState('')
-  const [downloading, setDownloading] = useState<'png' | 'jpg' | null>(null)
-  async function downloadBadge(format: 'png' | 'jpg') {
-    if (!badgeRef.current || !publicPageUrl) return
-    setDownloading(format); setError('')
+  const [downloading, setDownloading] = useState<string | null>(null)
+  async function downloadBadge(side: 'front' | 'back', format: 'png' | 'jpg') {
+    const badgeRef = side === 'front' ? frontRef : backRef
+    if (!badgeRef.current || !qrUrl) return
+    setDownloading(`${side}-${format}`); setError('')
     try { await downloadNametag(badgeRef.current, name, format, side) }
     catch { setError('Could not download the nametag. Check that its images have loaded and try again.') }
     finally { setDownloading(null) }
   }
-  async function printBadge() {
-    if (!badgeRef.current || !publicPageUrl) return
+  async function printBadge(side: 'front' | 'back') {
+    const badgeRef = side === 'front' ? frontRef : backRef
+    if (!badgeRef.current || !qrUrl) return
     setPrinting(true)
     setError('')
     try {
@@ -108,15 +126,30 @@ export function ConferenceNametag({ name, avatarUrl, publicPageUrl }: Props) {
   return <section className="id-qr-card profile-settings-section conference-nametag-section" aria-labelledby={headingId}>
     <div className="profile-detail-header">
       <h2 id={headingId}>Conference nametag</h2>
-      <button type="button" onClick={() => void printBadge()} disabled={!publicPageUrl || printing || !!downloading}>{printing ? 'Preparing…' : `Print ${side}`}</button>
     </div>
-    <div className="conference-nametag-downloads" role="group" aria-label="Nametag side">{(['front', 'back'] as const).map(value => <button key={value} type="button" aria-pressed={side === value} disabled={printing || !!downloading} onClick={() => setSide(value)}>{value === 'front' ? 'Front · Name and photo' : 'Back · Profile and QR'}</button>)}</div>
-    <div className="conference-nametag-downloads" role="group" aria-label="Download nametag">
-      {(['png', 'jpg'] as const).map(format => <button key={format} type="button" disabled={!publicPageUrl || printing || !!downloading} onClick={() => void downloadBadge(format)}>{downloading === format ? 'Preparing…' : `Download ${side} ${format.toUpperCase()}`}</button>)}
-    </div>
+    <fieldset className="conference-nametag-options">
+      <legend>Personal back</legend>
+      <label>Other endeavours<textarea maxLength={180} rows={2} value={customEndeavours ?? endeavours} onChange={event => setCustomEndeavours(event.target.value)} /></label>
+      <label>Personal website<input type="url" placeholder="https://example.com" value={website} onChange={event => setCustomWebsite(event.target.value)} /></label>
+      <label>LinkedIn URL<input type="url" placeholder="https://www.linkedin.com/in/…" value={linkedin} onChange={event => setCustomLinkedin(event.target.value)} /></label>
+      <label>QR destination<select value={destination} onChange={event => setDestination(event.target.value)}>
+        <option value="default">Automatic · website, LinkedIn, then OrgPortal</option>
+        <option value="website">Personal website</option><option value="linkedin">LinkedIn</option><option value="orgportal">OrgPortal profile</option>
+      </select></label>
+      <small>Changes apply to this preview and its downloads. Profile details are unchanged.</small>
+    </fieldset>
     <p className="muted">4 × 3 inches (102 × 76 mm). Print at 100% / actual size. Each side downloads at 1200 × 900 pixels. Print the front and back separately at actual size.</p>
-    {(['front', 'back'] as const).map(value => <div key={value} className="conference-nametag-preview" hidden={side !== value}><NametagCard side={value} name={name} avatarUrl={avatarUrl} publicPageUrl={publicPageUrl} badgeRef={value === 'front' ? frontRef : backRef} /></div>)}
-    {!publicPageUrl && <p className="muted" role="status">Your nametag will be ready to print or download when your public page is available.</p>}
+    <div className="conference-nametag-sides">
+      {(['front', 'back'] as const).map(value => <div key={value} className="conference-nametag-side">
+        <h3>{value === 'front' ? 'Front · LifeTech' : 'Back · Endeavours and QR'}</h3>
+        <div className="conference-nametag-preview"><NametagCard side={value} name={name} avatarUrl={avatarUrl} publicPageUrl={qrUrl} profilePageUrl={publicPageUrl} endeavours={(customEndeavours ?? endeavours).slice(0, 180)} badgeRef={value === 'front' ? frontRef : backRef} /></div>
+        <div className="conference-nametag-downloads" role="group" aria-label={`${value} nametag actions`}>
+          {(['png', 'jpg'] as const).map(format => <button key={format} type="button" disabled={!qrUrl || printing || !!downloading} onClick={() => void downloadBadge(value, format)}>{downloading === `${value}-${format}` ? 'Preparing…' : `Download ${value} ${format.toUpperCase()}`}</button>)}
+          <button type="button" onClick={() => void printBadge(value)} disabled={!qrUrl || printing || !!downloading}>{`Print ${value}`}</button>
+        </div>
+      </div>)}
+    </div>
+    {!qrUrl && <p className="muted" role="status">Choose a valid website, LinkedIn or OrgPortal URL to print or download your nametag.</p>}
     {error && <p role="alert">{error}</p>}
   </section>
 }

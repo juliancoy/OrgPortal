@@ -1,4 +1,4 @@
-import { validLogoAppearance, type LogoAppearance } from './logoAppearance'
+import { validLogoAppearance, type LogoAppearance } from './logoAppearance.ts'
 export type OrganizationThemeImagery = { icon: string; avatar: string; background: string }
 export function isThemeImage(value: unknown): value is string {
  if(typeof value!=='string'||value.length>2048)return false

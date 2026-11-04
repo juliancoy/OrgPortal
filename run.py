@@ -487,6 +487,8 @@ def _write_local_gateway_config(
                 }}
 
                 location / {{
+                  resolver 127.0.0.11 ipv6=off valid=10s;
+                  set $portal_upstream {dev_name}:5173;
                   proxy_set_header Host $host;
                   proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection $connection_upgrade;
@@ -494,7 +496,7 @@ def _write_local_gateway_config(
                   proxy_send_timeout 1h;
                   proxy_buffering off;
                   add_header Cache-Control "no-store" always;
-                  proxy_pass http://{dev_name}:5173;
+                  proxy_pass http://$portal_upstream;
                 }}
               }}
               server {{

@@ -497,6 +497,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-ecosystem-public-test-ts",
+      "label": "org-worker/test/ecosystem-public.test.ts",
+      "category": "Ecosystem and data",
+      "source": "org-worker/test/ecosystem-public.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "ecosystem-public.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-ecosystem-sync-test-ts",
       "label": "org-worker/test/ecosystem-sync.test.ts",
       "category": "Ecosystem and data",
@@ -751,6 +765,20 @@
       "cwd": "org-worker"
     },
     {
+      "id": "suite-org-worker-test-event-recommendations-test-ts",
+      "label": "org-worker/test/event-recommendations.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/event-recommendations.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-recommendations.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-event-registrations-test-ts",
       "label": "org-worker/test/event-registrations.test.ts",
       "category": "Events and services",
@@ -961,6 +989,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-lifetech-event-discovery-test-ts",
+      "label": "org-worker/test/lifetech-event-discovery.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/lifetech-event-discovery.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "lifetech-event-discovery.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-local-newsletters-test-ts",
       "label": "org-worker/test/local-newsletters.test.ts",
       "category": "Messaging and email",
@@ -971,6 +1013,20 @@
         {
           "id": "suite",
           "label": "local-newsletters.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-maryland-comptroller-test-ts",
+      "label": "org-worker/test/maryland-comptroller.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/maryland-comptroller.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "maryland-comptroller.test.ts"
         }
       ]
     },
@@ -1795,6 +1851,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-public-event-pagination-test-ts",
+      "label": "org-worker/test/public-event-pagination.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/public-event-pagination.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "public-event-pagination.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-public-media-object-test-ts",
       "label": "org-worker/test/public-media-object.test.ts",
       "category": "User interface and integrations",
@@ -2169,6 +2239,20 @@
         {
           "id": "suite",
           "label": "run-local-mcp-test.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-scripts-test-maryland-comptroller-py",
+      "label": "scripts/test-maryland-comptroller.py",
+      "category": "User interface and integrations",
+      "source": "scripts/test-maryland-comptroller.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-maryland-comptroller.py"
         }
       ]
     },
@@ -3139,6 +3223,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-unified-ecosystem-test-mjs",
+      "label": "web/scripts/unified-ecosystem.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/unified-ecosystem.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "unified-ecosystem.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-user-model-review-test-mjs",
       "label": "web/scripts/user-model/review.test.mjs",
       "category": "User interface and integrations",
@@ -3233,6 +3331,20 @@
         {
           "id": "suite",
           "label": "chatLinks.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-chat-chatOutbox-test-ts",
+      "label": "web/src/chat/chatOutbox.test.ts",
+      "category": "Messaging and email",
+      "source": "web/src/chat/chatOutbox.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "chatOutbox.test.ts"
         }
       ]
     },
@@ -4497,6 +4609,20 @@
       ]
     },
     {
+      "id": "suite-web-src-ui-views-public-eventFeed-test-ts",
+      "label": "web/src/ui/views/public/eventFeed.test.ts",
+      "category": "Events and services",
+      "source": "web/src/ui/views/public/eventFeed.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "eventFeed.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-ui-views-public-organizationEvents-test-ts",
       "label": "web/src/ui/views/public/organizationEvents.test.ts",
       "category": "Events and services",
@@ -4563,6 +4689,20 @@
         {
           "id": "suite",
           "label": "email-sender.spec.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-tests-e2e-event-pagination-spec-ts",
+      "label": "web/tests/e2e/event-pagination.spec.ts",
+      "category": "Events and services",
+      "source": "web/tests/e2e/event-pagination.spec.ts",
+      "kind": "playwright",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "event-pagination.spec.ts"
         }
       ]
     },

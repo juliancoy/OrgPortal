@@ -45,6 +45,37 @@ function finalCandidates(db:Database) {
  const insert=db.sqlite.prepare("INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at) VALUES('event',?,?,'applicant',?,'Details','submitted','2026-01-01','2099-04-01')");
  insert.run('final-a','team','Demo A');insert.run('final-b','two','Demo B');insert.run('final-c','one','Demo C');
 }
+test('MCP form discovery shares live settings and schema without exposing or writing applications',async()=>{
+ const f=fixture();try{
+  const env={DB:f.db.asD1()} as Env;
+  const identity={userId:'reader',scopes:['org:events.read']};
+  const target={organizationId:'one',eventId:'event'};
+  const discover=()=>runPresentationOperation(env,identity,'form',target);
+  let form=await discover();
+  assert.equal(form.acceptingApplications,false);
+  await f.request('/form','PUT','host',{enabled:true});
+  form=await discover();
+  assert.equal(form.acceptingApplications,true);
+  const schema=form.applicationSchema!;
+  assert.ok(schema.required?.includes('teamOrganizationId'));
+  assert.ok(schema.required?.includes('submissionId'));
+  assert.ok(schema.required?.includes('teammates'));
+  assert.equal((schema.properties?.title as {maxLength:number}).maxLength,200);
+  assert.equal((schema.properties?.summary as {maxLength:number}).maxLength,5000);
+  assert.equal(schema.additionalProperties,false);
+  assert.equal(schema.properties?.confirm,undefined);
+  assert.equal(schema.properties?.previewId,undefined);
+  assert.equal(form.requirements?.publicSubmission,true);
+  assert.equal(f.db.rows('SELECT * FROM event_mcp_operations').length,0);
+  assert.equal(f.db.rows('SELECT * FROM event_submissions').length,0);
+  assert.equal(f.db.rows('SELECT * FROM organization_invitations').length,0);
+  await assert.rejects(()=>runPresentationOperation(env,{...identity,scopes:[]},'form',target),/Missing presentation scope/);
+  await assert.rejects(()=>runPresentationOperation(env,identity,'form',{...target,organizationId:'two'}),/Event not found/);
+  await assert.rejects(()=>runPresentationOperation(env,identity,'form',{...target,eventId:'missing'}),/Event not found/);
+  f.db.sqlite.exec("UPDATE events SET starts_at='2000-01-01' WHERE id='event'");
+  assert.equal((await discover()).acceptingApplications,false);
+ }finally{f.db.sqlite.close()}
+});
 test('final round host controls, immutable shortlist, tenant isolation and private single-choice ballots',async()=>{
  const f=fixture();try{
   finalCandidates(f.db);

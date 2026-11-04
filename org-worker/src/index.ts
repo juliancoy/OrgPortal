@@ -1,3 +1,4 @@
+import {publicEcosystemRecords,publicEcosystemNativeRecords} from './ecosystemPublic';
 import { directoryExcludedAccountIds } from './peopleDirectoryExclusions';
 import { eventRecommendationRoutes } from './eventRecommendations';
 import { qcashWalletRoutes } from './qcashWalletLinks';
@@ -3260,6 +3261,17 @@ app.post('/api/network/initiatives',bodyLimit({maxSize:32768}),async c=>{
   catch(error){return eventErrorResponse(error,c.env,c.req.raw)}
 });
 
+// Version-pinned, bounded public graph exports from the authoritative transaction DB.
+app.get('/api/network/ecosystem/public/:collection',async c=>{
+ try {
+  const after=c.req.query('after')||'';
+  if(after.length>2000)return c.json({error:'Invalid public cursor'},400);
+  c.header('Cache-Control','no-store');
+  return c.json(c.req.param('collection')==='native' ? await publicEcosystemNativeRecords(c.env.DB,after) :
+   await publicEcosystemRecords(c.env.DB,c.req.param('collection'),after,c.req.query('datasetId')));
+ }catch(error){return eventErrorResponse(error,c.env,c.req.raw);}
+});
+
 app.get("/api/network/relationships/public", async (c) => {
   const offset = Math.max(0, Math.min(Number.parseInt(c.req.query("offset") || "0", 10) || 0, 100000));
   c.header("Cache-Control", "public, max-age=60");
@@ -5744,6 +5756,7 @@ const privateFollowRoute = /^\/api\/network\/(following\/(events|orgs)|orgs\/[^/
     && (/^\/api\/network\/orgs\/public\/[^/]+\/media\/[^/]+$/.test(url.pathname)
       || /^\/api\/network\/initiatives\/public(?:\/[^/]+\/history)?$/.test(url.pathname)
       || /^\/api\/network\/users\/public\/[^/]+\/favorite-companies$/.test(url.pathname)
+      || url.pathname.startsWith('/api/network/ecosystem/public/')
       || url.pathname === '/api/network/search')) {
     const upstream = new URL(env.ORGANIZATION_REPLICA_SOURCE);
     upstream.pathname = upstream.pathname.replace(/\/network\/replication\/snapshot$/, "") + url.pathname.replace(/^\/api/, "");

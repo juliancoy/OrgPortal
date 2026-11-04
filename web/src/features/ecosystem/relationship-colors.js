@@ -8,3 +8,12 @@ export function relationshipColor(edge) {
  if (usd && (edge.relationship === 'funding' || edge.kind === 'transfer')) return USD_COLOR
  return colors[edge.relationship] ?? 0x77878c
 }
+
+export const OUTGOING_COLOR=0xd55e00
+export const INCOMING_COLOR=0x9b59d0
+export function selectedRelationshipColor(edge,selected,fallback){
+ const id=value=>typeof value==='object'?value?.id:value
+ if(selected&&id(edge.source)===selected)return OUTGOING_COLOR
+ if(selected&&id(edge.target)===selected)return INCOMING_COLOR
+ return fallback
+}

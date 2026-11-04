@@ -1,3 +1,5 @@
+import {registerEcosystemDatasetTools} from './ecosystemPublicMcp';
+import {registerMarylandComptrollerTools} from './marylandComptrollerMcp';
 import { emailWorkspaceSchema, emailSubscriberSchema, emailDraftSchema, emailDraftTargetSchema, readEmailWorkspace, addEmailSubscriber, saveEmailDraft, readEmailDraft } from './emailWorkspaceMcp';
 import { recordMcpStatistics } from './mcpLiveStatistics';
 import { registerPersonnelInvitationTools } from './personnelInvitationsMcp';
@@ -737,16 +739,18 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     let parsedBody: unknown;
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
-    // Only authenticated history imports need room for 500 evidence rows and a
-    // 300 KB inline image. Other MCP operations keep their 64 KB request cap.
+    // Authenticated evidence imports use the bounded 1 MiB envelope.
+    // Other MCP operations retain their 64 KiB request cap.
     if(size>65536){
       const envelope=parsedBody as {method?:unknown;params?:{name?:unknown}};
-      if(envelope?.method!=='tools/call'||!['preview_email_history_import','apply_email_history_import'].includes(String(envelope.params?.name)))return new Response(null,{status:413});
+      if(envelope?.method!=='tools/call'||!['preview_email_history_import','apply_email_history_import','preview_maryland_comptroller_import','apply_maryland_comptroller_import','preview_ecosystem_dataset','apply_ecosystem_dataset'].includes(String(envelope.params?.name)))return new Response(null,{status:413});
     }
     const method = parsedBody && typeof parsedBody === 'object' && 'method' in parsedBody ? parsedBody.method : undefined;
     observation.method = typeof method === 'string' && ['initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'].includes(method) ? method : 'other';
     const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: product.version, ...(config.name === "OrgPortal" ? { icons: [{ src: "https://orgportal.cc/orgportal.svg", mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) }, { instructions: "Search the public organization directory before adding an organization. Use directory_registration for researched third-party listings; it grants no access. Owned creation assigns owner access to the signed-in account and requires explicit ownership intent. Never substitute owned creation when directory registration is unavailable or denied. A claimed record is not verified legal representation. Inspect write receipts after uncertain outcomes before retrying." });
     registerAccountTools(server, env.DB, identity, config);
+    registerMarylandComptrollerTools(server,env.DB,identity,config.organizationId);
+    registerEcosystemDatasetTools(server,env.DB,identity,config.organizationId);
     const scopedArgs = (args: unknown, operatorAccess = false) => {
       if (!(operatorAccess && identity.isOperator === true) && config.organizationId && (!args || typeof args !== 'object' || !('organizationId' in args)
         || args.organizationId !== config.organizationId)) throw new EventIntegrationError(403, 'This MCP connection is limited to its own organization');
@@ -939,7 +943,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
         inputSchema: schema, annotations: { readOnlyHint: false, destructiveHint: operation === 'action', idempotentHint: false }, _meta: metadata([portalReadScope, portalWriteScope]) },
         (args: Record<string, unknown>) => governanceResult(operation, args));
     }
-    const presentationResult = async (operation: 'list' | 'save', args: unknown) => {
+    const presentationResult = async (operation: 'form' | 'list' | 'save', args: unknown) => {
       try {
         const data = await runPresentationOperation(env, identity, operation, scopedArgs(args));
         return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
@@ -947,6 +951,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
         return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
       }
     };
+    server.registerTool('get_presentation_application_form', { description: 'Discover presentation application requirements and live intake status for this hosted event before submitting. Returns the input JSON Schema, required scopes, public visibility, team permissions and preview/apply workflow. Does not create a team, invitation or application.', inputSchema: presentationTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => presentationResult('form', args));
     server.registerTool('list_presentation_applications', { description: 'List applications you manage, or all event applications if you manage the host. Private teammate references are returned only within existing application access.', inputSchema: presentationTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => presentationResult('list', args));
     server.registerTool('preview_presentation_application', { description: 'Preview creating or editing a presentation application for a team you manage. organizationId is the event host; teamOrganizationId is your team. Supply at least one teammate: an active team userId, existing invitationId, or email to invite. New email invitations require verified acceptance before joining. Review the public title, summary and invitation recipients before applying. Reuse a generated submissionId for retries.', inputSchema: presentationApplicationSchema.omit({confirm:true,previewId:true}), annotations: { readOnlyHint: true }, _meta: metadata([readScope,writeScope,portalReadScope,portalWriteScope]) }, args => presentationResult('save', {...args,confirm:false}));
     server.registerTool('apply_presentation_application', { description: 'Save the reviewed application and queue teammate email invitations, using matching previewId and confirm=true. Requires live team management permission and at least one teammate. Existing applications can be edited after intake closes until expiry. Partial invitation work may persist after failure; inspect applications and retry with a fresh preview and the same submissionId.', inputSchema: presentationApplicationSchema.extend({previewId:z.string().uuid(),confirm:z.literal(true)}), annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true }, _meta: metadata([readScope,writeScope,portalReadScope,portalWriteScope]) }, args => presentationResult('save', args));

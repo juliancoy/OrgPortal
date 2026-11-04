@@ -1,7 +1,8 @@
+import {readEvidenceResponse} from './readEvidenceResponse.js'
 import { useEffect, useRef, useState } from 'react'
 import { portalPath } from '../../config/portalBase'
 import type { NetworkData } from './networkViewData'
-export type QueryMeta = Pick<NetworkData,'governmentCoverage'|'nonprofitCoverage'> & { version:string;generatedAt:string }
+export type QueryMeta = Pick<NetworkData,'governmentCoverage'|'nonprofitCoverage'|'transactionalCoverage'> & { version:string;generatedAt:string }
 export type QueryPage<T> = QueryMeta & {records:T[];total:number;offset:number;nextOffset:number|null}
 export function ecosystemUrl(section:string,params:Record<string,string|number|undefined>={}) {
  const search=new URLSearchParams()
@@ -16,8 +17,7 @@ export function useEcosystemQuery<T extends QueryMeta>(section:string,params:Rec
   const timer=setTimeout(()=>{
    const target=new URL(url,location.origin);if(version.current)target.searchParams.set('version',version.current)
    void fetch(target,{signal:abort.signal,credentials:'omit'}).then(async response=>{
-    const value=await response.json()
-    if(!response.ok)throw Error(value.error||'Public evidence could not load.')
+    const value=await readEvidenceResponse<T>(response)
     if(typeof value.version!=='string'||typeof value.generatedAt!=='string')throw Error('Invalid public evidence response')
     if(!abort.signal.aborted){version.current=value.version;setResult({url,data:value})}
    }).catch(error=>{if(!abort.signal.aborted)setError(error.message)})

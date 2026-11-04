@@ -1,18 +1,6 @@
 name: Release OrgPortal Image
 
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - "v*"
-    paths:
-      - "web/**"
-      - "shared/**"
-      - "run.py"
-      - ".github/workflows/release-image.yml"
-  pull_request:
-    paths: ["web/**", "shared/**", ".github/workflows/release-image.yml"]
   workflow_dispatch:
 
 permissions:

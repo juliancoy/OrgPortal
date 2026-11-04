@@ -7,29 +7,19 @@ secrets or API consumers. PIdP remains an independently released identity servic
 
 ## Production releases
 
-Cloudflare Workers Builds builds directly from `juliancoy/OrgPortal`, branch
-`main`, using the account's existing Workers Builds deployment credential.
-Build environment: `NODE_VERSION=22`, `SKIP_DEPENDENCY_INSTALL=true`, and
-`CLOUDFLARE_ACCOUNT_ID` set to the deployment account. Dependencies are installed
-explicitly in each package directory by the build command.
-The trigger's build and deployment commands are recorded in
-`cloudflare/build-trigger.json`. Every release checks and builds both targets
-from one clean Git commit, deploys the API followed by the frontend, and verifies
-both service identity and commit through public health endpoints. A stale build
-cannot release after `main` moves. Pull requests run checks without credentials.
+Production releases are explicit and follow local validation. Git pushes do not
+build, test, publish images, or deploy automatically. GitHub workflows are
+manual-only (`workflow_dispatch`); use them only when remote execution is
+explicitly requested. The Cloudflare Workers Builds trigger is disconnected.
+Do not recreate a push trigger or make deployment depend on remote checks.
 
-The build can be started directly from Cloudflare Builds or the Builds API.
-The main-branch trigger is configured, but push-triggered builds have not fired
-during the cutover. Confirm the Cloudflare GitHub App has access to OrgPortal
-before relying on automatic deployment. A direct build has been verified.
-
-**Deployment status, 2026-10-13:** do not treat a GitHub push or green GitHub
-checks as proof of a production release. Until GitHub push delivery is fixed,
-start the native Cloudflare build explicitly, wait for success, and compare
-`/health` and `/api/org/health` against the intended commit. The outstanding
-setup is to check the Cloudflare GitHub App installation and OrgPortal repository
-access, then confirm a real main-branch push creates a build without a manual
-request. Do not restore CodeCollective as the deployment path.
+Select one published commit, validate it locally, build it in the pinned local
+Docker image, and deploy those exact artifacts later. New pushes to `main` do
+not invalidate that tested commit. Deployment still requires a clean checkout,
+matching clean build metadata, and proof that the commit is published in the
+history of `origin/main`. Cloudflare Builds cannot invoke production deployment.
+The API deploys before the frontend, followed by public service/commit, HTML,
+JavaScript asset, and API proxy verification. Database migrations stay separate.
 
 The moved domains are `orgportal.cc`, `timebank.codecollective.us`, and
 `bmoretimebank.codecollective.us`. LifeTech still requests legacy
@@ -52,7 +42,7 @@ with SQLite. Lockfile dependencies are installed inside the container and cached
 under `.local/release-container`, with separate caches for each package. Files
 are written as the invoking user. GitHub release checks use the same image.
 
-Use these commands from a clean checkout of current `main`:
+Use these commands from a clean checkout of the selected published commit:
 
 ```sh
 python3 ../run.py --release check
@@ -66,8 +56,10 @@ requires `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` in the environment;
 never place token values in shell arguments, source control or logs.
 The API upload inherits all live bindings and keeps runtime settings, cron,
 queue subscriptions and domain assignments. The frontend uses its own checked-in
-Wrangler configuration. `deploy` rejects dirty or outdated checkouts and build
-artifacts from another commit. `verify` can be run separately.
+Wrangler configuration. `deploy` rejects dirty or unpublished checkouts and build
+artifacts from another commit. Advancing `main` does not force a rebuild of the
+tested release. Reuse local passing checks for unchanged code; do not dispatch
+remote tests merely to release. `verify` can be run separately.
 
 ## Routing and cutover
 

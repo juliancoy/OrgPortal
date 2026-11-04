@@ -118,7 +118,7 @@ Deliverables:
   - Adapter methods (send, sync handling, membership updates).
   - Role-gated UI/API behavior helpers.
 - Integration tests:
-  - Synapse + OrgPortal in docker-compose.
+  - Synapse + OrgPortal in Docker containers.
   - Login bootstrap and room access by role class.
 - E2E tests:
   - `Member` sends/reads in org room.

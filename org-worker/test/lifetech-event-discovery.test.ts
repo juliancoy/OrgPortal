@@ -3,6 +3,29 @@ import assert from 'node:assert/strict';
 import {FullSchemaDb} from './helpers/fullSchemaDb';
 import {eventRecommendationRoutes} from '../src/eventRecommendations';
 
+test('compact imported timezone offsets and malformed end dates filter before pagination',async()=>{
+ const db=new FullSchemaDb();
+ try {
+  const insert=db.sql.prepare('INSERT INTO events(id,ingest_key,title,slug,starts_at,ends_at,tags) VALUES(?,?,?,?,?,?,?)');
+  for(const [id,start,end] of [
+   ['expired','2000-01-13T17:30:00-0500','2000-01-13T20:00:00-0500'],
+   ['invalid-end','2000-01-14T17:30:00-05:00','invalid'],
+   ['ongoing','2000-01-15T17:30:00-0500','2099-01-13T20:00:00-0500'],
+   ['future','2099-01-13T17:30:00-0500','2099-01-13T20:00:00-0500'],
+  ])insert.run(id,id,'Medical research '+id,id,start,end,'[]');
+  const app=eventRecommendationRoutes(async()=>({id:'alice'}),async(_env,_req,row:{id:string})=>({id:row.id}));
+  const ids=async(query:string)=>{
+   const response=await app.request('/events/recommended?community=lifetech&'+query,{}, {DB:db.asD1()});
+   assert.equal(response.status,200);return (await response.json() as {id:string}[]).map(row=>row.id);
+  };
+  assert.deepEqual(await ids('period=upcoming&limit=1'),['ongoing']);
+  assert.deepEqual(await ids('period=upcoming&limit=1&offset=1'),['future']);
+  assert.deepEqual(await ids('period=upcoming&limit=1&offset=2'),[]);
+  assert.deepEqual(await ids('period=past'),['invalid-end','expired']);
+  assert.deepEqual(await ids('period=all&sort=date&from=2099-01-13T22:00:00Z&to=2099-01-14'),['future']);
+ }finally{db.sql.close()}
+});
+
 test('LifeTech discovery filters before paging, prioritizes participation and deduplicates imported events',async()=>{
  const db=new FullSchemaDb();
  try {

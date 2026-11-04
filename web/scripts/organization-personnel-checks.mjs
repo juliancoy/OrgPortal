@@ -22,7 +22,7 @@ export async function testOrganizationPersonnel(base,output){
   await expect(grid.locator('article')).toHaveCount(2)
   await expect(grid.getByRole('heading',{name:'Alex Morgan',exact:true})).toBeVisible()
   await expect(grid.getByRole('heading',{name:'Invited teammate',exact:true})).toBeVisible()
-  await expect(grid.getByText('Pending invitation',{exact:true})).toBeVisible()
+  await expect(grid.locator('[data-invitation-status="pending"] .organization-invitation-pending-label')).toHaveText(/^(Invited|Pending invitation)$/)
   await expect(grid).not.toContainText('teammate@example.invalid')
   for(const width of [390,1440]){await page.setViewportSize({width,height:1000});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:join(output,`organization-personnel-${width}.png`),fullPage:true})}
   await page.goto(base+'/organization-personnel?brand=lifetech&admin=1')

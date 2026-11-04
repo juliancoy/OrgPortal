@@ -1,9 +1,11 @@
+import {edgeArrowGeometry} from './edge-arrows.js'
 import {frameTargetMs} from './frame-budget.js'
-import {WebGPURenderer,Scene,PerspectiveCamera,OrthographicCamera,AmbientLight,DirectionalLight,InstancedMesh,SphereGeometry,CylinderGeometry,ConeGeometry,MeshStandardNodeMaterial,MeshBasicNodeMaterial,MeshBasicMaterial,DataTexture,InstancedBufferAttribute,SRGBColorSpace,NearestFilter,BackSide,Object3D,Vector3,Vector2,Euler,Quaternion,Color,Raycaster,Box3,WebGLCoordinateSystem} from 'three/webgpu'
+import {transactionEdgePath,TRANSACTION_EDGE_SEGMENTS} from './transaction-edge-path.js'
+import {WebGPURenderer,Scene,PerspectiveCamera,OrthographicCamera,AmbientLight,DirectionalLight,InstancedMesh,SphereGeometry,CylinderGeometry,ConeGeometry,MeshStandardNodeMaterial,MeshBasicNodeMaterial,MeshBasicMaterial,DataTexture,InstancedBufferAttribute,SRGBColorSpace,NearestFilter,BackSide,Object3D,Vector3,Vector2,Euler,Quaternion,Color,Raycaster,Box3,Spherical,WebGLCoordinateSystem} from 'three/webgpu'
 import {attribute,texture,uv,vec2} from 'three/tsl'
 import {spherePieAtlas} from './sphere-pies.js'
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js'
-export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',movementSpeed=()=>1,moveFourth=()=>{}){
+export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',movementSpeed=()=>1,moveFourth=()=>{},orbitSelected=()=>false){
  // Three.js falls back to WebGL 2 when WebGPU has no usable adapter.
  const renderer=new WebGPURenderer({canvas,antialias:true,alpha:true})
  try{await renderer.init()}catch(error){renderer.dispose();throw new Error(dimension+' graphics could not start. Use the Graph tab instead.',{cause:error})}
@@ -13,20 +15,36 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
  const device=renderer.backend.device
  device?.lost.then(info=>{if(!disposed)onLost(info.message||'WebGPU device lost')})
  device?.addEventListener('uncapturederror',event=>{if(!disposed)onLost(event.error.message)})
- const scene=new Scene();let camera=new PerspectiveCamera(45,1,.1,1e7),transitionFrame=0
+ const scene=new Scene();let camera=new PerspectiveCamera(45,1,.1,1e7),transitionFrame=0,focusResolver=null,focusAnimating=false
  camera.position.set(200,120,400)
  scene.add(new AmbientLight(0xffffff,2));const light=new DirectionalLight(0xffffff,3);light.position.set(300,600,500);scene.add(light)
  const controls=new OrbitControls(camera,canvas);controls.enableDamping=false;controls.addEventListener('change',changed)
  controls.enableRotate=false
+ const cancelFocus=()=>{cancelAnimationFrame(transitionFrame);focusResolver=null;focusAnimating=false}
+ controls.addEventListener('start',cancelFocus)
  const input=new AbortController(),keys=new Set(),rotation=new Euler(0,0,0,'YXZ'),forward=new Vector3(),right=new Vector3(),vertical=new Vector3(),movement=new Vector3()
  let look=null,moveFrame=0,lastMove=0,boosted=false,slowed=false
  const previousTabIndex=canvas.getAttribute('tabindex'),previousLabel=canvas.getAttribute('aria-label')
- canvas.tabIndex=0;canvas.setAttribute('aria-label',dimension+' network. Drag to look around. W/S move forward/backward; A/D move left/right. '+(dimension!=='3D'?'E/Q move through the selected hidden dimension.':'E moves up; Q moves down.')+' Hold Shift for 10× speed; Control for 0.1× speed.')
+ canvas.tabIndex=0;canvas.setAttribute('aria-label',dimension+' network. Centered mode: drag to orbit the selected sphere; W/S change radius; A/D orbit horizontally; E/Q orbit vertically. Free fly: drag to look around. W/S move forward/backward; A/D move left/right. '+(dimension!=='3D'?'E/Q move through the selected hidden dimension.':'E moves up; Q moves down.')+' Hold Shift for 10× speed; Control for 0.1× speed.')
  const stopMovement=()=>{boosted=false;slowed=false;keys.clear();cancelAnimationFrame(moveFrame);moveFrame=0;lastMove=0;look=null}
+ function orbit(horizontal,verticalAngle,radial=0){
+  const offset=camera.position.clone().sub(controls.target),sphere=new Spherical().setFromVector3(offset)
+  sphere.theta+=horizontal;sphere.phi+=verticalAngle;sphere.makeSafe()
+  sphere.radius=Math.max(camera.near*2,sphere.radius*Math.exp(radial))
+  camera.position.copy(controls.target).add(offset.setFromSpherical(sphere))
+  if(camera.isOrthographicCamera&&radial){camera.zoom=Math.max(.01,Math.min(1000,camera.zoom*Math.exp(-radial)));camera.updateProjectionMatrix()}
+  controls.update();changed()
+ }
  function move(time){
   moveFrame=0
   if(disposed||!keys.size)return
+  cancelFocus()
   const dt=lastMove?Math.min((time-lastMove)/1000,.05):0;lastMove=time
+  if(orbitSelected()){
+   const step=movementSpeed()*(boosted?10:1)*(slowed?0.1:1)*dt
+   orbit((Number(keys.has('KeyA'))-Number(keys.has('KeyD')))*step,(Number(keys.has('KeyQ'))-Number(keys.has('KeyE')))*step,(Number(keys.has('KeyS'))-Number(keys.has('KeyW')))*step)
+   moveFrame=requestAnimationFrame(move);return
+  }
   camera.getWorldDirection(forward);right.setFromMatrixColumn(camera.matrixWorld,0)
   movement.set(0,0,0).addScaledVector(forward,Number(keys.has('KeyW'))-Number(keys.has('KeyS'))).addScaledVector(right,Number(keys.has('KeyD'))-Number(keys.has('KeyA')))
   const fourth=dimension!=='3D',axis=Number(keys.has('KeyE'))-Number(keys.has('KeyQ'))
@@ -48,6 +66,7 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
  canvas.addEventListener('pointerdown',event=>{canvas.focus({preventScroll:true});if(event.button===0&&event.isPrimary){look={id:event.pointerId,x:event.clientX,y:event.clientY};canvas.setPointerCapture(event.pointerId)}},{signal:input.signal})
  canvas.addEventListener('pointermove',event=>{
   if(!look||event.pointerId!==look.id)return
+  if(orbitSelected()){orbit(-(event.clientX-look.x)*.004,-(event.clientY-look.y)*.004);look.x=event.clientX;look.y=event.clientY;return}
   rotation.setFromQuaternion(camera.quaternion);rotation.y-=(event.clientX-look.x)*.004;rotation.x=Math.max(-Math.PI/2+.01,Math.min(Math.PI/2-.01,rotation.x-(event.clientY-look.y)*.004))
   look.x=event.clientX;look.y=event.clientY
   const distance=camera.position.distanceTo(controls.target)
@@ -84,8 +103,25 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    next.position.copy(camera.position);next.quaternion.copy(camera.quaternion);camera=next;controls.object=camera;compiled=false;camera.updateProjectionMatrix();controls.update();changed()
   },
   focus(node,immediate=false){
-   cancelAnimationFrame(transitionFrame);const start=camera.position.clone(),targetStart=controls.target.clone(),endTarget=new Vector3(node.x,node.y,node.z||0),offset=start.clone().sub(targetStart),end=endTarget.clone().add(offset),started=performance.now()
-   const tick=now=>{const t=immediate?1:Math.min(1,(now-started)/350),ease=t*t*(3-2*t);camera.position.lerpVectors(start,end,ease);controls.target.lerpVectors(targetStart,endTarget,ease);controls.update();changed();if(t<1&&!disposed)transitionFrame=requestAnimationFrame(tick)};tick(started)
+   cancelAnimationFrame(transitionFrame);focusAnimating=true
+   const resolve=typeof node==='function'?node:()=>node,start=camera.position.clone(),targetStart=controls.target.clone(),offset=start.clone().sub(targetStart),endTarget=new Vector3(),end=new Vector3(),started=performance.now()
+   focusResolver=resolve
+   const tick=now=>{
+    if(disposed)return
+    const point=resolve();if(!point)return
+    endTarget.set(point.x,point.y,point.z||0);end.copy(endTarget).add(offset)
+    const t=immediate?1:Math.min(1,(now-started)/400),ease=t*t*(3-2*t)
+    camera.position.lerpVectors(start,end,ease);controls.target.lerpVectors(targetStart,endTarget,ease);controls.update();changed()
+    if(t<1)transitionFrame=requestAnimationFrame(tick);else focusAnimating=false
+   }
+   tick(started)
+  },
+  stopFocus(){cancelFocus()},
+  follow(node){
+   cancelFocus()
+   const target=new Vector3(node.x,node.y,node.z||0),delta=target.clone().sub(controls.target)
+   if(delta.lengthSq()<1e-12)return false
+   camera.position.add(delta);controls.target.copy(target);controls.update();camera.updateMatrixWorld();return true
   },
   cameraPosition(){camera.updateMatrixWorld();return {x:camera.position.x,y:camera.position.y,z:camera.position.z}},
   update(nodes,edges,visible,visibleEdges,selected,colors,edgeColor,updated=null){
@@ -94,8 +130,11 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    const previousNodes=renderedNodes,previousEdges=renderedEdges
    renderedNodes=nodes.filter(n=>visible.has(n.id)&&!n.clipped4D);renderedEdges=edges.filter(e=>visibleEdges.has(e.id)&&!e.source.clipped4D&&!e.target.clipped4D)
    if(updated&&(previousNodes.length!==renderedNodes.length||previousEdges.length!==renderedEdges.length||renderedNodes.some((n,i)=>n.id!==previousNodes[i]?.id)||renderedEdges.some((e,i)=>e.id!==previousEdges[i]?.id)))updated=null
-   for(const index of [1,2])geometries[index].setAttribute('edgeOpacity',new InstancedBufferAttribute(Float32Array.from(renderedEdges,e=>e.opacity??.2),1))
-   const spheres=mesh(0,renderedNodes.length),bodies=mesh(1,renderedEdges.length),arrows=mesh(2,renderedEdges.length)
+   geometries[1].setAttribute('edgeOpacity',new InstancedBufferAttribute(Float32Array.from({length:renderedEdges.length*TRANSACTION_EDGE_SEGMENTS},(_,i)=>renderedEdges[Math.floor(i/TRANSACTION_EDGE_SEGMENTS)].opacity??.2),1))
+   geometries[2].setAttribute('edgeOpacity',new InstancedBufferAttribute(Float32Array.from(renderedEdges,e=>e.opacity??.2),1))
+   const spheres=mesh(0,renderedNodes.length),bodies=mesh(1,renderedEdges.length*TRANSACTION_EDGE_SEGMENTS),arrows=mesh(2,renderedEdges.length)
+   canvas.dataset.transactionEdges=String(renderedEdges.length)
+   canvas.dataset.transactionEdgeSegments=String(bodies.count)
    if(atlasNodes.length!==renderedNodes.length||renderedNodes.some((n,i)=>atlasNodes[i].id!==n.id||atlasNodes[i].pie!==n.financialPie)){
     const atlas=spherePieAtlas(renderedNodes,device?.limits.maxTextureDimension2D||4096)
     if(pieTexture.image.width!==atlas.width||pieTexture.image.height!==atlas.height)pieTexture.dispose()
@@ -111,17 +150,20 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    renderedNodes.forEach((n,i)=>{if(updated&&!updated.has(n.id))return;a.set(n.x,n.y,n.z||0);scale.setScalar(n.renderRadius);place(spheres,i,a,scale,identity,n.financialPie?.slices.length?0xffffff:n.id===selected?0xe56d3c:n.opacity<1?0x606c76:colors[n.category]??0x77878c)})
    renderedEdges.forEach((e,i)=>{
     if(updated&&!updated.has(e.source.id)&&!updated.has(e.target.id))return
-    a.set(e.source.x,e.source.y,e.source.z||0);b.set(e.target.x,e.target.y,e.target.z||0);direction.subVectors(b,a)
-    const distance=direction.length();direction.normalize();const gap=Math.max(.01,distance-e.source.renderRadius-e.target.renderRadius-8)
-    a.addScaledVector(direction,e.source.renderRadius+2);object.quaternion.setFromUnitVectors(up,direction)
-    const rotation=object.quaternion.clone(),tint=edgeColor(e),thickness=(e.quantityWidth||1.4)/2
-    b.copy(a).addScaledVector(direction,gap/2);scale.set(thickness,gap,thickness);place(bodies,i,b,scale,rotation,tint)
-    b.copy(a).addScaledVector(direction,gap+3);scale.set(e.directional?thickness*2.5:0,e.directional?6:0,e.directional?thickness*2.5:0);place(arrows,i,b,scale,rotation,tint)
+    const geometry=edgeArrowGeometry(transactionEdgePath(e),e.quantityWidth||1.4,e.directional),points=geometry.shaft,tint=edgeColor(e),thickness=geometry.width/2
+    for(let segment=0;segment<TRANSACTION_EDGE_SEGMENTS;segment++){
+     a.copy(points[segment]);b.copy(points[segment+1]);direction.subVectors(b,a)
+     const length=Math.max(.01,direction.length());direction.normalize();object.quaternion.setFromUnitVectors(up,direction)
+     b.add(a).multiplyScalar(.5);scale.set(thickness,length,thickness)
+     place(bodies,i*TRANSACTION_EDGE_SEGMENTS+segment,b,scale,object.quaternion,tint)
+    }
+    if(geometry.head){const head=geometry.head;direction.set(head.direction.x,head.direction.y,head.direction.z);object.quaternion.setFromUnitVectors(up,direction);b.set(head.base.x,head.base.y,head.base.z||0).addScaledVector(direction,head.length/2);scale.set(head.halfWidth,head.length,head.halfWidth)}else{b.copy(points.at(-1));scale.set(0,0,0)};place(arrows,i,b,scale,object.quaternion,tint)
    })
    for(const m of meshes){m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true;m.boundingSphere=null}
   },
   render(){
    if(disposed)return false
+   if(focusResolver&&!focusAnimating){const point=focusResolver();if(point){const delta=new Vector3(point.x,point.y,point.z||0).sub(controls.target);if(delta.lengthSq()>1e-12){camera.position.add(delta);controls.target.add(delta);controls.update()}}}
    // Keep the pie pole facing the camera so every slice remains visible.
    if(meshes[0]&&(pieFacingDirty||!lastCameraOrientation.equals(camera.quaternion))){
     pieFacing.copy(camera.quaternion).multiply(piePole);lastCameraOrientation.copy(camera.quaternion);pieFacingDirty=false
@@ -145,6 +187,7 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
   resize(w,h){width=Math.max(1,w);height=Math.max(1,h);renderer.setPixelRatio(Math.min(devicePixelRatio,2)*[1,.8,.65,.4][quality]);renderer.setSize(width,height,false);if(camera.isOrthographicCamera){const half=(camera.top-camera.bottom)/2;camera.left=-half*width/height;camera.right=half*width/height}else camera.aspect=width/height;camera.updateProjectionMatrix()},
   project(n){if(n.clipped4D)return {x:0,y:0,visible:false,depth:Infinity};const p=new Vector3(n.x,n.y,n.z||0).project(camera);return {x:(p.x+1)*width/2,y:(1-p.y)*height/2,visible:p.z>=(camera.coordinateSystem===WebGLCoordinateSystem?-1:0)&&p.z<=1&&Math.abs(p.x)<=1&&Math.abs(p.y)<=1,depth:p.z}},
   fit(nodes){
+   cancelFocus()
    nodes=nodes.filter(n=>!n.clipped4D)
    const box=new Box3();for(const n of nodes)box.expandByPoint(new Vector3(n.x,n.y,n.z||0))
    const center=nodes.length?box.getCenter(new Vector3()):new Vector3(),extent=nodes.length?box.getSize(new Vector3()).length()/2:50
@@ -153,13 +196,22 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    if(camera.isOrthographicCamera){camera.zoom=1;camera.top=radius*1.15;camera.bottom=-radius*1.15;camera.left=-radius*1.15*width/height;camera.right=radius*1.15*width/height}
    controls.target.copy(center);camera.position.copy(center).add(new Vector3(.45,.3,1).normalize().multiplyScalar(distance));camera.near=Math.max(.1,distance/1e4);camera.far=distance*100;camera.updateProjectionMatrix();controls.minDistance=radius*.15;controls.maxDistance=distance*20;controls.update();referenceDistance=distance
   },
-  zoom(factor){if(camera.isOrthographicCamera){camera.zoom=Math.max(.05,Math.min(100,camera.zoom*factor));camera.updateProjectionMatrix();changed();return}const delta=camera.position.clone().sub(controls.target),distance=Math.max(controls.minDistance,Math.min(controls.maxDistance,delta.length()/factor));camera.position.copy(controls.target).add(delta.setLength(distance));controls.update();changed()},
+  zoom(factor){cancelFocus();if(camera.isOrthographicCamera){camera.zoom=Math.max(.05,Math.min(100,camera.zoom*factor));camera.updateProjectionMatrix();changed();return}const delta=camera.position.clone().sub(controls.target),distance=Math.max(controls.minDistance,Math.min(controls.maxDistance,delta.length()/factor));camera.position.copy(controls.target).add(delta.setLength(distance));controls.update();changed()},
   zoomLevel(){return (camera.isOrthographicCamera?camera.zoom:1)*referenceDistance/Math.max(.01,camera.position.distanceTo(controls.target))},
   hit(event){
    if(!meshes[0])return {}
+   camera.updateMatrixWorld();scene.updateMatrixWorld(true)
    const rect=canvas.getBoundingClientRect();ray.setFromCamera(new Vector2((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2),camera)
-   const first=ray.intersectObjects(meshes.filter(Boolean),false)[0];if(!first)return {}
-   return first.object===meshes[0]?{node:renderedNodes[first.instanceId]}:first.object===meshes[3]?{node:outlinedNodes[first.instanceId]}:{edge:renderedEdges[first.instanceId]}
+   // Connected cylinders can overlap an orb. Nodes take priority over edges.
+   const nodeHit=ray.intersectObjects([meshes[0],meshes[3]].filter(Boolean),false)[0]
+   if(nodeHit)return {node:nodeHit.object===meshes[0]?renderedNodes[nodeHit.instanceId]:outlinedNodes[nodeHit.instanceId]}
+   // Keep small, distant orbs usable without requiring a subpixel-perfect click.
+   const tolerance=event.pointerType==='touch'?12:8,x=event.clientX-rect.left,y=event.clientY-rect.top
+   let nearest=null,best=tolerance*tolerance
+   for(const node of renderedNodes){const point=api.project(node);if(!point.visible)continue;const distance=(point.x-x)**2+(point.y-y)**2;if(distance<best){nearest=node;best=distance}}
+   if(nearest)return {node:nearest}
+   const first=ray.intersectObjects([meshes[1],meshes[2]].filter(Boolean),false)[0];if(!first)return {}
+   return {edge:renderedEdges[first.object===meshes[1]?Math.floor(first.instanceId/TRANSACTION_EDGE_SEGMENTS):first.instanceId]}
   },
   dispose(){cancelAnimationFrame(transitionFrame);disposed=true;stopMovement();input.abort();if(previousTabIndex===null)canvas.removeAttribute('tabindex');else canvas.setAttribute('tabindex',previousTabIndex);if(previousLabel===null)canvas.removeAttribute('aria-label');else canvas.setAttribute('aria-label',previousLabel);controls.dispose();const release=()=>{for(const m of meshes)if(m)m.dispose();geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());pieTexture.dispose();renderer.dispose()};if(compilePromise&&compiling)void compilePromise.finally(release);else release()},
  };return api

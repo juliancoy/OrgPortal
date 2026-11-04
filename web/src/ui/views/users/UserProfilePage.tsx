@@ -590,6 +590,7 @@ export function UserProfilePage({ embedded = false, photoOnly = false, detailsOn
         name={fullName.trim() || user?.displayName || 'Your name'}
         avatarUrl={avatarUrl || user?.avatarUrl || ''}
         publicPageUrl={publicPageUrl}
+        endeavours={bio.slice(0, 180)}
       />
 
       <ContactSettingsPage embedded hideQr hideProfileImage />

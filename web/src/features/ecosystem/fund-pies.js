@@ -102,6 +102,7 @@ export function financialNodePies(data,{includeCapitalization=false}={}) {
    slice.amount+=r.amount;slice.records.push(r);groups.set(name,slice)
   }
   const slices=[...groups.values()].sort((a,b)=>b.amount-a.amount || a.label.localeCompare(b.label)),total=slices.reduce((sum,s)=>sum+s.amount,0)
+  for(const slice of slices)slice.counterpartyIds=[...new Set(slice.records.map(record=>record[direction==='incoming'?'source':'target']))]
   let angle=-Math.PI/2
   for(const slice of slices){slice.share=slice.amount/total;slice.startAngle=angle;angle+=slice.share*Math.PI*2;slice.endAngle=angle}
   if(total)pies.set(org.id,{direction,total,slices,omitted,basis:direction==='incoming'?'Disclosed funding received by funder':administers?'Disclosed awards made by fund':'Disclosed awards made by recipient'})
