@@ -40,7 +40,7 @@ try{
  if(front.width!==384||front.height!==288||back.width!==384||back.height!==288||back.y!==front.y+288)throw Error('Expected two stacked 4 × 3 inch sides')
  await expect(sheet).toContainText('Alex')
  await expect(sheet).toContainText('Example')
- await expect(sheet.locator('.conference-nametag-front-qr,.conference-nametag-back .conference-nametag-qr')).toHaveCount(2)
+ await expect(sheet.locator('.conference-nametag-back .conference-nametag-qr')).toHaveCount(1)
  if(await printPage.locator('button,fieldset').count())throw Error('Controls must not appear in print output')
  const pdf=await printPage.pdf({preferCSSPageSize:true,printBackground:true,path:resolve(output,'combined-4x6.pdf')})
  const pages=[...pdf.toString('latin1').matchAll(/\/Type \/Page\b/g)].length
@@ -51,6 +51,6 @@ try{
  // Invalid destinations cannot initiate printing, including the combined action.
  await page.goto(base+'/nametag-postcard-review?missing=1')
  await expect(button).toBeDisabled()
- await writeFile(resolve(output,'result.json'),JSON.stringify({passed:true,pages,sheetInches:[4,6],sideInches:[4,3],checks:['front above back','name and QR on both sides','print controls excluded','invalid destination disabled']},null,2))
- console.log('PASS: one 4 × 6 inch PDF page with both 4 × 3 inch sides, name and QR on both sides and no controls.')
+ await writeFile(resolve(output,'result.json'),JSON.stringify({passed:true,pages,sheetInches:[4,6],sideInches:[4,3],checks:['front above back','name on both sides and back QR','print controls excluded','invalid destination disabled']},null,2))
+ console.log('PASS: one 4 × 6 inch PDF page with both 4 × 3 inch sides, name on both sides and back QR and no controls.')
 }finally{await browser?.close();await server.close()}
