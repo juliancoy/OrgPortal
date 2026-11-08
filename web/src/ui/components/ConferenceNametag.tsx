@@ -34,7 +34,7 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef, side = '
   const firstName = nameParts[0] || 'User'
   const lastName = nameParts.slice(1).join(' ')
   const longestLine = Math.max(firstName.length, lastName.length)
-  const nameSize = longestLine > 22 ? '20pt' : longestLine > 15 ? '25pt' : longestLine > 10 ? '31pt' : '40pt'
+  const nameSize = longestLine > 22 ? '16pt' : longestLine > 15 ? '19pt' : longestLine > 10 ? '23pt' : '26pt'
   const nameRef = useRef<HTMLElement>(null)
   useEffect(() => {
     let cancelled = false
@@ -108,7 +108,7 @@ export function ConferenceNametag({ name, avatarUrl, publicPageUrl }: Props) {
         await printNametags(sheet, `${printStyles}
 @page { size: 4in 6in; margin: 0; }
 html, body { margin: 0; padding: 0; width: 4in; }
-.conference-nametag-postcard { display: grid; grid-template-rows: 3in 3in; width: 4in; height: 6in; gap: 0; break-inside: avoid; }
+.conference-nametag-postcard { display: grid; grid-template-rows: repeat(2, 53.98mm); width: 4in; height: 6in; gap: 6mm; align-content: center; justify-content: center; break-inside: avoid; }
 .conference-nametag-postcard > .conference-nametag { margin: 0; }`, `LifeTech nametag 4 × 6 — ${name}`)
       } else {
       await printNametags(badgeRef.current, `${printStyles}\n@page { size: auto; margin: 0.5in; } body { margin: 0; }`, `LifeTech nametag ${side} — ${name}`)
@@ -126,9 +126,9 @@ html, body { margin: 0; padding: 0; width: 4in; }
     <div className="conference-nametag-downloads" role="group" aria-label="Download nametag">
       {(['png', 'jpg'] as const).map(format => <button key={format} type="button" disabled={!publicPageUrl || printing || !!downloading} onClick={() => void downloadBadge(format)}>{downloading === format ? 'Preparing…' : `Download ${side} ${format.toUpperCase()}`}</button>)}
     </div>
-    <p className="muted">4 × 3 inches (102 × 76 mm). Print at 100% / actual size. Each side downloads at 1200 × 900 pixels. Print each side separately, or stack both on one 4 × 6 inch sheet.</p>
-    <div className="conference-nametag-downloads"><button type="button" onClick={() => void printBadge(true)} disabled={!publicPageUrl || printing || !!downloading}>Print both on 4 × 6</button></div>
-    <p className="muted">For the combined sheet, choose 4 × 6 inch paper, no margins, 100% / actual size, background graphics on, and headers and footers off. Front is on top; back is below.</p>
+    <p className="muted">Credit-card size: 85.6 × 53.98 mm (3.37 × 2.125 inches). Print at 100% / actual size. Each side downloads at 1011 × 638 pixels. Print each side separately, or stack both on one 4 × 6 inch sheet.</p>
+    <div className="conference-nametag-downloads"><button type="button" onClick={() => void printBadge(true)} disabled={!publicPageUrl || printing || !!downloading}>Print credit-card pair on 4 × 6</button></div>
+    <p className="muted">For the combined sheet, choose 4 × 6 inch paper, no margins, 100% / actual size, background graphics on, and headers and footers off. Each side stays credit-card sized. Front is on top; back is below; trim around each card.</p>
     {(['front', 'back'] as const).map(value => <div key={value} className="conference-nametag-preview" hidden={side !== value}><NametagCard side={value} name={name} avatarUrl={avatarUrl} publicPageUrl={publicPageUrl} badgeRef={value === 'front' ? frontRef : backRef} /></div>)}
     {!publicPageUrl && <p className="muted" role="status">Your nametag will be ready to print or download when your public page is available.</p>}
     {error && <p role="alert">{error}</p>}

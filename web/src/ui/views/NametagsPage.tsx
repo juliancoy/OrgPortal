@@ -44,7 +44,7 @@ export function NametagsPage() {
       <Link to="/admin">Back to admin</Link>
       <h1>Print everyone’s nametags</h1>
       <label>Nametag side <select value={side} disabled={printing} onChange={event=>setSide(event.target.value as 'front' | 'back')}><option value="front">Front · Name and photo</option><option value="back">Back · Profile and QR</option></select></label>
-      <p>Six 4 × 3 inch nametags per 8.5 × 11 inch sheet. Print at 100% / actual size with browser headers and footers turned off.</p>
+      <p>Six credit-card sized (85.6 × 53.98 mm) nametags per 8.5 × 11 inch sheet. Print at 100% / actual size with browser headers and footers turned off.</p>
       {loading ? <p role="status">Loading all people…</p> : <p>{people.length} people · {sheets.length} printable sheets</p>}
       {people.some(person => !person.public) && <p className="muted">Private profiles are included; their QR links will not show private profiles to visitors.</p>}
       <button className="btn-primary" disabled={loading || !people.length || printing} onClick={async () => {
