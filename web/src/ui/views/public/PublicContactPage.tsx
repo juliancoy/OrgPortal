@@ -1,3 +1,4 @@
+import { resolveAvatarUrl } from '../../../config/avatarUrl'
 import { OrganizationAvatar } from '../../components/OrganizationAvatar'
 import { useOrganizationPersonnel } from '../../hooks/useOrganizationPersonnel'
 import { useOrganizationScope } from '../../hooks/useOrganizationScope'
@@ -158,6 +159,7 @@ export function PublicContactPage({ self = false }: PublicContactPageProps = {})
 
     loadPage
       .then(async (data) => {
+        if (data.photo_url) data = { ...data, photo_url: resolveAvatarUrl(data.photo_url) }
         const eventRows = await fetch(orgUrl(`/api/network/users/public/${encodeURIComponent(data.slug)}/events?upcoming_only=true&participation=registered&limit=60`))
           .then(async (resp) => (resp.ok ? ((await resp.json()) as PublicEvent[]) : []))
           .catch(() => [])

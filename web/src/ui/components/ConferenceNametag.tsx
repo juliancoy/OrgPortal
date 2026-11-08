@@ -1,3 +1,4 @@
+import { resolveAvatarUrl } from '../../config/avatarUrl'
 import lifetechBrand from '../../../../shared/lifetechBrand.json'
 import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
 import { createQrSvg } from '../utils/qr'
@@ -70,7 +71,7 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef, side = '
           </strong>
           <div className="conference-nametag-footer">
             {side === 'front' && <div className="conference-nametag-avatar">
-              {avatarUrl ? <img src={avatarUrl} alt={`${name}'s avatar`} /> : <span aria-label="Avatar initials">{initials || '?'}</span>}
+              {avatarUrl ? <img src={resolveAvatarUrl(avatarUrl)} alt={`${name}'s avatar`} /> : <span aria-label="Avatar initials">{initials || '?'}</span>}
             </div>}
             {side === 'back' && (qrSrc ? <img className="conference-nametag-qr" src={qrSrc} alt={`QR code linking to ${name}'s public page`} /> : <span className="conference-nametag-pending">Public page needed for QR code</span>)}
           </div>
