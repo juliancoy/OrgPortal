@@ -1,3 +1,4 @@
+import { resolveAvatarUrl } from '../config/avatarUrl'
 import {restoreSessionToken,SessionEnded,logoutBrowserSession,beginBrowserSignIn} from '../infrastructure/auth/restoreSession'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -216,6 +217,7 @@ export function AppProviders(props: { services: AppServices; children: ReactNode
   const normalizeAvatarUrl = useCallback(
     (rawUrl?: string | null): string | null => {
       if (!rawUrl) return null
+      rawUrl = resolveAvatarUrl(rawUrl)
       if (/^(data:|https?:\/\/)/i.test(rawUrl)) return rawUrl
       if (rawUrl.startsWith(`${normalizedPidpBase}/`)) return rawUrl
       const cleaned = rawUrl.replace(/^\/+/, '')

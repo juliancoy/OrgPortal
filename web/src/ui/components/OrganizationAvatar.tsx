@@ -1,3 +1,4 @@
+import { resolveAvatarUrl } from '../../config/avatarUrl'
 import { useTransparentLogo } from './media/transparentLogo'
 import './media/transparent-logo.css'
 import { useState, type CSSProperties, type ReactNode } from 'react'
@@ -7,6 +8,7 @@ import './organization-avatar.css'
 export function OrganizationAvatar({ name, src, status, className = '', children, scheme = 'meetup', titles = [], classKeys = [] }: {
   name: string; src?: string | null; status: PersonnelClass | null; className?: string; children?: ReactNode; scheme?: PersonnelScheme; titles?: string[]; classKeys?: string[]
 }) {
+  src = src ? resolveAvatarUrl(src) : src
   const logo = useTransparentLogo()
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
   const assignedClass = Object.entries(personnelSchemes[scheme].classes).find(([key,value]) => classKeys.includes(key) || titles.some(title => title.toLowerCase() === value.label.toLowerCase()))?.[1]
