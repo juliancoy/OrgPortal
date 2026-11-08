@@ -30,7 +30,7 @@ with sync_playwright() as p:
         public_page = visitor.new_page()
         public_page.goto(BASE + '/users/' + contact['slug'])
         expect(public_page.get_by_role('heading', name='Conference nametag')).to_be_visible(timeout=30000)
-        expect(public_page.get_by_role('button', name='Print nametag', exact=True)).to_be_enabled()
+        expect(public_page.get_by_role('button', name='Print front', exact=True)).to_be_enabled()
         assert public_page.locator('.conference-nametag-qr').get_attribute('src').startswith('data:image/svg+xml')
         expect(public_page.get_by_role('button', name='Edit name', exact=True)).to_have_count(0)
         # Isolate admin UI fixtures locally; real API authorization is asserted above and in SQL tests.
@@ -39,12 +39,12 @@ with sync_playwright() as p:
         context.route('**/admin/nametags?*', lambda route: route.fulfill(content_type='application/json', body=json.dumps({'people': people, 'next_cursor': None})))
         page = context.new_page()
         page.goto(BASE + '/admin/nametags')
-        expect(page.get_by_role('button', name='Print all nametags')).to_be_enabled(timeout=30000)
+        expect(page.get_by_role('button', name='Print all fronts')).to_be_enabled(timeout=30000)
         expect(page.locator('.nametag-letter-sheet')).to_have_count(2)
         assert page.locator('.nametag-letter-sheet').first.locator('.conference-nametag').count() == 6
         assert page.locator('.nametag-letter-sheet').last.locator('.conference-nametag').count() == 1
         dimensions = page.locator('.conference-nametag').first.bounding_box()
-        assert dimensions['width'] == 384 and dimensions['height'] == 288, dimensions
+        assert abs(dimensions['width'] - 85.6 * 96 / 25.4) < .06 and abs(dimensions['height'] - 53.98 * 96 / 25.4) < .06, dimensions
         page.evaluate('''() => {
           new MutationObserver(records => {
             for (const record of records) for (const node of record.addedNodes) {
@@ -54,7 +54,7 @@ with sync_playwright() as p:
             }
           }).observe(document.body, {childList: true});
         }''')
-        page.get_by_role('button', name='Print all nametags').click()
+        page.get_by_role('button', name='Print all fronts').click()
         page.wait_for_function('window.printedNametags')
         print_html = page.evaluate('window.printedNametags')
         assert 'nametags-controls' not in re.search(r'<body>(.*)</body>', print_html, re.S).group(1)
@@ -63,6 +63,6 @@ with sync_playwright() as p:
         pdf = print_page.pdf(prefer_css_page_size=True, print_background=True)
         assert len(re.findall(rb'/Type /Page\b', pdf)) == 2, 'Expected exactly two printable sheets'
         assert b'612 792' in pdf, 'Expected Letter paper (8.5 by 11 inches)'
-        print('PASS: public badge and QR, member denied roster, six badges per sheet, 4x3 dimensions, print isolation, and two Letter PDF pages')
+        print('PASS: public badge and QR, member denied roster, six badges per sheet, credit-card dimensions, print isolation, and two Letter PDF pages')
     finally:
         browser.close()

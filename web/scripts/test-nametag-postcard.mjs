@@ -20,7 +20,7 @@ try{
  browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||'/usr/bin/google-chrome'})
  const page=await browser.newPage({viewport:{width:1000,height:1000}})
  await page.goto(base+'/nametag-postcard-review')
- const button=page.getByRole('button',{name:'Print both on 4 × 6',exact:true})
+ const button=page.getByRole('button',{name:'Print credit-card pair on 4 × 6',exact:true})
  await expect(button).toBeEnabled()
  await page.getByLabel('Other endeavours').fill('Updated local print fixture')
  await page.getByRole('textbox',{name:'Personal website',exact:true}).fill('https://example.org/connect')
@@ -39,7 +39,8 @@ try{
  const bounds=await sheet.boundingBox()
  if(bounds.width!==384||bounds.height!==576)throw Error('Sheet must measure 4 × 6 inches: '+JSON.stringify(bounds))
  const front=await sheet.locator('.conference-nametag-front').boundingBox(),back=await sheet.locator('.conference-nametag-back').boundingBox()
- if(front.width!==384||front.height!==288||back.width!==384||back.height!==288||back.y!==front.y+288)throw Error('Expected two stacked 4 × 3 inch sides')
+ const px=mm=>mm*96/25.4,near=(a,b)=>Math.abs(a-b)<0.06
+ if(![front,back].every(card=>near(card.width,px(85.6))&&near(card.height,px(53.98)))||!near(back.y-front.y,px(53.98+6)))throw Error('Expected two credit-card sized sides separated by a 6 mm cutting gap')
  await expect(sheet).toContainText('Updated local print fixture')
  await expect(sheet).toContainText('example.org/connect')
  if(await printPage.locator('button,fieldset').count())throw Error('Controls must not appear in print output')
@@ -53,6 +54,6 @@ try{
  await page.getByRole('combobox',{name:/QR destination/}).selectOption('website')
  await page.getByRole('textbox',{name:'Personal website',exact:true}).fill('invalid')
  await expect(button).toBeDisabled()
- await writeFile(resolve(output,'result.json'),JSON.stringify({passed:true,pages,sheetInches:[4,6],sideInches:[4,3],checks:['front above back','updated preview values','print controls excluded','invalid destination disabled']},null,2))
- console.log('PASS: one 4 × 6 inch PDF page with both 4 × 3 inch sides, edited preview values and no controls.')
+ await writeFile(resolve(output,'result.json'),JSON.stringify({passed:true,pages,sheetInches:[4,6],sideMillimeters:[85.6,53.98],checks:['front above back','updated preview values','print controls excluded','invalid destination disabled']},null,2))
+ console.log('PASS: one 4 × 6 inch PDF page with both credit-card sized sides, edited preview values and no controls.')
 }finally{await browser?.close();await server.close()}

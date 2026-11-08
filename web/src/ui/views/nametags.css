@@ -5,7 +5,7 @@
 .nametags-controls label { display: grid; gap: 8px; max-width: 440px; font-weight: 600; }
 .nametags-controls > button { justify-self: start; }
 .nametag-sheet-preview { overflow-x: auto; }
-.nametag-letter-sheet { box-sizing: border-box; width: 8in; height: 10.5in; padding: .5in 0; display: grid; grid-template-columns: repeat(2, 4in); grid-template-rows: repeat(3, 3in); gap: .25in 0; align-content: start; background: white; margin-bottom: 1rem; break-after: page; break-inside: avoid; }
+.nametag-letter-sheet { box-sizing: border-box; width: 8in; height: 10.5in; padding: .5in 0; display: grid; grid-template-columns: repeat(2, 85.6mm); grid-template-rows: repeat(3, 53.98mm); gap: 6mm; justify-content: center; align-content: start; background: white; margin-bottom: 1rem; break-after: page; break-inside: avoid; }
 .nametag-letter-sheet:last-child { break-after: auto; }
 @media print { .nametag-letter-sheet { margin: 0; } }
 
