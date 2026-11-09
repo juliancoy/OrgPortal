@@ -58,3 +58,5 @@
 .conference-nametag-side h3 { margin: 0 0 8px; }
 
 .conference-nametag-front-qr { width: 11mm; height: 11mm; flex-shrink: 0; display: block; background: #fff; padding: .025in; box-sizing: border-box; }
+
+.conference-nametag-print-diagram { display: block; width: min(100%, 320px); height: auto; background: #fff; border-radius: 8px; }

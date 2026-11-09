@@ -1,3 +1,4 @@
+import { NametagPrintModel } from './NametagPrintModel'
 import { resolveAvatarUrl } from '../../config/avatarUrl'
 import lifetechBrand from '../../../../shared/lifetechBrand.json'
 import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
@@ -155,6 +156,7 @@ html, body { margin: 0; padding: 0; width: 4in; }
       <button type="button" onClick={() => void printBadge('both')} disabled={!qrUrl || printing || !!downloading}>Print credit-card pair on 4 × 6</button>
     </div>
     <p className="muted">For the combined sheet, choose 4 × 6 inch paper, no margins, 100% / actual size, background graphics on, and headers and footers off. Each side stays credit-card sized. Front is on top; back is below; trim around each card.</p>
+    <NametagPrintModel />
     <div className="conference-nametag-sides">
       {(['front', 'back'] as const).map(value => <div key={value} className="conference-nametag-side">
         <h3>{value === 'front' ? 'Front · LifeTech' : 'Back · Endeavours and QR'}</h3>

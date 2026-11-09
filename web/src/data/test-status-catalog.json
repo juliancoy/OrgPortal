@@ -4683,6 +4683,20 @@
       ]
     },
     {
+      "id": "suite-web-src-ui-utils-modelNametagPrint-test-ts",
+      "label": "web/src/ui/utils/modelNametagPrint.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/utils/modelNametagPrint.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "modelNametagPrint.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-ui-utils-qr-test-ts",
       "label": "web/src/ui/utils/qr.test.ts",
       "category": "User interface and integrations",
