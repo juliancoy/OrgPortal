@@ -69,6 +69,38 @@
         "web/package-lock.json": "513f3a1e52ff935b4b6e4e92283a3a64b1f091a66dbb715a78a26f2b794d45a6",
         "web/vite.config.ts": "d293efb95685bf4480e4f1debcc443f43a2d04d5aeb1742afc01c2973fa3fd69"
       }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/lifetech-postcard-release.py build",
+      "testedRevision": "0e67a5d",
+      "result": "FAIL: public ecosystem export connection terminated with ETIMEDOUT before compilation; log /tmp/orgportal-search-profile-build.log. No production deployment."
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/orgportal-verify-search-profiles.py",
+      "scriptSha256": "b82ab24c203908cb994e5ac13f4d6c1473d6ec39d4f18c023057eae07f12ffaf",
+      "testedRevision": "0e67a5d290d22a6756de913ae7d58e7047926ab4",
+      "result": "FAIL: full-result links, first profile click and both header links passed; keyboard test assumed people came before live organization/event suggestions. Test adjusted to use the actual option index."
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/lifetech-postcard-release.py build",
+      "testedRevision": "0e67a5d290d22a6756de913ae7d58e7047926ab4",
+      "result": "PASS on retry: pinned Docker TypeScript compilation, Vite bundle and Wrangler dry run; log /tmp/orgportal-search-profile-build-retry.log"
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/lifetech-postcard-release.py deploy",
+      "testedRevision": "0e67a5d290d22a6756de913ae7d58e7047926ab4",
+      "result": "PASS: production service/commit, HTML, entry asset and API proxy; worker version bb295095-d46c-4ad3-bf67-56b519ee63a9"
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/orgportal-verify-search-profiles.py",
+      "testedRevision": "0e67a5d290d22a6756de913ae7d58e7047926ab4",
+      "scriptSha256": "d52c1e04e045e8cde43a9b9dbe4d58023cb754e28f65ee5429e35b4eb044f5c1",
+      "result": "PASS: both live Scruggs result links, first result click, second header keyboard selection, and both public profile pages. Anonymous read-only."
     }
   ]
 }
