@@ -36,7 +36,7 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef, side = '
   const firstName = nameParts[0] || 'User'
   const lastName = nameParts.slice(1).join(' ')
   const longestLine = Math.max(firstName.length, lastName.length)
-  const nameSize = longestLine > 22 ? '16pt' : longestLine > 15 ? '19pt' : longestLine > 10 ? '23pt' : '26pt'
+  const nameSize = longestLine > 22 ? '16pt' : longestLine > 15 ? '19pt' : longestLine > 10 ? '23pt' : side === 'back' ? '24pt' : '26pt'
   const nameRef = useRef<HTMLElement>(null)
   useEffect(() => {
     let cancelled = false
@@ -66,7 +66,6 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef, side = '
               <small>{branding?.tagline && !/^Health\s*[×x]\s*Medicine\s*[×x]\s*Biotech$/i.test(branding.tagline) ? branding.tagline : lifetechBrand.tagline}</small>
             </div>
           </div>
-          {side === 'back' && <p className="conference-nametag-connect">Let’s connect</p>}
           <strong ref={nameRef} className="conference-nametag-name" style={{ fontSize: nameSize }}>
             <span>{firstName}</span>
             {lastName && <span>{lastName}</span>}
@@ -77,7 +76,7 @@ export function NametagCard({ name, avatarUrl, publicPageUrl, badgeRef, side = '
             </div>}
             {side === 'back' && (qrSrc ? <img className="conference-nametag-qr" src={qrSrc} alt={`QR code linking to ${name}'s public page`} /> : <span className="conference-nametag-pending">Public page needed for QR code</span>)}
           </div>
-          {side === 'back' && qrSrc && <div className="conference-nametag-profile-link"><span>Scan for my profile</span><small>{publicPageUrl?.replace(/^https?:\/\//, '')}</small></div>}
+          {side === 'back' && qrSrc && <div className="conference-nametag-profile-link"><small>{publicPageUrl?.replace(/^https?:\/\//, '')}</small></div>}
         </div>
   )
 }
