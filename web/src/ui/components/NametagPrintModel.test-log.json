@@ -10,5 +10,26 @@
     "web/src/ui/utils/modelNametagPrint.ts": "9c7d14f9b1baff1ae4466465c4ae1267cd8f6ca2f80be61817599b79fcc53ec2",
     "web/package-lock.json": "513f3a1e52ff935b4b6e4e92283a3a64b1f091a66dbb715a78a26f2b794d45a6",
     "web/vite.config.ts": "d293efb95685bf4480e4f1debcc443f43a2d04d5aeb1742afc01c2973fa3fd69"
-  }
+  },
+  "additionalChecks": [
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/lifetech-postcard-release.py build",
+      "testedRevision": "9dc9942c1bb732b6a7a7e3fee7eaba8dd8bd8b4a",
+      "result": "PASS: pinned Docker TypeScript compilation, Vite bundle and Wrangler dry run; log /tmp/lifetech-border-714-build.log"
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/lifetech-postcard-release.py deploy",
+      "testedRevision": "9dc9942c1bb732b6a7a7e3fee7eaba8dd8bd8b4a",
+      "result": "PASS: production service/commit, HTML, entry asset and API proxy verification; version 7461fcf1-c2bd-4706-871e-562a35cff019"
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/lifetech-verify-border714.py",
+      "scriptSha256": "66ebf3131d1407be811ff52078347305dd73796db26e0de47bb5a819bd2ffbae",
+      "testedRevision": "9dc9942c1bb732b6a7a7e3fee7eaba8dd8bd8b4a",
+      "result": "PASS: live default 7.14 mm, 0.01 mm step, 116.35% compensation and enabled adjusted print button. Read-only; no print, screenshot or PDF generation."
+    }
+  ]
 }
