@@ -716,7 +716,7 @@ def run_release(action: str, target: str = "all", checkout=None) -> int:
         source.mkdir(parents=True, exist_ok=True)
         destination = root / package / "node_modules" if package in ("web", "org-worker", "chat-worker") else Path("/tmp") / ("npm-cache" if package == "npm" else "wrangler-config")
         command += ["--mount", f"type=bind,src={source},dst={destination}"]
-    for value in ("npm_config_cache=/tmp/npm-cache", "XDG_CONFIG_HOME=/tmp/wrangler-config", "CI=true", "WRANGLER_SEND_METRICS=false", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN"):
+    for value in ("npm_config_cache=/tmp/npm-cache", "XDG_CONFIG_HOME=/tmp/wrangler-config", "CI=true", "WRANGLER_SEND_METRICS=false", "CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN", "ORGPORTAL_REFRESH_ECOSYSTEM", "ORGPORTAL_ECOSYSTEM_CACHE_MAX_AGE_SECONDS", "ORGPORTAL_RELEASE_FRESH_CHECKS"):
         command += ["--env", value]
     return subprocess.call(command + [image, "bash", "cloudflare/release-container.sh", action, target])
 

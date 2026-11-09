@@ -157,6 +157,20 @@
       ]
     },
     {
+      "id": "suite-cloudflare-release-cache-test-mjs",
+      "label": "cloudflare/release-cache.test.mjs",
+      "category": "Deployment and infrastructure",
+      "source": "cloudflare/release-cache.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "release-cache.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-cloudflare-release-test-mjs",
       "label": "cloudflare/release.test.mjs",
       "category": "Deployment and infrastructure",
