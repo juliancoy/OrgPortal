@@ -1,3 +1,4 @@
+import { NametagPrintModel } from './NametagPrintModel'
 import { resolveAvatarUrl } from '../../config/avatarUrl'
 import lifetechBrand from '../../../../shared/lifetechBrand.json'
 import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
@@ -129,6 +130,7 @@ html, body { margin: 0; padding: 0; width: 4in; }
     <p className="muted">Credit-card size: 85.6 × 53.98 mm (3.37 × 2.125 inches). Print at 100% / actual size. Each side downloads at 1011 × 638 pixels. Print each side separately, or stack both on one 4 × 6 inch sheet.</p>
     <div className="conference-nametag-downloads"><button type="button" onClick={() => void printBadge(true)} disabled={!publicPageUrl || printing || !!downloading}>Print credit-card pair on 4 × 6</button></div>
     <p className="muted">For the combined sheet, choose 4 × 6 inch paper, no margins, 100% / actual size, background graphics on, and headers and footers off. Each side stays credit-card sized. Front is on top; back is below; trim around each card.</p>
+    <NametagPrintModel />
     {(['front', 'back'] as const).map(value => <div key={value} className="conference-nametag-preview" hidden={side !== value}><NametagCard side={value} name={name} avatarUrl={avatarUrl} publicPageUrl={publicPageUrl} badgeRef={value === 'front' ? frontRef : backRef} /></div>)}
     {!publicPageUrl && <p className="muted" role="status">Your nametag will be ready to print or download when your public page is available.</p>}
     {error && <p role="alert">{error}</p>}

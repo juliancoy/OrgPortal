@@ -44,3 +44,5 @@
 .conference-nametag-back .conference-nametag-qr { width: 19mm; height: 19mm; padding: .04in; box-shadow: none; }
 .conference-nametag-profile-link { display: grid; gap: .03in; font-size: 7.5pt; max-width: 100%; }
 .conference-nametag-profile-link small { font-size: 5.5pt; overflow-wrap: anywhere; }
+
+.conference-nametag-print-diagram { display: block; width: min(100%, 320px); height: auto; background: #fff; border-radius: 8px; }
