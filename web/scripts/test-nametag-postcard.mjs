@@ -31,8 +31,8 @@ try{
  await expect(page.locator('.conference-nametag-back')).not.toContainText('Scan to connect')
 
  const border=page.getByRole('spinbutton',{name:'Anticipated printer border on every edge (mm)'})
- await expect(border).toHaveValue('5')
- await expect(page.getByRole('status')).toContainText('77.17 × 48.67 mm')
+ await expect(border).toHaveValue('7.14')
+ await expect(page.getByRole('status')).toContainText('85.94%')
  await border.fill('0')
  await expect(page.getByRole('status')).toContainText('85.60 × 53.98 mm')
  await border.fill('10')
