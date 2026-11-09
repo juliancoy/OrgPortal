@@ -110,3 +110,40 @@ remain public data; IndexedDB caches them independently of session permissions.
 
 Deploy the PIdP endpoint before releasing the frontend gate. The identity routing
 cutover does not run migrations or merge primary/member accounts.
+
+## Local release acceleration
+
+Frontend and routing checks run concurrently. The ecosystem query suite executes
+once in the routing gate; its Vitest wrapper requires a passing proof tied to
+that invocation, Node runtime and source checksum. Running the Vitest wrapper on
+its own still executes the underlying suite. Both gates must finish successfully.
+
+Passing check receipts are reusable for 15 minutes only when tracked/untracked
+source files, submodule state, local test configuration, generated API sources,
+lockfiles, runtime and relevant environment are unchanged. Captured results must
+also retain their recorded checksums. Reuse is logged with the original passing
+time. Failures and source changes during execution cannot produce a cache hit.
+
+The ecosystem build reuses a local verified artifact for at most **15 minutes
+from the start of its export**. This is a bounded freshness policy, not a claim
+that the remote database has not changed. The public export's dataset ID does
+not cover native evidence and directory rows, so it is not used alone as a cache
+key. Generator imports, ecosystem source files, dependencies and runtime must
+match, and every output file is checksummed. An expired, missing or damaged
+artifact triggers a complete export and regeneration; a refresh failure stops
+the build instead of silently retaining expired data. Explicit snapshot inputs
+always bypass this artifact cache. The deployment manifest retains the original
+data provenance and export timestamp.
+
+Force fresh validation or fresh public data through the usual pinned container:
+
+```sh
+ORGPORTAL_RELEASE_FRESH_CHECKS=1 python3 ../run.py --release check --target web
+ORGPORTAL_REFRESH_ECOSYSTEM=1 python3 ../run.py --release build --target web
+```
+
+`ORGPORTAL_ECOSYSTEM_CACHE_MAX_AGE_SECONDS` can shorten freshness from its default
+900 seconds (0 disables reuse); values above 900 are rejected. Bundle related
+reviewed changes before building, then deploy the matching artifact once. Cached
+validation never relaxes clean-checkout, published-commit, artifact-identity or
+post-deployment smoke-test requirements.

@@ -1,3 +1,4 @@
+import {replaceDirectory} from './release-cache.mjs'
 import {budgetAppropriations} from '../src/features/ecosystem/budget-appropriations.js'
 import {isNotApplicableNode} from '../src/features/ecosystem/node-classes.js'
 import {exportUnifiedEcosystem} from './unified-ecosystem.mjs'
@@ -24,7 +25,7 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
  for(const name of (await readdir(sourceFolder)).filter(n=>/\.(?:js|ts|json)$/.test(n)).sort())hash.update(await readFile(new URL(name,sourceFolder)))
  hash.update(await readFile(new URL(import.meta.url)));hash.update(await readFile(new URL('server/ecosystem-query.mjs',root)))
  const version=hash.digest('hex').slice(0,24),folder=new URL('public/ecosystem-data/query/',root)
- try{const previous=JSON.parse(await readFile(new URL('manifest.json',folder),'utf8'));if(previous.version===version)return previous}catch{}
+ try{const previous=JSON.parse(await readFile(new URL('manifest.json',folder),'utf8'));if(previous.version===version&&process.env.ORGPORTAL_REBUILD_ECOSYSTEM!=='1')return previous}catch{}
  const {performance,positions}=snapshot
  const data=applyFundHierarchy(snapshot.data)
  const overview=ecosystemOverview(data),folded=foldFundNodes(data),edges=graphRelationships(folded,{includeCapitalization:true})
@@ -115,7 +116,7 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
  }
  await write('topology.json',topology)
  const manifest={version,generatedAt:new Date().toISOString(),governmentCoverage:data.governmentCoverage,marylandBudgetCoverage:data.marylandBudgetCoverage,nonprofitCoverage:data.nonprofitCoverage,transactionalCoverage:{datasetId:snapshot.datasetId,exportedAt:snapshot.exportedAt,...data.transactionalCoverage},totals:{organizations:organizations.length,relationships:edges.length},metricMax:{connections:Math.max(1,...Object.values(topology.degree)),incoming:Math.max(1,...analysis.incoming.values()),outgoing:Math.max(1,...analysis.outgoing.values())},groups,performance:performanceMeta}
- await mkdir(folder,{recursive:true});try{await rename(temp,target)}catch(error){if(!['EEXIST','ENOTEMPTY'].includes(error.code))throw error;await rm(temp,{recursive:true,force:true})}
+ await mkdir(folder,{recursive:true});try{if(process.env.ORGPORTAL_REBUILD_ECOSYSTEM==='1')await replaceDirectory(fileURLToPath(temp),fileURLToPath(target));else await rename(temp,target)}catch(error){if(!['EEXIST','ENOTEMPTY'].includes(error.code))throw error;await rm(temp,{recursive:true,force:true})}
  const manifestTemp=new URL(`manifest-${version}-${randomUUID()}.tmp`,folder);await writeFile(manifestTemp,JSON.stringify(manifest));await rename(manifestTemp,new URL('manifest.json',folder))
  const versions=(await readdir(folder)).filter(name=>/^[a-f0-9]{24}$/.test(name)&&name!==version)
  for(const old of versions){const url=new URL(old+'/',folder);try{if(Date.now()-(await stat(url)).mtimeMs>3600000)await rm(url,{recursive:true,force:true})}catch{/* Another build may already have pruned this generated version. */}}

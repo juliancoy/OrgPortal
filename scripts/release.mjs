@@ -4,6 +4,7 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync, cpSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
+import { checkWebRelease } from './release-checks.mjs';
 import { assertLocalRelease, assertPublishedRelease } from './release-policy.mjs';
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 process.chdir(root);
@@ -23,8 +24,7 @@ function run(command, args, cwd = root, extraEnv = {}) {
 const npm = (dir, ...args) => run('npm', args, resolve(root, dir));
 if (action === 'check') {
   if (web) {
-    run('node', ['scripts/test-status.mjs', 'capture', 'web']);
-    run('node', ['scripts/test-status.mjs', 'capture', 'routing']);
+    await checkWebRelease(root);
   }
   if (api) {
     npm('org-worker', 'run', 'typecheck');
