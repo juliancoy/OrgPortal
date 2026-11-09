@@ -1,4 +1,4 @@
-import { loadDirectoryAliases } from './directoryIdentity';
+import { loadDirectoryIdentities } from './directoryIdentity';
 import {publicEcosystemRecords,publicEcosystemNativeRecords} from './ecosystemPublic';
 import { directoryExcludedAccountIds } from './peopleDirectoryExclusions';
 import { eventRecommendationRoutes } from './eventRecommendations';
@@ -3021,8 +3021,14 @@ async function publicContact(env: Env, request: Request, slug: string) {
     .bind(requestedSlug, requestedSlug).first<ContactRow>();
   if (!row) {
     // Existing account profiles do not require an opt-in contact-page row.
-    const member = await env.DB.prepare("SELECT user_id,user_name FROM (SELECT user_id,user_name,1 AS priority FROM portal_account_activity UNION ALL SELECT user_id,user_name,2 FROM organization_memberships WHERE status='active' UNION ALL SELECT user_id,name AS user_name,3 FROM ledger_accounts WHERE entity_type='individual') WHERE user_id=? ORDER BY priority LIMIT 1")
+    let member = await env.DB.prepare("SELECT user_id,user_name FROM (SELECT user_id,user_name,1 AS priority FROM portal_account_activity UNION ALL SELECT user_id,user_name,2 FROM organization_memberships WHERE status='active' UNION ALL SELECT user_id,name AS user_name,3 FROM ledger_accounts WHERE entity_type='individual') WHERE user_id=? ORDER BY priority LIMIT 1")
       .bind(requestedSlug).first<{user_id:string;user_name:string|null}>();
+    if (!member && !directoryExcludedAccountIds.includes(requestedSlug)) {
+      const identities=await loadDirectoryIdentities(env);
+      const canonicalId=identities.aliases.find(alias=>alias.account_id===requestedSlug)?.canonical_user_id||requestedSlug;
+      const identity=identities.people.find(person=>(identities.aliases.find(alias=>alias.account_id===person.user_id)?.canonical_user_id||person.user_id)===canonicalId);
+      if(identity&&!directoryExcludedAccountIds.includes(canonicalId))member={user_id:canonicalId,user_name:identity.user_name};
+    }
     if (!member) fail(404, "Public profile not found");
     row = {id:member.user_id,user_id:member.user_id,user_name:member.user_name&&!member.user_name.includes('@')?member.user_name:'User',
       user_email:null,slug:member.user_id,enabled:0,headline:null,bio:null,photo_url:null,email_public:null,phone_public:null,
@@ -3051,12 +3057,13 @@ export async function directoryRows(env: Env, query: string, limit: number, offs
   const terms = query.slice(0,254).trim().toLowerCase().split(/\s+/).filter(Boolean);
   const filter = terms.map(() => "instr(lower(p.user_name), ?) > 0").join(' AND ') || '1=1';
   // Presence in People is independent of permission to read contact details.
-  const aliases = await loadDirectoryAliases(env);
+  const {aliases,people:registeredPeople} = await loadDirectoryIdentities(env);
   return (await env.DB.prepare(`WITH aliases AS (SELECT json_extract(value,'$.account_id') account_id,json_extract(value,'$.canonical_user_id') canonical_user_id FROM json_each(?)), known AS (
     SELECT user_id,user_name,1 AS priority FROM user_contact_pages
     UNION ALL SELECT user_id,user_name,2 FROM portal_account_activity
     UNION ALL SELECT user_id,user_name,3 FROM organization_memberships
     UNION ALL SELECT user_id,name,4 FROM ledger_accounts WHERE entity_type='individual'
+    UNION ALL SELECT json_extract(value,'$.user_id'),json_extract(value,'$.user_name'),5 FROM json_each(?)
   ), canonical AS (SELECT COALESCE(i.canonical_user_id,k.user_id) user_id,k.user_id original_user_id,k.user_name,k.priority FROM known k LEFT JOIN aliases i ON i.account_id=k.user_id WHERE k.user_id NOT IN (SELECT value FROM json_each(?))), people AS (
     SELECT user_id,COALESCE(MAX(CASE WHEN priority=1 AND original_user_id=user_id THEN NULLIF(user_name,'') END),MAX(CASE WHEN priority=1 THEN NULLIF(user_name,'') END),MAX(NULLIF(user_name,'')),'Portal member') AS user_name
     FROM canonical WHERE user_id IS NOT NULL AND trim(user_id)<>'' GROUP BY user_id
@@ -3067,7 +3074,7 @@ export async function directoryRows(env: Env, query: string, limit: number, offs
     FROM people p LEFT JOIN user_contact_pages c ON c.user_id=COALESCE((SELECT c0.user_id FROM user_contact_pages c0 WHERE c0.user_id=p.user_id),(SELECT i.account_id FROM aliases i JOIN user_contact_pages c1 ON c1.user_id=i.account_id WHERE i.canonical_user_id=p.user_id ORDER BY c1.enabled DESC,i.account_id LIMIT 1))
     WHERE p.user_id NOT IN (${directoryExcludedAccountIds.map(() => '?').join(',')})
       AND ${filter} ORDER BY lower(p.user_name),p.user_id LIMIT ? OFFSET ?`)
-    .bind(JSON.stringify(aliases),JSON.stringify(directoryExcludedAccountIds),...directoryExcludedAccountIds, ...terms, limit, offset).all<DirectoryPerson>()).results || [];
+    .bind(JSON.stringify(aliases),JSON.stringify(registeredPeople),JSON.stringify(directoryExcludedAccountIds),...directoryExcludedAccountIds, ...terms, limit, offset).all<DirectoryPerson>()).results || [];
 }
 
 function directoryPerson(row: DirectoryPerson) {
@@ -3097,12 +3104,13 @@ app.get('/api/admin/people', async c => {
   const {q,limit,offset} = args.data;
   const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const filter = terms.map(() => "instr(lower(p.user_name || ' ' || COALESCE(p.email,'')), ?) > 0").join(' AND ') || '1=1';
-  const aliases = await loadDirectoryAliases(c.env);
+  const {aliases,people:registeredPeople} = await loadDirectoryIdentities(c.env);
   const rows = await c.env.DB.prepare(`WITH aliases AS (SELECT json_extract(value,'$.account_id') account_id,json_extract(value,'$.canonical_user_id') canonical_user_id FROM json_each(?)), known AS (
     SELECT user_id,user_name,user_email AS email,1 AS priority FROM user_contact_pages
     UNION ALL SELECT user_id,user_name,email,2 FROM portal_account_activity
     UNION ALL SELECT user_id,user_name,user_email,3 FROM organization_memberships
     UNION ALL SELECT user_id,name,email,4 FROM ledger_accounts WHERE entity_type='individual'
+    UNION ALL SELECT json_extract(value,'$.user_id'),json_extract(value,'$.user_name'),NULL,5 FROM json_each(?)
   ), canonical AS (SELECT COALESCE(i.canonical_user_id,k.user_id) user_id,k.user_id original_user_id,k.user_name,k.email,k.priority FROM known k LEFT JOIN aliases i ON i.account_id=k.user_id WHERE k.user_id NOT IN (SELECT value FROM json_each(?))), people AS (
     SELECT user_id, COALESCE(MAX(CASE WHEN priority=1 AND original_user_id=user_id THEN NULLIF(user_name,'') END),MAX(CASE WHEN priority=1 THEN NULLIF(user_name,'') END),MAX(NULLIF(user_name,'')),'Portal member') AS user_name,
       MAX(NULLIF(email,'')) AS email FROM canonical WHERE user_id IS NOT NULL AND trim(user_id)<>'' GROUP BY user_id
@@ -3111,7 +3119,7 @@ app.get('/api/admin/people', async c => {
       LEFT JOIN portal_account_activity a ON a.user_id=p.user_id
       WHERE p.user_id NOT IN (${directoryExcludedAccountIds.map(() => '?').join(',')})
         AND ${filter} ORDER BY lower(p.user_name),p.user_id LIMIT ? OFFSET ?`)
-    .bind(JSON.stringify(aliases),JSON.stringify(directoryExcludedAccountIds),...directoryExcludedAccountIds,...terms,limit+1,offset).all();
+    .bind(JSON.stringify(aliases),JSON.stringify(registeredPeople),JSON.stringify(directoryExcludedAccountIds),...directoryExcludedAccountIds,...terms,limit+1,offset).all();
   const people = rows.results || [];
   return c.json({users:people.slice(0,limit).map(person => ({...person,contact_enabled:Boolean(person.contact_enabled)})),nextOffset:people.length>limit?offset+limit:null});
 });

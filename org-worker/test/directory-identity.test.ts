@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
-import { directoryRows } from '../src/index';
+import { app, directoryRows } from '../src/index';
 import { loadDirectoryAliases } from '../src/directoryIdentity';
 test('aliases group before pagination and retain separate same-name people',async t=>{
  const sql=new DatabaseSync(':memory:');t.after(()=>sql.close());
@@ -12,7 +12,7 @@ test('aliases group before pagination and retain separate same-name people',asyn
  INSERT INTO user_contact_pages VALUES('alias','Alex',NULL,1,'alex-old','Engineer'),('different','Alex',NULL,1,'alex-other',NULL);
  INSERT INTO portal_account_activity VALUES('primary','Alex'),('alias','Alex'),('last','Zed');`);
  const db={prepare:(q:string)=>({bind:(...args:unknown[])=>({all:async()=>({results:sql.prepare(q).all(...args as [])})})})} as unknown as D1Database;
- t.mock.method(globalThis,'fetch',async()=>Response.json({aliases:[{account_id:'alias',canonical_user_id:'primary'}]}));
+ t.mock.method(globalThis,'fetch',async()=>Response.json({aliases:[{account_id:'alias',canonical_user_id:'primary'}],people:[{user_id:'primary',user_name:'Alex'}]}));
  const env={DB:db,PIDP_DIRECTORY_TOKEN:'fixture',PIDP_BASE_URL:'https://identity.invalid'} as Env;
  const first=await directoryRows(env,'',2,0);assert.deepEqual(first.map(x=>x.user_id),['different','primary']);
  assert.equal(first[1].contact_slug,'alex-old');
@@ -27,4 +27,21 @@ test('identity map rejects conflicting and chained aliases',async t=>{
  const mock=t.mock.method(globalThis,'fetch',async()=>Response.json({aliases}));
  await assert.rejects(loadDirectoryAliases({PIDP_DIRECTORY_TOKEN:'fixture'} as Env),/temporarily unavailable/);mock.mock.restore();
  }
+});
+
+test('registered account without activity appears once and opens a basic profile without contact disclosure',async t=>{
+ const sql=new DatabaseSync(':memory:');t.after(()=>sql.close());
+ sql.exec(`CREATE TABLE user_contact_pages(user_id TEXT,user_name TEXT,photo_url TEXT,enabled INTEGER,slug TEXT,headline TEXT);
+ CREATE TABLE portal_account_activity(user_id TEXT,user_name TEXT);
+ CREATE TABLE organization_memberships(user_id TEXT,user_name TEXT,status TEXT);
+ CREATE TABLE ledger_accounts(user_id TEXT,name TEXT,entity_type TEXT);`);
+ const db={prepare:(q:string)=>({bind:(...args:unknown[])=>({first:async()=>sql.prepare(q).get(...args as [])||null,all:async()=>({results:sql.prepare(q).all(...args as [])})})})} as unknown as D1Database;
+ t.mock.method(globalThis,'fetch',async()=>Response.json({aliases:[],people:[{user_id:'registered',user_name:'Cornelius Example'}]}));
+ const env={DB:db,PIDP_DIRECTORY_TOKEN:'fixture',PIDP_BASE_URL:'https://identity.invalid',PUBLIC_PORTAL_BASE_URL:'https://portal.invalid'} as Env;
+ const people=await directoryRows(env,'Cornelius',40,0);assert.equal(people.length,1);assert.equal(people[0].contact_slug,'registered');
+ const response=await app.request('https://portal.invalid/api/network/users/public/registered',{},env);
+ assert.equal(response.status,200);const profile=await response.json() as Record<string,unknown>;
+ assert.equal(profile.user_name,'Cornelius Example');assert.equal(profile.enabled,false);
+ for(const field of ['email_public','phone_public','website_url','linkedin_url'])assert.equal(profile[field],null);
+ assert.equal((await app.request('https://portal.invalid/api/network/users/public/unknown',{},env)).status,404);
 });
