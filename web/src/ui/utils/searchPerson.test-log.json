@@ -1,0 +1,74 @@
+{
+  "runs": [
+    {
+      "date": "2026-11-09",
+      "command": "npm --prefix OrgPortal/web test -- src/ui/utils/searchPerson.test.ts --maxWorkers=2",
+      "result": "PASS: 3 tests",
+      "node": "v24.16.0",
+      "inputsSha256": {
+        "web/src/ui/utils/searchPerson.ts": "981e0e1216598dd8dad2f12bd9f7658a6e9a24c4b8fa881f6c85314e4b0f220b",
+        "web/src/ui/utils/searchPerson.test.ts": "89e54ee3cf3f7c91f0788f01a322e6058b171149ec56e74e2648202c4d874a2d",
+        "web/src/ui/shell/Header.tsx": "1fd528437519c5ea2fdfe70ed0c042b457452971a6d0a24813f9ca3a105ceb63",
+        "web/src/ui/views/public/GlobalSearchPage.tsx": "36362381f422d229e9b90114403098bed5bf4b6bc62f311e752d185113e9bcf5",
+        "web/package-lock.json": "513f3a1e52ff935b4b6e4e92283a3a64b1f091a66dbb715a78a26f2b794d45a6",
+        "web/vite.config.ts": "d293efb95685bf4480e4f1debcc443f43a2d04d5aeb1742afc01c2973fa3fd69"
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 OrgPortal/web/scripts/test-local-search-profile-links.py",
+      "result": "FAIL: test selector used the combobox container instead of the search input; full results click passed before selector timeout",
+      "scriptSha256": "0794d09a9c8443de88d0736024481ff5b4c831c55b60fc029f8017f1bb804d99",
+      "inputsSha256": {
+        "web/src/ui/utils/searchPerson.ts": "981e0e1216598dd8dad2f12bd9f7658a6e9a24c4b8fa881f6c85314e4b0f220b",
+        "web/src/ui/utils/searchPerson.test.ts": "89e54ee3cf3f7c91f0788f01a322e6058b171149ec56e74e2648202c4d874a2d",
+        "web/src/ui/shell/Header.tsx": "1fd528437519c5ea2fdfe70ed0c042b457452971a6d0a24813f9ca3a105ceb63",
+        "web/src/ui/views/public/GlobalSearchPage.tsx": "36362381f422d229e9b90114403098bed5bf4b6bc62f311e752d185113e9bcf5",
+        "web/package-lock.json": "513f3a1e52ff935b4b6e4e92283a3a64b1f091a66dbb715a78a26f2b794d45a6",
+        "web/vite.config.ts": "d293efb95685bf4480e4f1debcc443f43a2d04d5aeb1742afc01c2973fa3fd69"
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 OrgPortal/web/scripts/test-local-search-profile-links.py",
+      "result": "FAIL: test looked for the global header after navigating to a standalone public profile; results-page link and click had passed",
+      "scriptSha256": "7b5aa56bd2a4f10f72b035df1da80bd1e8c6fe0cfe66abbfdd9fd8465ccabeab",
+      "inputsSha256": {
+        "web/src/ui/utils/searchPerson.ts": "981e0e1216598dd8dad2f12bd9f7658a6e9a24c4b8fa881f6c85314e4b0f220b",
+        "web/src/ui/utils/searchPerson.test.ts": "89e54ee3cf3f7c91f0788f01a322e6058b171149ec56e74e2648202c4d874a2d",
+        "web/src/ui/shell/Header.tsx": "1fd528437519c5ea2fdfe70ed0c042b457452971a6d0a24813f9ca3a105ceb63",
+        "web/src/ui/views/public/GlobalSearchPage.tsx": "36362381f422d229e9b90114403098bed5bf4b6bc62f311e752d185113e9bcf5",
+        "web/package-lock.json": "513f3a1e52ff935b4b6e4e92283a3a64b1f091a66dbb715a78a26f2b794d45a6",
+        "web/vite.config.ts": "d293efb95685bf4480e4f1debcc443f43a2d04d5aeb1742afc01c2973fa3fd69"
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 OrgPortal/web/scripts/test-local-search-profile-links.py",
+      "result": "FAIL: ambiguous accessible name matched both header and full-page search inputs; scoped the test to the header",
+      "scriptSha256": "3234493a27a3a0d0d3763bbc2d8b6a70f9ddbe32f3b52734ce0e72dcaa5f9d38",
+      "inputsSha256": {
+        "web/src/ui/utils/searchPerson.ts": "981e0e1216598dd8dad2f12bd9f7658a6e9a24c4b8fa881f6c85314e4b0f220b",
+        "web/src/ui/utils/searchPerson.test.ts": "89e54ee3cf3f7c91f0788f01a322e6058b171149ec56e74e2648202c4d874a2d",
+        "web/src/ui/shell/Header.tsx": "1fd528437519c5ea2fdfe70ed0c042b457452971a6d0a24813f9ca3a105ceb63",
+        "web/src/ui/views/public/GlobalSearchPage.tsx": "36362381f422d229e9b90114403098bed5bf4b6bc62f311e752d185113e9bcf5",
+        "web/package-lock.json": "513f3a1e52ff935b4b6e4e92283a3a64b1f091a66dbb715a78a26f2b794d45a6",
+        "web/vite.config.ts": "d293efb95685bf4480e4f1debcc443f43a2d04d5aeb1742afc01c2973fa3fd69"
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 OrgPortal/web/scripts/test-local-search-profile-links.py",
+      "result": "PASS: synthetic local Docker search results and mouse navigation, distinct header links and keyboard selection, no undefined profile routes",
+      "scriptSha256": "f2dbd622b28b9aedd582d9c865be2ab0e6181c9ce3930174d8f23babc0520a6e",
+      "inputsSha256": {
+        "web/src/ui/utils/searchPerson.ts": "981e0e1216598dd8dad2f12bd9f7658a6e9a24c4b8fa881f6c85314e4b0f220b",
+        "web/src/ui/utils/searchPerson.test.ts": "89e54ee3cf3f7c91f0788f01a322e6058b171149ec56e74e2648202c4d874a2d",
+        "web/src/ui/shell/Header.tsx": "1fd528437519c5ea2fdfe70ed0c042b457452971a6d0a24813f9ca3a105ceb63",
+        "web/src/ui/views/public/GlobalSearchPage.tsx": "36362381f422d229e9b90114403098bed5bf4b6bc62f311e752d185113e9bcf5",
+        "web/package-lock.json": "513f3a1e52ff935b4b6e4e92283a3a64b1f091a66dbb715a78a26f2b794d45a6",
+        "web/vite.config.ts": "d293efb95685bf4480e4f1debcc443f43a2d04d5aeb1742afc01c2973fa3fd69"
+      }
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { searchPersonProfilePath } from '../utils/searchPerson'
 import { CmsImage } from '../components/media/CmsImage'
 import { startActivePolling } from '../../infrastructure/http/activePolling'
 import { OrganizationAvatar } from '../components/OrganizationAvatar'
@@ -91,7 +92,8 @@ type SearchEvent = {
 type SearchUser = {
   user_id: string
   user_name: string
-  slug: string
+  slug?: string | null
+  contact_slug?: string | null
   photo_url?: string | null
   headline?: string | null
   upcoming_events_count?: number
@@ -483,7 +485,7 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
       type: 'person',
       title: person.user_name,
       meta: person.headline || `${person.upcoming_events_count ?? 0} upcoming hosted events`,
-      to: `/users/${encodeURIComponent(person.slug)}`,
+      to: searchPersonProfilePath(person),
     }))
 
     return [...orgResults, ...eventResults, ...userResults]
@@ -783,7 +785,7 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
                   <div className="portal-search-group" role="group" aria-label="People">
                     <div className="portal-search-group-title" aria-hidden="true">People</div>
                     {searchUsers.map((person) => {
-                      const to = `/users/${encodeURIComponent(person.slug)}`
+                      const to = searchPersonProfilePath(person)
                       const resultIndex = results.findIndex((item) => item.id === `person-${person.user_id}`)
                       const selected = resultIndex === activeResultIndex
                       return (

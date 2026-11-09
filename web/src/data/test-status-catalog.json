@@ -3157,6 +3157,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-search-profile-links-py",
+      "label": "web/scripts/test-local-search-profile-links.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-search-profile-links.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-search-profile-links.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-session-persistence-py",
       "label": "web/scripts/test-local-session-persistence.py",
       "category": "Identity and access",
@@ -4707,6 +4721,20 @@
         {
           "id": "suite",
           "label": "qr.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-utils-searchPerson-test-ts",
+      "label": "web/src/ui/utils/searchPerson.test.ts",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/utils/searchPerson.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "searchPerson.test.ts"
         }
       ]
     },

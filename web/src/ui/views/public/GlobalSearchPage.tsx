@@ -1,3 +1,4 @@
+import { searchPersonKey, searchPersonProfilePath } from '../../utils/searchPerson'
 import { GlobalSearchForm } from '../../components/GlobalSearchForm'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -39,7 +40,8 @@ type SearchEvent = {
 type SearchUser = {
   user_id: string
   user_name: string
-  slug: string
+  slug?: string | null
+  contact_slug?: string | null
   headline?: string | null
   bio?: string | null
   photo_url?: string | null
@@ -242,7 +244,7 @@ export function GlobalSearchPage() {
                       style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: '50%', border: '1px solid var(--border)' }}
                     />
                   ) : null}
-                  <Link to={`/users/${encodeURIComponent(person.slug)}`} style={{ textDecoration: 'none', fontWeight: 700 }}>
+                  <Link to={searchPersonProfilePath(person)} style={{ textDecoration: 'none', fontWeight: 700 }}>
                     {person.user_name}
                   </Link>
                   <span className="muted">
@@ -251,7 +253,7 @@ export function GlobalSearchPage() {
                   {person.bio ? <span>{person.bio}</span> : null}
                   {token ? (
                     <Link
-                      to={`/chat?start=dm&user=${encodeURIComponent(person.slug)}`}
+                      to={`/chat?start=dm&user=${encodeURIComponent(searchPersonKey(person))}`}
                       className="btn-primary"
                       style={{ textDecoration: 'none', width: 'fit-content', marginTop: 4 }}
                     >
@@ -259,7 +261,7 @@ export function GlobalSearchPage() {
                     </Link>
                   ) : (
                     <a
-                      href={pidpAppLoginUrl(`/chat?start=dm&user=${encodeURIComponent(person.slug)}`)}
+                      href={pidpAppLoginUrl(`/chat?start=dm&user=${encodeURIComponent(searchPersonKey(person))}`)}
                       className="btn-primary"
                       style={{ textDecoration: 'none', width: 'fit-content', marginTop: 4 }}
                     >
