@@ -450,6 +450,7 @@ export function createAppRouter() {
           { path: '/events/:slug/apply/guest', element: <EventApplicationPage guest /> },
           { path: '/orgs', element: <PublicOrganizationsPage /> },
           { path: '/people', element: <PeoplePage /> },
+          { path: '/users', element: <PeoplePage /> },
           { path: '/timebanking', element: <TimebankRoute /> },
           {
             path: '/life-insurance',
