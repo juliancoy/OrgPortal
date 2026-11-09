@@ -22,6 +22,12 @@ try{
  await page.goto(base+'/nametag-postcard-review')
  const button=page.getByRole('button',{name:'Print credit-card pair on 4 × 6',exact:true})
  await expect(button).toBeEnabled()
+ const backName=page.locator('.conference-nametag-back .conference-nametag-name')
+ if(await backName.evaluate(el=>parseFloat(getComputedStyle(el).fontSize))<28)throw Error('Back name should be substantially larger than the former 7.5 pt label')
+ await expect(page.locator('.conference-nametag-back')).not.toContainText('Let’s connect')
+ await expect(page.locator('.conference-nametag-back')).not.toContainText('Scan for my profile')
+ await expect(page.locator('.conference-nametag-back')).not.toContainText('Scan to connect')
+
  await page.getByLabel('Other endeavours').fill('Updated local print fixture')
  await page.getByRole('textbox',{name:'Personal website',exact:true}).fill('https://example.org/connect')
  const border=page.getByRole('spinbutton',{name:'Anticipated printer border on every edge (mm)'})
