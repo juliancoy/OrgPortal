@@ -42,6 +42,7 @@ interface Env extends Partial<Pick<PqcoinRuntimeBindings, 'PQCOIN_GATEWAY_URL' |
   PUSH_QUEUE?: Queue<import("./src/push").PushDeliveryJob>;
   PIDP_BASE_URL?: string;
   PIDP_SERVICE_TOKEN?: string;
+  PIDP_DIRECTORY_TOKEN?: string;
   PUBLIC_PORTAL_BASE_URL?: string;
   CHAT_API_ORIGIN?: string;
   CHAT_SERVICE?: Fetcher;

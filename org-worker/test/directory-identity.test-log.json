@@ -1,0 +1,60 @@
+{
+  "runs": [
+    {
+      "date": "2026-11-09",
+      "command": "node --import tsx --test test/directory-identity.test.ts",
+      "result": "PASS 2 tests",
+      "inputsSha256": {
+        "org-worker/package-lock.json": "2a4456444de4b92bb7d8c641295593a8189d864792287b72e415938dd2f2a34a",
+        "org-worker/src/directoryIdentity.ts": "9f34fd1f9d17b64182fab09cdb596a72c369383551eae653004b6b8c50dc0239",
+        "org-worker/src/index.ts": "c0d940353c35ce71ecf673a175b238dbdaf62f39a5965a4c26efdc3ab1295f68",
+        "org-worker/test/directory-identity.test.ts": "ac5a2a27fe61b8233fc48f59981fd94a8cc6d6e852f675833cb8a4dc1d45e809",
+        "org-worker/test/organization-directory-operations.test.ts": "53a3bd2e0062d917239de7e071f0648fc990f11a350b4765554f7bba24e87f15",
+        "org-worker/test/people-directory-bots.test.ts": "8103ca487908e6e4d2ae9c8e8e486d374f7e97aa5980c86e4afd2004542204f1",
+        "org-worker/worker-configuration.d.ts": "9e084bb17ceda77058066277331114113971e7c3ff695140e233f53412170ac7"
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "node --import tsx --test test/directory-identity.test.ts test/people-directory-bots.test.ts (new file creation failed; existing file ran)",
+      "result": "PASS 1 existing bot exclusion test",
+      "inputsSha256": {
+        "org-worker/package-lock.json": "2a4456444de4b92bb7d8c641295593a8189d864792287b72e415938dd2f2a34a",
+        "org-worker/src/directoryIdentity.ts": "9f34fd1f9d17b64182fab09cdb596a72c369383551eae653004b6b8c50dc0239",
+        "org-worker/src/index.ts": "c0d940353c35ce71ecf673a175b238dbdaf62f39a5965a4c26efdc3ab1295f68",
+        "org-worker/test/directory-identity.test.ts": "ac5a2a27fe61b8233fc48f59981fd94a8cc6d6e852f675833cb8a4dc1d45e809",
+        "org-worker/test/organization-directory-operations.test.ts": "53a3bd2e0062d917239de7e071f0648fc990f11a350b4765554f7bba24e87f15",
+        "org-worker/test/people-directory-bots.test.ts": "8103ca487908e6e4d2ae9c8e8e486d374f7e97aa5980c86e4afd2004542204f1",
+        "org-worker/worker-configuration.d.ts": "9e084bb17ceda77058066277331114113971e7c3ff695140e233f53412170ac7"
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "npm run typecheck",
+      "result": "PASS",
+      "inputsSha256": {
+        "org-worker/package-lock.json": "2a4456444de4b92bb7d8c641295593a8189d864792287b72e415938dd2f2a34a",
+        "org-worker/src/directoryIdentity.ts": "9f34fd1f9d17b64182fab09cdb596a72c369383551eae653004b6b8c50dc0239",
+        "org-worker/src/index.ts": "c0d940353c35ce71ecf673a175b238dbdaf62f39a5965a4c26efdc3ab1295f68",
+        "org-worker/test/directory-identity.test.ts": "ac5a2a27fe61b8233fc48f59981fd94a8cc6d6e852f675833cb8a4dc1d45e809",
+        "org-worker/test/organization-directory-operations.test.ts": "53a3bd2e0062d917239de7e071f0648fc990f11a350b4765554f7bba24e87f15",
+        "org-worker/test/people-directory-bots.test.ts": "8103ca487908e6e4d2ae9c8e8e486d374f7e97aa5980c86e4afd2004542204f1",
+        "org-worker/worker-configuration.d.ts": "9e084bb17ceda77058066277331114113971e7c3ff695140e233f53412170ac7"
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "node --import tsx --test test/directory-identity.test.ts; npm run typecheck",
+      "result": "PASS 2 tests and typecheck after dedicated directory token binding",
+      "inputsSha256": {
+        "org-worker/package-lock.json": "2a4456444de4b92bb7d8c641295593a8189d864792287b72e415938dd2f2a34a",
+        "org-worker/src/directoryIdentity.ts": "2b8a02d87ede02606e88832247a8aade6dc2aeb39333ebebd2e41bd0896ebdec",
+        "org-worker/src/index.ts": "c0d940353c35ce71ecf673a175b238dbdaf62f39a5965a4c26efdc3ab1295f68",
+        "org-worker/test/directory-identity.test.ts": "e4c5811c37fcb951b07f9fa7f8c4cc3ed1851cd9217b59cfb1c58c535a47734d",
+        "org-worker/test/organization-directory-operations.test.ts": "53a3bd2e0062d917239de7e071f0648fc990f11a350b4765554f7bba24e87f15",
+        "org-worker/test/people-directory-bots.test.ts": "8103ca487908e6e4d2ae9c8e8e486d374f7e97aa5980c86e4afd2004542204f1",
+        "org-worker/worker-configuration.d.ts": "6134f6262fafeecb64eb61b505f2b97a36f80c95eaf36a8d155d43a372093359"
+      }
+    }
+  ]
+}
