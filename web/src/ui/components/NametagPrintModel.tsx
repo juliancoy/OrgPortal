@@ -3,7 +3,7 @@ import { modelNametagPrint } from '../utils/modelNametagPrint'
 
 /** A schematic of the printer output, separate from the unscaled print document. */
 export function NametagPrintModel({ onPrintAdjusted, disabled = false }: { onPrintAdjusted?: (border: number) => void; disabled?: boolean }) {
-  const [border, setBorder] = useState('5')
+  const [border, setBorder] = useState('7.14')
   const id = useId()
   const value = border.trim() === '' ? NaN : Number(border)
   const valid = Number.isFinite(value) && value >= 0 && value <= 25
@@ -11,7 +11,7 @@ export function NametagPrintModel({ onPrintAdjusted, disabled = false }: { onPri
   return <fieldset className="conference-nametag-options conference-nametag-print-model">
     <legend>Expected final print · fit to printable area</legend>
     <label>Anticipated printer border on every edge (mm)
-      <input type="number" min="0" max="25" step="0.5" value={border} aria-invalid={!valid} onChange={event => setBorder(event.target.value)} />
+      <input type="number" min="0" max="25" step="0.01" value={border} aria-invalid={!valid} onChange={event => setBorder(event.target.value)} />
     </label>
     {!model ? <p role="alert">Enter a border from 0 to 25 mm.</p> : <>
       <p role="status">Fit scale: {(model.scale * 100).toFixed(2)}%. Expected badge: {model.cardWidth.toFixed(2)} × {model.cardHeight.toFixed(2)} mm.</p>

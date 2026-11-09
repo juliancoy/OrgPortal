@@ -4347,6 +4347,20 @@
       ]
     },
     {
+      "id": "suite-web-src-ui-components-NametagPrintModel-test-tsx",
+      "label": "web/src/ui/components/NametagPrintModel.test.tsx",
+      "category": "User interface and integrations",
+      "source": "web/src/ui/components/NametagPrintModel.test.tsx",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "NametagPrintModel.test.tsx"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-ui-components-OnboardingStepCard-test-ts",
       "label": "web/src/ui/components/OnboardingStepCard.test.ts",
       "category": "Ecosystem and data",

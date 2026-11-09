@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-09",
+  "command": "npm --prefix OrgPortal/web test -- src/ui/components/NametagPrintModel.test.tsx --maxWorkers=2",
+  "result": "PASS: 1 test; no print action or file generation",
+  "runtime": "Node v24.16.0, Vitest v3.2.7",
+  "executedIn": "/home/julian/Documents/Organization",
+  "inputsSha256": {
+    "web/src/ui/components/NametagPrintModel.tsx": "663787f310e049aa227b963c92f86d07b0e91c89dfd72d5557c0487f5c5aba26",
+    "web/src/ui/components/NametagPrintModel.test.tsx": "34a24c7008d140ec1c20a0e7bd6624e2f3df08922f17faeabb572b9c63dd8397",
+    "web/src/ui/utils/modelNametagPrint.ts": "9c7d14f9b1baff1ae4466465c4ae1267cd8f6ca2f80be61817599b79fcc53ec2",
+    "web/package-lock.json": "513f3a1e52ff935b4b6e4e92283a3a64b1f091a66dbb715a78a26f2b794d45a6",
+    "web/vite.config.ts": "d293efb95685bf4480e4f1debcc443f43a2d04d5aeb1742afc01c2973fa3fd69"
+  }
+}
