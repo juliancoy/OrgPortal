@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { modelNametagPrint } from '../utils/modelNametagPrint'
 
 /** A schematic of the printer output, separate from the unscaled print document. */
-export function NametagPrintModel() {
+export function NametagPrintModel({ onPrintAdjusted, disabled = false }: { onPrintAdjusted?: (border: number) => void; disabled?: boolean }) {
   const [border, setBorder] = useState('5')
   const id = useId()
   const value = border.trim() === '' ? NaN : Number(border)
@@ -27,7 +27,12 @@ export function NametagPrintModel() {
         <text x="50.8" y="-3" textAnchor="middle" fontSize="3.5" fill="#334155">101.6 mm · 4 inches</text>
         <text x="50.8" y="159" textAnchor="middle" fontSize="3" fill="#334155">Gray = printer border · teal = scaled sheet</text>
       </svg>
-      <p className="muted">Model only: assumes a centered sheet, equal borders on all edges and proportional “fit to printable area” scaling. The printer uses the smaller available scale; it does not stretch each axis separately. Actual size / 100% printing does not apply this reduction. The border setting changes this model, not the print file or downloads.</p>
+      <p className="muted">Assumes a centered sheet, equal borders on all edges and proportional “fit to printable area” scaling. Actual size / 100% printing does not apply this reduction. Standard prints and downloads are unchanged.</p>
+      {onPrintAdjusted && <>
+        <p>To restore credit-card size after this reduction, the adjusted sheet enlarges the artwork to {(100 / model.scale).toFixed(2)}%. Print that sheet using 4 × 6 paper and “fit to printable area”, with the modeled border.</p>
+        <button type="button" disabled={disabled || value > 8} onClick={() => onPrintAdjusted(value)}>Print border-adjusted pair on 4 × 6</button>
+        {value > 8 && <p role="alert">A border above 8 mm needs larger paper to compensate without clipping the cards.</p>}
+      </>}
     </>}
   </fieldset>
 }

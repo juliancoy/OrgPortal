@@ -1,3 +1,4 @@
+import { compensatedNametagStyles } from '../utils/modelNametagPrint'
 import { NametagPrintModel } from './NametagPrintModel'
 import { resolveAvatarUrl } from '../../config/avatarUrl'
 import lifetechBrand from '../../../../shared/lifetechBrand.json'
@@ -114,7 +115,7 @@ export function ConferenceNametag({ name, avatarUrl, publicPageUrl, websiteUrl, 
     catch { setError('Could not download the nametag. Check that its images have loaded and try again.') }
     finally { setDownloading(null) }
   }
-  async function printBadge(side: 'front' | 'back' | 'both') {
+  async function printBadge(side: 'front' | 'back' | 'both', printerBorder = 0) {
     const badgeRef = side === 'front' ? frontRef : backRef
     if (!badgeRef.current || !qrUrl || (side === 'both' && !frontRef.current)) return
     setPrinting(true)
@@ -128,7 +129,8 @@ export function ConferenceNametag({ name, avatarUrl, publicPageUrl, websiteUrl, 
 @page { size: 4in 6in; margin: 0; }
 html, body { margin: 0; padding: 0; width: 4in; }
 .conference-nametag-postcard { display: grid; grid-template-rows: repeat(2, 53.98mm); width: 4in; height: 6in; gap: 6mm; align-content: center; justify-content: center; break-inside: avoid; }
-.conference-nametag-postcard > .conference-nametag { margin: 0; }`, `LifeTech nametag 4 × 6 — ${name}`)
+.conference-nametag-postcard > .conference-nametag { margin: 0; }
+${compensatedNametagStyles(printerBorder)}`, `LifeTech nametag 4 × 6 — ${name}`)
       } else {
         await printNametags(badgeRef.current, `${printStyles}\n@page { size: auto; margin: 0.5in; } body { margin: 0; }`, `LifeTech nametag ${side} — ${name}`)
       }
@@ -156,7 +158,7 @@ html, body { margin: 0; padding: 0; width: 4in; }
       <button type="button" onClick={() => void printBadge('both')} disabled={!qrUrl || printing || !!downloading}>Print credit-card pair on 4 × 6</button>
     </div>
     <p className="muted">For the combined sheet, choose 4 × 6 inch paper, no margins, 100% / actual size, background graphics on, and headers and footers off. Each side stays credit-card sized. Front is on top; back is below; trim around each card.</p>
-    <NametagPrintModel />
+    <NametagPrintModel onPrintAdjusted={border => void printBadge('both', border)} disabled={!qrUrl || printing || !!downloading} />
     <div className="conference-nametag-sides">
       {(['front', 'back'] as const).map(value => <div key={value} className="conference-nametag-side">
         <h3>{value === 'front' ? 'Front · LifeTech' : 'Back · Endeavours and QR'}</h3>

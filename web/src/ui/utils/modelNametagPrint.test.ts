@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { modelNametagPrint } from './modelNametagPrint'
+import { compensatedNametagStyles, modelNametagPrint } from './modelNametagPrint'
 
 describe('printer fit model', () => {
   it('fits the whole sheet proportionally within 5 mm borders', () => {
@@ -16,6 +16,11 @@ describe('printer fit model', () => {
     expect(modelNametagPrint(0).cardWidth).toBe(85.6)
     expect(modelNametagPrint(0).cardHeight).toBe(53.98)
     expect(modelNametagPrint(10).scale).toBeLessThan(modelNametagPrint(5).scale)
+  })
+  it('compensates only within the physical sheet capacity', () => {
+    expect(Number(compensatedNametagStyles(5).match(/scale\(([^)]+)\)/)?.[1]) * modelNametagPrint(5).scale).toBeCloseTo(1)
+    expect(() => compensatedNametagStyles(8.1)).toThrow(RangeError)
+    expect(() => compensatedNametagStyles(NaN)).toThrow(RangeError)
   })
   it('rejects impossible and nonnumeric borders', () => {
     for (const border of [-1, 26, NaN, Infinity]) expect(() => modelNametagPrint(border)).toThrow(RangeError)

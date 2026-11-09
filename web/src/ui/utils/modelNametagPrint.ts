@@ -12,3 +12,11 @@ export function modelNametagPrint(border: number) {
     cardStep: (53.98 + 6) * scale,
   }
 }
+
+/** Enlarge both sides uniformly so a subsequent modeled printer fit restores card size. */
+export function compensatedNametagStyles(border: number) {
+  if (border > 8) throw new RangeError('Compensation fits on a 4 × 6 sheet only up to an 8 mm border')
+  const enlargement = 1 / modelNametagPrint(border).scale
+  return `.conference-nametag-postcard { grid-template-rows: repeat(2, ${53.98 * enlargement}mm); gap: ${6 * enlargement}mm; }
+.conference-nametag-postcard > .conference-nametag { transform: scale(${enlargement}); transform-origin: top center; }`
+}
