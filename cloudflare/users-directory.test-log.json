@@ -34,6 +34,53 @@
         "web/scripts/test-local-users-directory.py": "b97a90b95751082400a10bcbfe76498c4b17b01c43dee81624172bd0bc572d56",
         "web/package-lock.json": "513f3a1e52ff935b4b6e4e92283a3a64b1f091a66dbb715a78a26f2b794d45a6"
       }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/orgportal-verify-users-directory.py",
+      "testedRevision": "ae562397bccb6efc5b884ae1f62c4a219e3d18cf",
+      "scriptSha256": "1975930f76bcabefd68182cd4d3ea2fbb1a09223ecaa0725969e999be6ae1d79",
+      "result": "FAIL: LifeTech wrapper still returned 404 for /users before the updated shared worker; OrgPortal domain and direct shared worker return 200."
+    },
+    {
+      "date": "2026-11-09",
+      "command": "node --test /tmp/lifetech-wrapper-users.test.mjs",
+      "result": "PASS: original live wrapper reproduces /users/ 404; adding only the /users route forwards GET/HEAD for both directory aliases with query strings intact",
+      "baseWorkerVersion": "91fb797f-fe0f-4b6c-9cff-68d27674c927",
+      "inputsSha256": {
+        "/tmp/lifetech-wrapper-before-users.mjs": "b11e9dd509641085dccb23e947f77b12202f46904563fc3a46263d799c1270c0",
+        "/tmp/lifetech-wrapper-users.mjs": "14338a0d33c9f6e3e9657463bf45693c13d7b37f447cb822cb0eac81513a1e8d",
+        "/tmp/lifetech-wrapper-users.test.mjs": "2e5717753ff595a02e69272c3b1cbbee4d9f26ada8aea9dacb11472da20baac1"
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/lifetech-postcard-release.py build",
+      "testedRevision": "ae562397bccb6efc5b884ae1f62c4a219e3d18cf",
+      "result": "PASS: pinned Docker TypeScript, Vite bundle and Wrangler dry run; unchanged ecosystem artifact reused; log /tmp/orgportal-users-directory-build.log"
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/lifetech-postcard-release.py deploy",
+      "testedRevision": "ae562397bccb6efc5b884ae1f62c4a219e3d18cf",
+      "result": "PASS: shared worker commit, HTML, entry asset and API proxy checks; version b0e03e21-be5e-443c-9180-5e555e975d1c"
+    },
+    {
+      "date": "2026-11-09",
+      "command": "Cloudflare MCP PUT /accounts/{account_id}/workers/scripts/lifetech with keep_assets:true, followed by GET deployed module and version resources",
+      "sourceOfTruth": "web/portalRoutes.mjs at ae562397bccb6efc5b884ae1f62c4a219e3d18cf",
+      "baseWorkerVersion": "91fb797f-fe0f-4b6c-9cff-68d27674c927",
+      "deployedWorkerVersion": "988eff91-a282-4199-aefd-d50e098c4435",
+      "compiledModuleSha256": "14338a0d33c9f6e3e9657463bf45693c13d7b37f447cb822cb0eac81513a1e8d",
+      "result": "PASS: deployed module equals the locally tested one-entry /users route addition; existing ASSETS, ORGPORTAL_WEB and SITE_BRAND bindings and asset runtime settings retained. Static assets retained."
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 /tmp/orgportal-verify-users-directory.py",
+      "testedRevision": "ae562397bccb6efc5b884ae1f62c4a219e3d18cf",
+      "wrapperVersion": "988eff91-a282-4199-aefd-d50e098c4435",
+      "scriptSha256": "1975930f76bcabefd68182cd4d3ea2fbb1a09223ecaa0725969e999be6ae1d79",
+      "result": "PASS: /users, /users/, /people and /people/ return 200 and render populated People directory with canonical /people on LifeTech and OrgPortal. Anonymous read-only."
     }
   ]
 }
