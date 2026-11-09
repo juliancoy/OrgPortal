@@ -49,6 +49,7 @@ export async function cachedStep({root,inputs,outputs,receipt,run,maxAgeMs=Infin
 }
 
 export async function replaceDirectory(temporary,target){
+ temporary=resolve(temporary);target=resolve(target)
  const backup=target+'.replaced-'+randomUUID();let previous=false
  try{await rename(target,backup);previous=true}catch(error){if(error.code!=='ENOENT')throw error}
  try{await rename(temporary,target)}catch(error){if(previous)await rename(backup,target);throw error}
