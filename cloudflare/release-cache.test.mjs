@@ -69,7 +69,7 @@ test('replacement repairs existing artifacts and restores the old directory if p
  const root=await fixture(t),old=join(root,'old'),next=join(root,'next')
  await mkdir(old);await writeFile(join(old,'data'),'damaged')
  await mkdir(next);await writeFile(join(next,'data'),'verified')
- await replaceDirectory(next,old)
+ await replaceDirectory(next,old+'/')
  assert.equal(await readFile(join(old,'data'),'utf8'),'verified')
  await assert.rejects(replaceDirectory(join(root,'missing'),old))
  assert.equal(await readFile(join(old,'data'),'utf8'),'verified')
