@@ -75,6 +75,11 @@ try{
  await expect(sheet).toContainText('Updated local print fixture')
  await expect(sheet).toContainText('example.org/connect')
  if(await printPage.locator('button,fieldset').count())throw Error('Controls must not appear in print output')
+ const backNameBox=await sheet.locator('.conference-nametag-back .conference-nametag-name').boundingBox()
+ const backBrand=sheet.locator('.conference-nametag-back .conference-nametag-brand')
+ if(await backBrand.count()){const brand=await backBrand.boundingBox();if(backNameBox.y<brand.y+brand.height-.1)throw Error('Large back name must not overlap the brand')}
+ const backQrBox=await sheet.locator('.conference-nametag-back .conference-nametag-qr').boundingBox()
+ if(backQrBox.y<backNameBox.y+backNameBox.height-.1||backQrBox.y+backQrBox.height>back.y+back.height)throw Error('Large back name and QR must fit without overlap')
  const pdf=await printPage.pdf({preferCSSPageSize:true,printBackground:true,path:resolve(output,'combined-4x6.pdf')})
  const pages=[...pdf.toString('latin1').matchAll(/\/Type \/Page\b/g)].length
  if(pages!==1||!pdf.includes(Buffer.from('288 432')))throw Error('Expected one 288 × 432 point PDF page (4 × 6 inches)')
