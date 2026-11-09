@@ -83,6 +83,20 @@
         "org-worker/test/people-directory-bots.test.ts": "8103ca487908e6e4d2ae9c8e8e486d374f7e97aa5980c86e4afd2004542204f1",
         "org-worker/worker-configuration.d.ts": "6134f6262fafeecb64eb61b505f2b97a36f80c95eaf36a8d155d43a372093359"
       }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "node --import tsx --test test/directory-identity.test.ts test/people-directory-bots.test.ts; npm run typecheck",
+      "result": "PASS 4 tests and typecheck; registered accounts without activity get basic profiles without contact disclosure",
+      "inputsSha256": {
+        "org-worker/package-lock.json": "2a4456444de4b92bb7d8c641295593a8189d864792287b72e415938dd2f2a34a",
+        "org-worker/src/directoryIdentity.ts": "9381fe4a571f9b776f399f039cf66fad1a85e5e0c191e2c6059218f59b7e0970",
+        "org-worker/src/index.ts": "e1f3f211047bb71aed0eacc0f1071c222e95a98da983da9ac1954d7741e1a620",
+        "org-worker/test/directory-identity.test.ts": "c0f8c73c42ba799cece689f544c26b59f6bf61c22b70ff663767c436c15b44a0",
+        "org-worker/test/organization-directory-operations.test.ts": "53a3bd2e0062d917239de7e071f0648fc990f11a350b4765554f7bba24e87f15",
+        "org-worker/test/people-directory-bots.test.ts": "8103ca487908e6e4d2ae9c8e8e486d374f7e97aa5980c86e4afd2004542204f1",
+        "org-worker/worker-configuration.d.ts": "6134f6262fafeecb64eb61b505f2b97a36f80c95eaf36a8d155d43a372093359"
+      }
     }
   ]
 }
