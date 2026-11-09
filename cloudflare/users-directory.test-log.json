@@ -1,0 +1,39 @@
+{
+  "runs": [
+    {
+      "date": "2026-11-09",
+      "command": "node --test OrgPortal/cloudflare/users-directory.test.mjs",
+      "result": "FAIL: test expected an exact no-store header, while existing response correctly includes additional no-cache directives",
+      "inputsSha256": {
+        "web/portalRoutes.mjs": "787dcd7a55d6fed2a064f0c6549f10e90d21ab5bd520121da950e6533c20a2b6",
+        "web/src/ui/router/createAppRouter.tsx": "f0155d7571acf1c89ee2325a4d1bdbbda52b40969ec79257315f4745b7ea99c0",
+        "cloudflare/worker.js": "6de96dacf96a4fc2a5edff2d9a8b033626e9951eedd27aa69de1639acccccdce",
+        "cloudflare/users-directory.test.mjs": "b4c1500f34f51deac2003b2cd09470877ee4f9ee2d31b52250114da628bc72ef"
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "node --test OrgPortal/cloudflare/users-directory.test.mjs",
+      "result": "PASS: GET/HEAD directory routes with both slash forms on LifeTech and OrgPortal, plus login/profile/unknown-path checks",
+      "inputsSha256": {
+        "web/portalRoutes.mjs": "787dcd7a55d6fed2a064f0c6549f10e90d21ab5bd520121da950e6533c20a2b6",
+        "web/src/ui/router/createAppRouter.tsx": "f0155d7571acf1c89ee2325a4d1bdbbda52b40969ec79257315f4745b7ea99c0",
+        "cloudflare/worker.js": "6de96dacf96a4fc2a5edff2d9a8b033626e9951eedd27aa69de1639acccccdce",
+        "cloudflare/users-directory.test.mjs": "48de4417ba369dd1e225bb3f8d21ed84511a9f2d80ae77ed7f7af49428cfb4ad"
+      }
+    },
+    {
+      "date": "2026-11-09",
+      "command": "python3 OrgPortal/web/scripts/test-local-users-directory.py",
+      "result": "PASS: anonymous synthetic local Docker directory renders identically for /users, /users/, /people and /people/ with canonical /people",
+      "inputsSha256": {
+        "web/portalRoutes.mjs": "787dcd7a55d6fed2a064f0c6549f10e90d21ab5bd520121da950e6533c20a2b6",
+        "web/src/ui/router/createAppRouter.tsx": "f0155d7571acf1c89ee2325a4d1bdbbda52b40969ec79257315f4745b7ea99c0",
+        "web/src/ui/views/PeoplePage.tsx": "abe9fe084ecf21e24fa524dcf4c0629e0b2cbd50cdc39b1631e328672f55f734",
+        "web/src/ui/views/peopleDirectory.ts": "4eef954ed084eb4ee33edc38f20a3a3b482c15ae773505392c79b5a44b6b531e",
+        "web/scripts/test-local-users-directory.py": "b97a90b95751082400a10bcbfe76498c4b17b01c43dee81624172bd0bc572d56",
+        "web/package-lock.json": "513f3a1e52ff935b4b6e4e92283a3a64b1f091a66dbb715a78a26f2b794d45a6"
+      }
+    }
+  ]
+}

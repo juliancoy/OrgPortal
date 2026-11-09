@@ -101,6 +101,7 @@ const paths = [
   "/events/:slug/apply/guest",
   "/orgs",
   "/people",
+  "/users",
   "/timebanking",
   "/life-insurance",
   "/health-insurance",

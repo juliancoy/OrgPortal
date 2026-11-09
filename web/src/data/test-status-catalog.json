@@ -213,6 +213,20 @@
       ]
     },
     {
+      "id": "suite-cloudflare-users-directory-test-mjs",
+      "label": "cloudflare/users-directory.test.mjs",
+      "category": "Organizations and membership",
+      "source": "cloudflare/users-directory.test.mjs",
+      "kind": "node",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "users-directory.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-desktop-ubuntu-aesthetic-heuristics-test-mjs",
       "label": "desktop/ubuntu/aesthetic-heuristics.test.mjs",
       "category": "User interface and integrations",
@@ -3251,6 +3265,20 @@
         {
           "id": "suite",
           "label": "test-local-upload-resilience.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-users-directory-py",
+      "label": "web/scripts/test-local-users-directory.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-users-directory.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-users-directory.py"
         }
       ]
     },
