@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-09",
+  "command": "npx vitest run src/config/tenantHome.test.ts",
+  "environment": "host",
+  "result": "PASS: 3 tests",
+  "sha256": {
+    "web/src/config/tenantHome.ts": "38cded3e8d70138357a520ae4257848d92733d2f2b771f186e5d9a49921bce32",
+    "web/src/config/tenantHome.test.ts": "cd5e3ed0714cb5a70ddb8be93b95856ea3ea36f46e7282e0e48dabe450c8eb21",
+    "web/package-lock.json": "513f3a1e52ff935b4b6e4e92283a3a64b1f091a66dbb715a78a26f2b794d45a6"
+  }
+}

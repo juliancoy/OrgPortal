@@ -25,7 +25,7 @@ export function tenantHomeAction(
   memberHomePath: string,
 ): TenantHomeAction {
   // Keep LifeTech's public home independent of authentication and saved views.
-  if (tenant.home_org_slug === 'lifetech') return { kind: 'landing' }
+  if (tenant.profile === 'lifetech' || tenant.slug === 'lifetech' || tenant.home_org_slug === 'lifetech') return { kind: 'landing' }
   const kind = tenant.home_kind || (tenant.features?.includes('timebank') ? 'timebank' : 'default')
   if (kind === 'landing' || kind === 'main') return { kind: 'landing' }
   if (kind === 'timebank') return { kind: 'timebank' }

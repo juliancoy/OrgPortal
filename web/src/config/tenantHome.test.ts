@@ -27,8 +27,10 @@ describe('tenant home modes', () => {
   it('keeps landing pages independent of authentication', () => {
     for (const role of ['guest', 'member', 'admin']) {
       expect(tenantHomeAction(baseTenant, role, '/chat')).toEqual({ kind: 'landing' })
-      for (const home_kind of ['default', 'main', 'landing', 'org', 'auth'] as const) {
-        expect(tenantHomeAction({ ...baseTenant, home_org_slug: 'lifetech', home_kind }, role, '/chat')).toEqual({ kind: 'landing' })
+      for (const home_kind of ['default', 'main', 'landing', 'org', 'auth', 'route', 'org-events', 'timebank'] as const) {
+        for (const identity of [{ home_org_slug: 'lifetech' }, { profile: 'lifetech' }, { slug: 'lifetech' }]) {
+          expect(tenantHomeAction({ ...baseTenant, ...identity, home_kind, home_path: '/chat' }, role, '/chat')).toEqual({ kind: 'landing' })
+        }
       }
     }
   })
