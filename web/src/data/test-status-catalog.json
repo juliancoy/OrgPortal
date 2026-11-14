@@ -525,6 +525,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-directory-identity-test-ts",
+      "label": "org-worker/test/directory-identity.test.ts",
+      "category": "Identity and access",
+      "source": "org-worker/test/directory-identity.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "directory-identity.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-driveCarousel-test-ts",
       "label": "org-worker/test/driveCarousel.test.ts",
       "category": "User interface and integrations",
