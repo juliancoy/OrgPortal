@@ -4,6 +4,6 @@ import {promisify} from 'node:util'
 import {fileURLToPath} from 'node:url'
 it('keeps budget authority distinct from payments and rejects ambiguous source rows',async()=>{
  const file=fileURLToPath(new URL('../../../scripts/maryland-budget.test.mjs',import.meta.url))
- const result=await promisify(execFile)(process.execPath,['--test',file],{timeout:30000})
+ const result=await promisify(execFile)(process.execPath,['--test',file],{timeout:30000}).catch(error=>{throw new Error([error.message,error.stdout,error.stderr].filter(Boolean).join('\n'),{cause:error})})
  expect(result.stdout).toMatch(/pass 3/);expect(result.stdout).toMatch(/fail 0/)
 })

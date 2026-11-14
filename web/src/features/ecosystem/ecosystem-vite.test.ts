@@ -28,7 +28,7 @@ it('opens the portal while a data build is pending and serves the published data
  const s = start()
  expect(s.result).toBeUndefined()
  s.handle({ url: '/overview', method: 'GET' }, s.response, vi.fn())
- await vi.waitFor(() => expect(s.response.end).toHaveBeenCalledWith('{"version":"published"}'))
+ await vi.waitFor(() => expect(s.response.end).toHaveBeenCalledWith(JSON.stringify({version:'published',fy:'all',fiscalYears:[]})))
  expect(s.response.statusCode).toBe(200)
  s.once.mock.calls[0][1]()
  expect(mocks.kill).toHaveBeenCalledOnce()
