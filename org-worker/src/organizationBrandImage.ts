@@ -40,8 +40,13 @@ export async function prepareOrganizationBrandImage(env:BrandImageEnvironment,or
  if(!env.SCAN_IMAGES)fail(503,'Organization image storage is not configured.');
  let bytes:Uint8Array<ArrayBuffer>;
  if(input){
-  if(!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(input.dataBase64))fail(400,'Image data must be standard base64.');
-  bytes=Uint8Array.from(atob(input.dataBase64),c=>c.charCodeAt(0));
+  // Avoid a repeated regex group: multi-megabyte inputs can exhaust its stack.
+  const encoded=input.dataBase64;
+  const padding=encoded.endsWith('==')?2:encoded.endsWith('=')?1:0;
+  if(encoded.length%4!==0||/[^A-Za-z0-9+/]/.test(encoded.slice(0,encoded.length-padding)))fail(400,'Image data must be standard base64.');
+  const decoded=atob(encoded);
+  bytes=new Uint8Array(decoded.length);
+  for(let i=0;i<decoded.length;i++)bytes[i]=decoded.charCodeAt(i);
  }else bytes=await imageBytes(source!);
  if(!bytes.length||bytes.length>MAX_BYTES)fail(413,'Choose a nonempty image, 8 MB or smaller.');
  const [contentType,extension]=imageType(bytes);

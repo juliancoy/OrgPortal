@@ -729,7 +729,8 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
         const { done, value } = await reader.read();
         if (done) break;
         size += value.length;
-        if (size > 1048576) { await reader.cancel(); return new Response(null, { status: 413 }); }
+        // An 8 MiB image expands to about 10.7 MiB in base64, plus JSON metadata.
+        if (size > 12 * 1024 * 1024) { await reader.cancel(); return new Response(null, { status: 413 }); }
         chunks.push(value);
       }
     }
@@ -739,11 +740,15 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     let parsedBody: unknown;
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
-    // Authenticated evidence imports use the bounded 1 MiB envelope.
-    // Other MCP operations retain their 64 KiB request cap.
+    // Only image-capable tools need the larger envelope. Keep existing limits
+    // for evidence imports and ordinary operations; tool schemas still bound
+    // decoded images to 8 MiB and enforce permissions and preview receipts.
     if(size>65536){
       const envelope=parsedBody as {method?:unknown;params?:{name?:unknown}};
-      if(envelope?.method!=='tools/call'||!['preview_email_history_import','apply_email_history_import','preview_maryland_comptroller_import','apply_maryland_comptroller_import','preview_ecosystem_dataset','apply_ecosystem_dataset'].includes(String(envelope.params?.name)))return new Response(null,{status:413});
+      const name=envelope?.method==='tools/call'?envelope.params?.name:undefined;
+      const imageTool=['preview_organization_image_upload','apply_organization_image_upload','preview_organization_profile','apply_organization_profile'].includes(String(name));
+      const evidenceTool=['preview_email_history_import','apply_email_history_import','preview_maryland_comptroller_import','apply_maryland_comptroller_import','preview_ecosystem_dataset','apply_ecosystem_dataset'].includes(String(name));
+      if(!imageTool&&!(evidenceTool&&size<=1024*1024))return new Response(null,{status:413});
     }
     const method = parsedBody && typeof parsedBody === 'object' && 'method' in parsedBody ? parsedBody.method : undefined;
     observation.method = typeof method === 'string' && ['initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'].includes(method) ? method : 'other';

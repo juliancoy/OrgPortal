@@ -16,6 +16,13 @@ configuration. No separate asset-hosting project is required.
 3. Use the returned `organization.image_url` as `homeImageUrl` in
    `save_portal_setup` when it should also be the portal identity and cover.
 
+Image preview/apply requests have a 12 MiB JSON transport limit, including
+base64 and metadata. The decoded image limit remains 8 MiB. The same envelope
+is available to the profile preview/apply tools for their `image_upload` field.
+Other tools retain their 64 KiB request limit, except the existing evidence
+imports, which allow 1 MiB. Limits count actual streamed bytes even when
+`Content-Length` is missing or incorrect; excess requests return HTTP 413.
+
 Clients with the older profile tools can supply a direct public raster image
 URL to `preview_organization_profile`, then apply the same patch with
 `apply_organization_profile`. The server imports the bytes into native media
