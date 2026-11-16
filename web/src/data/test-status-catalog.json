@@ -819,6 +819,14 @@
         {
           "id": "public applicants rank by unexpired stars before pagination with stable ties",
           "label": "public applicants rank by unexpired stars before pagination with stable ties"
+        },
+        {
+          "id": "original submission time survives retries, edits and review and is available publicly, to managers and in CSV",
+          "label": "original submission time survives retries, edits and review and is available publicly, to managers and in CSV"
+        },
+        {
+          "id": "submission-time migration distinguishes initial host receipts from older surviving evidence",
+          "label": "submission-time migration distinguishes initial host receipts from older surviving evidence"
         }
       ],
       "category": "Submission and voting",
@@ -1853,6 +1861,20 @@
       ],
       "category": "Submission and voting",
       "cwd": "org-worker"
+    },
+    {
+      "id": "suite-org-worker-test-presentation-host-notifications-test-ts",
+      "label": "org-worker/test/presentation-host-notifications.test.ts",
+      "category": "Submission and voting",
+      "source": "org-worker/test/presentation-host-notifications.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "presentation-host-notifications.test.ts"
+        }
+      ]
     },
     {
       "id": "suite-org-worker-test-profile-availability-test-ts",
@@ -3367,6 +3389,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-submission-times-mjs",
+      "label": "web/scripts/test-submission-times.mjs",
+      "category": "Submission and voting",
+      "source": "web/scripts/test-submission-times.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-submission-times.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-upload-image-compression-mjs",
       "label": "web/scripts/test-upload-image-compression.mjs",
       "category": "User interface and integrations",
@@ -4455,6 +4491,20 @@
         {
           "id": "suite",
           "label": "OrganizationFundingChart.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-SubmissionTime-test-tsx",
+      "label": "web/src/ui/components/SubmissionTime.test.tsx",
+      "category": "Submission and voting",
+      "source": "web/src/ui/components/SubmissionTime.test.tsx",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "SubmissionTime.test.tsx"
         }
       ]
     },

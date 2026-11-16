@@ -32,4 +32,9 @@ or emails were created. Commands and source fingerprints are recorded in
 org-worker/test/submission-time.test-log.jsonl.
 
 Previous API version: 0f308226-0782-4ee8-8238-fdb2dcc5b7cf.
+Previous frontend version: 6ef39c6d-886e-4933-84c8-3c3aa23b5686.
+Migration 0136 applied successfully as the only pending production migration.
+The first build exported current public data but failed to hash stale root-owned
+generated folders. The generated query directory was preserved outside the build
+output before retrying; no source or production data was removed.
 Release uses the existing pinned Docker workflow; no gradual rollout is claimed.
