@@ -38,3 +38,19 @@ The first build exported current public data but failed to hash stale root-owned
 generated folders. The generated query directory was preserved outside the build
 output before retrying; no source or production data was removed.
 Release uses the existing pinned Docker workflow; no gradual rollout is claimed.
+
+## Production result
+
+Published clean commit `6399ddff960bf1a0205127c8992ef52128c1f261` built in the
+pinned Node 22 Docker environment and deployed through scripts/release.mjs.
+API version: `f340a85a-97ea-44ec-aac5-2fb368f20be6`.
+Frontend version: `63e71781-0cec-4a8f-bbe8-a27c49197da2`.
+The release verified both service identities and clean commits, frontend HTML,
+the referenced JavaScript asset and the API proxy. Live API settings/bindings
+were inherited, preserving the host-email dispatcher.
+
+The read-only unauthenticated LifeTech check confirmed timestamps on all five
+public applications and verified Privacute's card and detail dialog against the
+API. Its historical timestamp is `2026-11-14T04:28:15.837Z`, labeled First recorded
+because the original receipt time was not retained. Production screenshot:
+`artifacts/submission-times/live-lifetech.png` (local ignored artifact).
