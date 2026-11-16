@@ -5,7 +5,7 @@ import type { GuestPresentationEnv } from './guestPresentationAccounts';
 
 type NotificationEnv = GuestPresentationEnv & { ORGANIZATION_REPLICA_SOURCE?: string };
 type Notice = { id:number; event_id:string; organization_id:string; source:'team'|'guest'; submission_id:string; user_id:string; attempts:number };
-type Proposal = { title:string; summary:string; team:string };
+type Proposal = { title:string; summary:string; team:string; submitted_at?:string; submission_time_source?:string };
 
 export async function presentationHostNotificationsAvailable(db:D1Database) {
  return !!await db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='presentation_host_notifications'").first();
@@ -26,9 +26,11 @@ async function reviewUrl(env:NotificationEnv,organizationId:string,slug:string) 
 export function renderPresentationHostEmail(eventTitle:string,proposal:Proposal,url:string,guest:boolean) {
  const subject=`New presentation submission: ${eventTitle}`.replace(/[\r\n]/g,' ').slice(0,250);
  const intro=`${proposal.team} submitted a presentation for ${eventTitle}.`;
+ const date=proposal.submitted_at?new Date(proposal.submitted_at):null;
+ const time=date&&Number.isFinite(date.getTime())?`${proposal.submission_time_source==='first_recorded'?'First recorded':'Submitted'}: ${date.toISOString()} (UTC)`:'Submission time unavailable';
  const review=guest?'Sign in and open Manage submissions → Applications without login to review the contact details.':'Sign in and open Manage submissions to review this application.';
- return {subject,text:`${intro}\n\n${proposal.title}\n\n${proposal.summary}\n\n${review}\n${url}`,
-  html:`<p>${escapeGuestHtml(intro)}</p><h2>${escapeGuestHtml(proposal.title)}</h2><p style="white-space:pre-wrap">${escapeGuestHtml(proposal.summary)}</p><p>${escapeGuestHtml(review)}</p><p><a href="${escapeGuestHtml(url)}">Review submissions</a></p>`};
+ return {subject,text:`${intro}\n\n${time}\n\n${proposal.title}\n\n${proposal.summary}\n\n${review}\n${url}`,
+  html:`<p>${escapeGuestHtml(intro)}</p><p>${escapeGuestHtml(time)}</p><h2>${escapeGuestHtml(proposal.title)}</h2><p style="white-space:pre-wrap">${escapeGuestHtml(proposal.summary)}</p><p>${escapeGuestHtml(review)}</p><p><a href="${escapeGuestHtml(url)}">Review submissions</a></p>`};
 }
 
 /** The submission and its outbox are committed together by database triggers.
@@ -52,8 +54,8 @@ export async function runPresentationHostEmail(env:NotificationEnv) {
    WHERE e.id=? AND e.host_org_id=? AND m.user_id=? AND m.status='active' AND m.role IN ('owner','administrator')`)
    .bind(notice.event_id,notice.organization_id,notice.user_id).first<{title:string;slug:string;preference_email:string|null;contact_email:string|null}>();
   const proposal=notice.source==='guest'
-   ?await env.DB.prepare("SELECT title,summary,organization_name AS team FROM event_guest_presentations WHERE id=? AND event_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')").bind(notice.submission_id,notice.event_id).first<Proposal>()
-   :await env.DB.prepare("SELECT s.title,s.summary,o.name AS team FROM event_submissions s JOIN organizations o ON o.id=s.organization_id WHERE s.submission_id=? AND s.event_id=? AND s.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')").bind(notice.submission_id,notice.event_id).first<Proposal>();
+   ?await env.DB.prepare("SELECT title,summary,organization_name AS team,created_at AS submitted_at FROM event_guest_presentations WHERE id=? AND event_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')").bind(notice.submission_id,notice.event_id).first<Proposal>()
+   :await env.DB.prepare("SELECT s.title,s.summary,o.name AS team,s.submitted_at,s.submission_time_source FROM event_submissions s JOIN organizations o ON o.id=s.organization_id WHERE s.submission_id=? AND s.event_id=? AND s.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')").bind(notice.submission_id,notice.event_id).first<Proposal>();
   if(!recipient||!proposal){
    await env.DB.prepare("UPDATE presentation_host_notifications SET status='skipped',error_code='access_or_application_removed' WHERE id=? AND status='queued'").bind(notice.id).run();counts.skipped++;continue;
   }

@@ -248,6 +248,8 @@ verified erasure before restoring service and delete task exports. New submissio
 also queue transactional host emails as described below. Deploy migrations and
 verify cron before advertising automatic cleanup in production.
 
+Migration 0136 adds immutable `submitted_at` and `submission_time_source` fields to team applications. Apply it before releasing the timestamp API. Existing applications use the host outbox receipt when available; otherwise their earliest surviving support/update record is labeled `first_recorded`, never asserted as the original submission time. Guest applications retain their existing `created_at`. These fields are removed with the proposal through the existing expiry, withdrawal and erasure paths; restore-time backup rules are unchanged. Worker rollback retains these compatible additive fields.
+
 Migration 0135 adds `presentation_host_notifications`. Insert triggers enqueue
 one alert per active host owner/administrator for each new team or guest
 application, atomically with the submission. Repeated PUTs and edits do not resend;

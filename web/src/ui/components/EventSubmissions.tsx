@@ -1,4 +1,5 @@
 import {ApplicantDetails} from './ApplicantDetails'
+import {SubmissionTime} from './SubmissionTime'
 import { invalidatePublicOrganizationData } from '../../data/publicOrganization/cache'
 import { GuestPresentationReview } from './GuestPresentationReview'
 import { PresentationFinalRound } from './PresentationFinalRound'
@@ -11,7 +12,7 @@ import { useAuth } from '../../app/AppProviders'
 import { OrgImage } from './media/OrgImage'
 import './event-presentations.css'
 
-export type Submission={presenters?:{name:string;photo?:string;pending?:boolean}[];submission_id:string;attachments?:SubmissionAttachment[];organization_id:string;organization_name:string;organization_slug:string;image_url:string|null;title:string;summary:string;status:string;favorites:number}
+export type Submission={submitted_at?:string|null;submission_time_source?:string;presenters?:{name:string;photo?:string;pending?:boolean}[];submission_id:string;attachments?:SubmissionAttachment[];organization_id:string;organization_name:string;organization_slug:string;image_url:string|null;title:string;summary:string;status:string;favorites:number}
 export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEdit:(application:PresentationApplication)=>void;onDeleted:(submissionId:string)=>void}) {
  const {token}=useAuth()
  const base=`/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
@@ -115,7 +116,7 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
   {ready&&!rows.length&&<p>No submissions yet.</p>}
   <ul className="applicant-list" aria-label="Demo Day applicants">{[...rows].sort((a,b)=>b.favorites-a.favorites||(a.submission_id<b.submission_id?-1:a.submission_id>b.submission_id?1:0)).map(row=><li key={row.submission_id} className={`presentation-submission applicant-row${favorites.includes(row.submission_id)?' is-selected':''}${active?.id===row.submission_id?' is-highlighted':''}`}>
    <button type="button" className="applicant-open" aria-label={`View ${row.organization_name} application: ${row.title}`} aria-haspopup="dialog" aria-expanded={active?.id===row.submission_id} aria-controls={active?.id===row.submission_id?`applicant-details-${row.submission_id}`:undefined} onPointerEnter={event=>{if(event.pointerType==='mouse')preview(row,event.currentTarget)}} onPointerLeave={leave} onBlur={leave} onClick={event=>open(row,event.currentTarget)}>
-    <OrgImage src={row.image_url} alt=""/><span><strong>{row.organization_name}</strong><small>{row.title}</small></span>
+    <OrgImage src={row.image_url} alt=""/><span><strong>{row.organization_name}</strong><small>{row.title}</small><small className="applicant-submission-time"><SubmissionTime value={row.submitted_at} source={row.submission_time_source}/></small></span>
    </button>
    <div className="applicant-row-vote">{finalPhase==='shortlist'?<button type="button" className={`applicant-vote${favorites.includes(row.submission_id)?' is-selected':''}${quota?.id===row.submission_id?' is-limit':''}`} aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title} (${row.favorites} ${row.favorites===1?'star':'stars'})`} disabled={!token||!ready||busy||savingFavorites.includes(row.submission_id)} onClick={()=>{void toggle(row)}}><Star size={20} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'}/><span>{row.favorites}</span></button>:<span className="applicant-vote"><Star size={20} aria-hidden="true"/>{row.favorites}</span>}
    </div>

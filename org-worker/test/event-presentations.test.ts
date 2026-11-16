@@ -7,10 +7,10 @@ import { HTTPException } from 'hono/http-exception';
 import { presentationRoutes } from '../src/eventPresentations';
 class Database {
  readonly sqlite = new DatabaseSync(':memory:');
- constructor() {
+ constructor(before?:string) {
   this.sqlite.exec('PRAGMA foreign_keys=ON');
   const dir = new URL('../migrations/',import.meta.url);
-  for (const name of readdirSync(dir).filter(n=>n.endsWith('.sql')).sort()) this.sqlite.exec(readFileSync(new URL(name,dir),'utf8'));
+  for (const name of readdirSync(dir).filter(n=>n.endsWith('.sql')&&(!before||n<before)).sort()) this.sqlite.exec(readFileSync(new URL(name,dir),'utf8'));
   this.sqlite.exec("INSERT INTO organizations(id,name,slug) VALUES('one','One','one'),('two','Two','two'),('team','Team','team')");
  }
  prepare(sql:string) {
@@ -34,8 +34,8 @@ class Database {
  rows(sql:string){return this.sqlite.prepare(sql).all();}
 }
 
-function fixture(){
- const db=new Database();db.event('event','one');
+function fixture(before?:string){
+ const db=new Database(before);db.event('event','one');
  db.sqlite.exec("INSERT INTO organization_memberships(organization_id,user_id,role,status) VALUES('one','host','owner','active'),('team','applicant','owner','active'),('team','member','member','active')");
  const app=presentationRoutes(async(_env,req)=>{const id=req.headers.get('Authorization');if(!id)throw new HTTPException(401);return {id};});
  app.onError((error,c)=>c.json({message:error.message},(error as any).status||500));
@@ -507,4 +507,49 @@ test('public applicants rank by unexpired stars before pagination with stable ti
   assert.equal(ids.length,60);assert.equal(new Set(ids).size,60);
   for(const cursor of ['not-json','null','{}',JSON.stringify({favorites:-1,id:'x'}),JSON.stringify({favorites:1.5,id:'x'})])assert.equal((await f.request('/submissions?after='+encodeURIComponent(cursor),'GET','')).status,400);
  }finally{f.db.sqlite.close();}
+});
+
+test('original submission time survives retries, edits and review and is available publicly, to managers and in CSV',async()=>{
+ const f=fixture();try{
+  await f.request('/form','PUT','host',{enabled:true});const id=crypto.randomUUID();
+  const proposal={organization_id:'team',title:'Timed demo',summary:'Details'};
+  const before=new Date().toISOString();assert.equal((await f.request('/'+id,'PUT','applicant',proposal)).status,200);
+  const original=String(f.db.rows('SELECT submitted_at FROM event_submissions')[0].submitted_at);
+  assert.ok(original>=before&&original<=new Date().toISOString());
+  f.db.sqlite.exec("UPDATE event_submissions SET updated_at='2026-01-01T00:00:00Z'");
+  assert.equal((await f.request('/'+id,'PUT','applicant',{...proposal,title:'Edited'})).status,200);
+  assert.equal((await f.request('/'+id,'PATCH','host',{status:'accepted'})).status,200);
+  for(const [path,user] of [['/submissions',''],['','applicant'],['/review','host']]){
+   const body=await(await f.request(path,'GET',user)).json() as any;
+   assert.equal(body.submissions[0].submitted_at,original);assert.equal(body.submissions[0].submission_time_source,'submission');
+  }
+  const csv=await(await f.request('/export','GET','host')).text();
+  assert.match(csv,/submitted_at,submission_time_source,updated_at/);assert.ok(csv.includes(original));
+  assert.throws(()=>f.db.sqlite.exec("UPDATE event_submissions SET submitted_at='2020-01-01'"),/Original submission time/);
+  assert.throws(()=>f.db.sqlite.exec("UPDATE event_submissions SET submission_time_source='first_recorded'"),/Original submission time/);
+  assert.equal(f.db.rows('SELECT submitted_at FROM event_submissions')[0].submitted_at,original);
+ }finally{f.db.sqlite.close()}
+});
+
+test('submission-time migration distinguishes initial host receipts from older surviving evidence',async()=>{
+ const migration='0136_presentation_submission_time.sql',f=fixture(migration);try{
+  await f.request('/form','PUT','host',{enabled:true});
+  const exact=crypto.randomUUID(),historical=crypto.randomUUID(),unknown=crypto.randomUUID();
+  for(const id of [exact,historical,unknown])await f.request('/'+id,'PUT','applicant',{organization_id:'team',title:'Existing demo',summary:'Details'});
+  const receipt=f.db.sqlite.prepare('SELECT created_at FROM presentation_host_notifications WHERE submission_id=?').get(exact)!.created_at;
+  f.db.sqlite.prepare('DELETE FROM presentation_host_notifications WHERE submission_id!=?').run(exact);
+  f.db.sqlite.prepare("UPDATE organization_support_records SET created_at='2026-10-25T12:00:00.000Z' WHERE id=?").run('presentation:event:'+historical);
+  f.db.sqlite.prepare('DELETE FROM organization_support_records WHERE id=?').run('presentation:event:'+unknown);
+  f.db.sqlite.exec("UPDATE event_submissions SET updated_at='2026-11-16T12:00:00.000Z'");
+  f.db.sqlite.exec(readFileSync(new URL('../migrations/'+migration,import.meta.url),'utf8'));
+  const get=(id:string)=>f.db.sqlite.prepare('SELECT submitted_at,submission_time_source FROM event_submissions WHERE submission_id=?').get(id)!;
+  assert.deepEqual({...get(exact)},{submitted_at:receipt,submission_time_source:'submission'});
+  assert.deepEqual({...get(historical)},{submitted_at:'2026-10-25T12:00:00.000Z',submission_time_source:'first_recorded'});
+  assert.deepEqual({...get(unknown)},{submitted_at:'2026-11-16T12:00:00.000Z',submission_time_source:'first_recorded'});
+  assert.equal((await f.request('/'+historical,'PUT','applicant',{title:'Edit after migration',summary:'Details'})).status,200);
+  assert.equal(get(historical).submitted_at,'2026-10-25T12:00:00.000Z');
+  // Previous API/legacy writes also obtain an immutable initial receipt time.
+  f.db.sqlite.exec("INSERT INTO event_presentation_submissions(event_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at) VALUES('event','two','applicant','Legacy','Details','submitted','2026-11-16T13:00:00.000Z','2099-01-01')");
+  assert.equal(get('two').submitted_at,'2026-11-16T13:00:00.000Z');assert.equal(get('two').submission_time_source,'submission');
+ }finally{f.db.sqlite.close()}
 });

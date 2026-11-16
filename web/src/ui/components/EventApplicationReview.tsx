@@ -1,7 +1,8 @@
 import { useEffect, useId, useState } from 'react'
 import { useAuth } from '../../app/AppProviders'
+import {SubmissionTime} from './SubmissionTime'
 type Status='all'|'submitted'|'accepted'|'declined'
-type Submission={presenters?:{name:string}[];submission_id:string;organization_id:string;organization_name:string;title:string;summary:string;status:string;updated_at:string}
+type Submission={submitted_at?:string|null;submission_time_source?:string;presenters?:{name:string}[];submission_id:string;organization_id:string;organization_name:string;title:string;summary:string;status:string;updated_at:string}
 type Review={submissions:Submission[];counts:Record<Status,number>;total:number;page:number;pages:number;pageSize:number}
 const labels:Record<Status,string>={all:'All',submitted:'Pending',accepted:'Accepted',declined:'Declined'}
 export function EventApplicationReview({eventId,onUpdated,refreshRevision=0}:{eventId:string;onUpdated?:()=>void;refreshRevision?:number}){
@@ -45,7 +46,7 @@ export function EventApplicationReview({eventId,onUpdated,refreshRevision=0}:{ev
   {loading&&<p role="status">Loading applications…</p>}
   {error&&<p role="alert">{error} <button type="button" className="btn-secondary" onClick={()=>setRevision(v=>v+1)}>Retry</button></p>}
   {notice&&<p role="status">{notice}</p>}
-  {data&&!loading&&<>{data.submissions.length===0?<p>No {status==='all'?'applications':labels[status].toLowerCase()+' applications'} yet.</p>:data.submissions.map(row=><article className="presentation-submission" key={row.submission_id}><h4>{row.organization_name}: {row.title}</h4><p style={{whiteSpace:'pre-wrap'}}>{row.summary}</p>{row.presenters?.length? <p>Team members: {row.presenters.map(person=>person.name).join(', ')}</p>:null}<p>Status: <strong>{labels[row.status as Status]||row.status}</strong> · Updated {new Date(row.updated_at).toLocaleString()}</p><div>{(['accepted','declined','submitted'] as const).map(next=><button type="button" className="btn-secondary" key={next} disabled={busy||row.status===next} onClick={()=>void update(row,next)}>{next==='accepted'?'Accept':next==='declined'?'Decline':'Mark pending'}</button>)}</div></article>)}
+  {data&&!loading&&<>{data.submissions.length===0?<p>No {status==='all'?'applications':labels[status].toLowerCase()+' applications'} yet.</p>:data.submissions.map(row=><article className="presentation-submission" key={row.submission_id}><h4>{row.organization_name}: {row.title}</h4><p className="muted"><SubmissionTime value={row.submitted_at} source={row.submission_time_source}/></p><p style={{whiteSpace:'pre-wrap'}}>{row.summary}</p>{row.presenters?.length? <p>Team members: {row.presenters.map(person=>person.name).join(', ')}</p>:null}<p>Status: <strong>{labels[row.status as Status]||row.status}</strong> · Updated {new Date(row.updated_at).toLocaleString()}</p><div>{(['accepted','declined','submitted'] as const).map(next=><button type="button" className="btn-secondary" key={next} disabled={busy||row.status===next} onClick={()=>void update(row,next)}>{next==='accepted'?'Accept':next==='declined'?'Decline':'Mark pending'}</button>)}</div></article>)}
    <nav className="application-pagination" aria-label="Application pages"><button type="button" className="btn-secondary" disabled={busy||data.page<=1} onClick={()=>setPage(data.page-1)}>Previous page</button><span role="status">Page {data.page} of {data.pages} · {data.total} matching applications</span><button type="button" className="btn-secondary" disabled={busy||data.page>=data.pages} onClick={()=>setPage(data.page+1)}>Next page</button></nav>
   </>}
  </section>

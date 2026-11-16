@@ -32,7 +32,7 @@ test('new signed-in submissions durably notify each active host manager once; re
   assert.equal((await f.submit(id)).status,200);assert.equal(f.rows().length,2);
   await Promise.all([runPresentationHostEmail(f.env),runPresentationHostEmail(f.env)]);
   assert.deepEqual(f.sent.map(mail=>mail.to).sort(),['organizer@example.test','owner@example.test']);
-  for(const mail of f.sent){assert.match(mail.subject,/New presentation submission: Demo Day/);assert.match(mail.text,/Team submitted/);assert.match(mail.text,/https:\/\/lifetech.fyi\/events\/demo-day\?tab=submissions#submissions/);assert.match(mail.html,/&lt;script&gt;Demo/);assert.doesNotMatch(mail.html,/<script>/)}
+  for(const mail of f.sent){assert.match(mail.subject,/New presentation submission: Demo Day/);assert.match(mail.text,/Submitted: \d{4}-.*\(UTC\)/);assert.match(mail.text,/Team submitted/);assert.match(mail.text,/https:\/\/lifetech.fyi\/events\/demo-day\?tab=submissions#submissions/);assert.match(mail.html,/&lt;script&gt;Demo/);assert.doesNotMatch(mail.html,/<script>/)}
   assert.ok(f.rows().every(row=>row.status==='accepted'));
   await runPresentationHostEmail(f.env);assert.equal(f.sent.length,2);
   assert.equal((await f.submit()).status,200);await runPresentationHostEmail(f.env);assert.equal(f.sent.length,4);
@@ -45,7 +45,7 @@ test('guest applications alert hosts even if the applicant acknowledgement fails
   assert.equal((await f.guest()).status,201);assert.equal(f.sent.length,0);
   assert.equal(f.rows().length,2);assert.ok(f.rows().every(row=>row.source==='guest'));
   await runPresentationHostEmail(f.env);assert.equal(f.sent.length,2);
-  for(const mail of f.sent){assert.match(mail.text,/Guest Team/);assert.match(mail.text,/Applications without login/);assert.doesNotMatch(mail.text,/guest@example.test|teammate@example.test/)}
+  for(const mail of f.sent){assert.match(mail.text,/Guest Team/);assert.match(mail.text,/Submitted: \d{4}-.*\(UTC\)/);assert.match(mail.text,/Applications without login/);assert.doesNotMatch(mail.text,/guest@example.test|teammate@example.test/)}
   assert.equal((await f.guest()).status,201);assert.equal(f.rows().length,4);
  }finally{f.db.sql.close()}
 });

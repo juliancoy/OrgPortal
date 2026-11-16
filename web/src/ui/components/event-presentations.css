@@ -201,6 +201,7 @@
 .applicant-open > span { display: grid; gap: 3px; min-width: 0; }
 .applicant-open strong { font-size: .95rem; line-height: 1.35; overflow-wrap: anywhere; }
 .applicant-open small { color: var(--text-muted); font-size: .8rem; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.applicant-open .applicant-submission-time { white-space: normal; overflow: visible; }
 .applicant-open:hover,.applicant-row.is-highlighted .applicant-open { background: var(--surface-soft); }
 .applicant-open:focus-visible,.applicant-vote:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .applicant-row-vote { flex-shrink: 0; }

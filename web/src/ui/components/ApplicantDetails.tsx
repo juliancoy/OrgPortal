@@ -8,6 +8,7 @@ import {BioMarkdown} from './profile/BioMarkdown'
 import {RegistrantAvatar} from './RegistrantAvatar'
 import {SubmissionAttachments} from './SubmissionAttachments'
 import {SubmissionActions} from './SubmissionActions'
+import {SubmissionTime} from './SubmissionTime'
 import type {PresentationApplication} from './EventPresentations'
 import type {Submission} from './EventSubmissions'
 
@@ -40,7 +41,7 @@ export function ApplicantDetails({row,eventId,mode,anchor,selected,voting,disabl
  },[modal,anchor,onClose])
  const content=<>
   <header className="applicant-overlay-header"><OrgImage src={row.image_url} alt=""/><div><p>Demo Day applicant</p><h2 id={heading}>{row.organization_name}</h2></div><button ref={closeButton} type="button" className="applicant-close" aria-label="Close applicant details" onClick={requestClose}><X size={20} aria-hidden="true"/></button></header>
-  <div className="applicant-overlay-content"><h3>{row.title}</h3>{row.status!=='submitted'&&<p className="applicant-status">{row.status}</p>}<BioMarkdown value={row.summary}/>
+  <div className="applicant-overlay-content"><h3>{row.title}</h3><p className="muted"><SubmissionTime value={row.submitted_at} source={row.submission_time_source}/></p>{row.status!=='submitted'&&<p className="applicant-status">{row.status}</p>}<BioMarkdown value={row.summary}/>
    {!!row.presenters?.length&&<section className="applicant-people"><h3>Presenters</h3><ul>{row.presenters.map((person,index)=><li key={index}><RegistrantAvatar name={person.name} photoUrl={person.photo||null}/><span>{person.name}{person.pending&&<small>Invitation pending</small>}</span></li>)}</ul></section>}
    <SubmissionAttachments eventId={eventId} submissionId={row.submission_id} initial={row.attachments} canManage={modal&&canManage} onPendingChange={setPending}/>
    {modal&&application&&<section className="applicant-management"><h3>Your application</h3><SubmissionActions eventId={eventId} application={application} onEdit={onEdit} onDeleted={onDeleted}/></section>}

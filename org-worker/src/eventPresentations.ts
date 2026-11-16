@@ -29,7 +29,7 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   const form=await c.env.DB.prepare('SELECT enabled,favorite_limit FROM event_presentation_forms WHERE event_id=?').bind(e.id).first<{enabled:number;favorite_limit:number}>();
   return c.json({favoriteLimit:form?.favorite_limit??3,enabled:!!form?.enabled,closed:!e.starts_at || Date.parse(e.starts_at)<=Date.now()});
  });
- // Public projection deliberately omits submitter identities and application timestamps.
+ // Public projection omits submitter identities; receipt time is application metadata.
  app.get('/:id/presentations/submissions',async c=>{
   const e=await event(c.env.DB,c.req.param('id')),after=c.req.query('after')||'';
   let cursor:{favorites:number;id:string}|null=null;
@@ -39,7 +39,7 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
    if(!cursor||!Number.isSafeInteger(cursor.favorites)||cursor.favorites<0||typeof cursor.id!=='string'||!cursor.id||cursor.id.length>255)throw new HTTPException(400,{message:'Invalid cursor'});
   }
   const rows=await c.env.DB.prepare(`WITH ranked AS (
-   SELECT s.submission_id,s.organization_id,o.name AS organization_name,o.slug AS organization_slug,o.image_url,s.title,s.summary,s.status,
+   SELECT s.submission_id,s.organization_id,o.name AS organization_name,o.slug AS organization_slug,o.image_url,s.title,s.summary,s.status,s.submitted_at,s.submission_time_source,
    (SELECT COUNT(*) FROM event_submission_favorites f WHERE f.event_id=s.event_id AND f.submission_id=s.submission_id AND f.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')) AS favorites
    FROM event_submissions s JOIN organizations o ON o.id=s.organization_id
    WHERE s.event_id=? AND ${active})
@@ -132,7 +132,7 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   c.header('Content-Type','text/csv; charset=utf-8');c.header('Content-Disposition','attachment; filename="event-applications.csv"');
   // Keyset batches avoid truncating exports and keep worker memory bounded.
   return stream(c,async output=>{
-   const keys=['submission_id','organization_name','organization_id','title','summary','presenters','status','submitted_by','updated_at'];
+   const keys=['submission_id','organization_name','organization_id','title','summary','presenters','status','submitted_by','submitted_at','submission_time_source','updated_at'];
    await output.write('\uFEFF'+keys.join(',')+'\r\n');let after='';
    while(!output.aborted){
     await manager(c.env.DB,user,e.host_org_id!);
