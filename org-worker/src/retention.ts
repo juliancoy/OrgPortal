@@ -1,5 +1,6 @@
 import { qcashWalletSchemaAvailable } from './qcashWalletLinks';
 import { membershipRequestsAvailable } from './membershipRequests';
+import { presentationHostNotificationsAvailable } from './presentationHostNotifications';
 import { cleanupPresentationAttachments } from './presentationAttachments';
 import { expirePushOutbox } from './pushOutbox';
 // Bounded cleanup of explicitly temporary records only. No account/content purge.
@@ -7,6 +8,7 @@ export async function runRetention(db: D1Database, now = Date.now(), dryRun = fa
   if (!Number.isSafeInteger(now) || now <= 0) throw new Error('Invalid retention clock');
   const cutoff = now - 23 * 3600_000; // hourly job leaves an hour to meet the 24h ceiling
   const rules: [string, string, string | number][] = [
+    ['presentation_host_notifications', 'expires_at <= ?', new Date(now).toISOString()],
     ['event_guest_presentations', 'expires_at < ?', new Date(cutoff).toISOString()],
     ['user_notifications', "type='support_ticket' AND entity_id IN (SELECT id FROM support_tickets WHERE expires_at<=?)", now],
     ['support_messages','ticket_id IN (SELECT id FROM support_tickets WHERE expires_at<=?)',now],
@@ -51,6 +53,7 @@ export async function runRetention(db: D1Database, now = Date.now(), dryRun = fa
   for (const [table, where, value] of rules) {
     // Code releases must work before the separately reviewed membership migration.
     if (table === 'organization_membership_requests' && !await membershipRequestsAvailable(db)) continue;
+    if (table === 'presentation_host_notifications' && !await presentationHostNotificationsAvailable(db)) continue;
     if (dryRun) {
       const result = await db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`).bind(value).first<{n:number}>();
       counts[table] = result?.n ?? 0;

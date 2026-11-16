@@ -54,6 +54,7 @@ import { provisionOrganizationChat, provisionPendingOrganizationChats } from './
 import { runOrganizationOperation } from './organizationMcp';
 import { notificationPreferenceRoutes } from './notificationPreferences';
 import { dispatchOrganizationStatusPush, runOrganizationStatusEmail } from './organizationStatusNotifications';
+import { runPresentationHostEmail } from './presentationHostNotifications';
 import { importOrganizationEvidence } from './organizationEvidenceImport';
 import { nextEventSlug, runEventSlugOperation } from './eventSlugs';
 import {linkEventSupportRecords} from './eventSupportLinks';
@@ -5818,6 +5819,7 @@ export default {
     ctx.waitUntil(replicateChangeJournal(env));
     ctx.waitUntil(Promise.all([runUbiTick(env.DB, controller.scheduledTime), dispatchTimebankPush(env)]));
     ctx.waitUntil(runOrganizationStatusEmail(env));
+    ctx.waitUntil(runPresentationHostEmail(env).then(counts=>{console.info(JSON.stringify({event:'orgportal.presentation_host_email',counts}));}));
     ctx.waitUntil(runOrganizationInvitations(env));
     ctx.waitUntil(runEmailDelivery(env));
     ctx.waitUntil(dispatchOrganizationStatusPush(env));

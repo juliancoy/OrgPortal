@@ -244,9 +244,38 @@ them; host managers review them. Account erasure must remove rows where
 `submitted_by` matches the verified subject. Organization/event deletion cascades.
 These private tables are excluded from the public replica and public history.
 Include both tables in backup inventories; reapply withdrawals, expiry and
-verified erasure before restoring service and delete task exports. No separate
-notification, email or provider copy is created. Deploy migration and verify cron
-before advertising automatic cleanup in production.
+verified erasure before restoring service and delete task exports. New submissions
+also queue transactional host emails as described below. Deploy migrations and
+verify cron before advertising automatic cleanup in production.
+
+Migration 0135 adds `presentation_host_notifications`. Insert triggers enqueue
+one alert per active host owner/administrator for each new team or guest
+application, atomically with the submission. Repeated PUTs and edits do not resend;
+there is no historic backfill. The minute dispatcher resolves current addresses
+and rechecks host management access before sending individual messages through
+`SUPPORT_EMAIL`. These operational alerts are separate from membership-status
+preferences and newsletter subscriptions. Emails contain the team, title,
+summary and authenticated review link, but omit guest/teammate contact addresses.
+
+The outbox stores only event/application/organization/user references, timestamps,
+attempt counts and bounded delivery status/error codes, not proposal or address
+copies. It is excluded from public replication and immutable history. Source
+withdrawal and event/organization deletion remove it; bounded retention removes
+expired rows on the application's original 90-day clock. For verified account
+erasure delete outbox rows by canonical `user_id` and erase owned proposals using
+the existing application process. Include this table in protected backup
+inventories and reapply erasure, withdrawals and expiry before restoring service.
+Recipients and Cloudflare retain their independent email copies.
+
+Monitor `orgportal.presentation_host_email` aggregate counts and private outbox
+statuses. `accepted` means the provider accepted the message, not inbox delivery.
+Missing email/binding/configuration leaves work queued; documented quota and
+configuration rejections retry with backoff. `failed` and `uncertain` require
+operator review. An interrupted send becomes uncertain after five minutes. Check
+the provider's delivery records before resetting an uncertain row to queued;
+never bulk replay accepted/uncertain mail. The source must still exist and the
+recipient must still manage the current host. Migration/release verification is
+recorded in `docs/deployment/PRESENTATION_HOST_EMAIL.md`.
 
 ## Organization directory and authority corrections
 
