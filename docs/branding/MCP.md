@@ -52,6 +52,38 @@ fails and the unreferenced object from that attempt is removed when possible.
   has a different internal slug. Domain `/branding` links open the organization
   tab when linked; the platform's global branding guide remains available.
 
+## Sourced public identity defaults
+
+Organizations without saved portal branding can use reviewed presentation defaults
+from `web/src/config/organizationBrandDefaults.ts`. Defaults match an exact native
+organization ID, never a name or slug, and apply to the organization page and its
+Branding tab. Saved portal configuration takes precedence. These defaults do not
+write organization records, claim an organization, or grant editing permissions.
+
+Maryland's native `md-budget:state-of-maryland` identity uses the unmodified
+[official primary SVG logo](https://designsystem.maryland.gov/img/md_wordmark_vertical.svg)
+linked by the [Maryland Digital Playbook](https://digital.maryland.gov/principles/brand-pillars),
+and the [Secretary of State's flag image](https://sos.maryland.gov/PublishingImages/mdflag_lg2.gif).
+Local copies are bundled in `web/public/images/organization-themes/` so rendering
+and style-guide exports do not depend on external image requests. Retrieved
+2026-11-21; SHA256:
+
+- `maryland-logo.svg`: `7f05621d7118e9bed4c2cd3928583295474b440300943f0b1ae48cff7ea41266`
+- `maryland-flag.gif`: `dea70af1d2141815baa7f54bf3a6516c9beaedfe291f03e020e80a05c475d587`
+
+The four palette values use the HEX column in Maryland's
+[2023 brand guideline sheet](https://digital.maryland.gov/media/151/download?inline=):
+red `#C8122C`, gold `#FFC838`, black `#231F20`, white `#FFFFFF`.
+The supplied artwork retains its original colors; flag print specifications are
+separate from the web brand palette. Light mode uses red actions on white; dark
+mode uses gold actions with dark text. The logo has white clear space in both modes,
+and the complete flag is displayed without cropping or text overlays.
+
+`web/scripts/test-local-maryland-branding.py` checks both themes and screen sizes,
+asset loading, palette/export, the EcoMap and department section, and isolation from
+other organizations. Captures are in ignored local layout-review artifacts. Log
+every invocation and its content fingerprint in the repository's test log.
+
 These tools are advertised by OrgPortal's MCP server. Clients that cache the
 tool list must refresh their connection to discover newly added tools.
 

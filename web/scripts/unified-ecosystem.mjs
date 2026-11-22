@@ -1,3 +1,5 @@
+import {attachSourceAgencies} from './source-agency-references.mjs';
+import {marylandAgencyReferences} from './maryland-agency-references.mjs';
 import {notApplicableOrganization,isNotApplicableLabel,isNotApplicableNode} from '../src/features/ecosystem/node-classes.js';
 // A public, database-backed graph projection shared by every dimensional renderer.
 import {createHash} from 'node:crypto';
@@ -40,13 +42,13 @@ export function projectNativeEvidence(input,records,directory=[]){
  for(const r of records){
   const originalId=r.record_id?.replace(/^bmoremedtech:/,''),previous=bySource.get(r.record_id)||bySource.get(originalId);
   if(previous)replaced.add(previous.id);
-  const comptroller=r.record_type==='external_financial_observation',bpw=comptroller&&r.id.startsWith('md-bpw:');
-  const scope=comptroller?'maryland_comptroller':r.record_type;
+  const external=r.record_type==='external_financial_observation',comptroller=external&&(r.evidence==='maryland_comptroller'||/^md-(bpw|view):/.test(r.id)),bpw=comptroller&&r.id.startsWith('md-bpw:');
+  const scope=comptroller?'maryland_comptroller':external?r.evidence||r.record_type:r.record_type;
   const kind=bpw?'approval':comptroller?'transfer':r.transaction_type;
   const source=endpoint(r.from_organization_id,r.from_label,scope,'agency',previous?.source),target=endpoint(r.to_organization_id,r.to_label,scope,'recipient',previous?.target);
   const financialMeasure=bpw?'reported_approval':comptroller?'reported_disbursement':r.record_type==='nonprofit_grant'?'reported_nonprofit_grant':r.financial_measurement;
   let provenance={};try{provenance=JSON.parse(r.provenance_json||'{}')}catch{/* Retain the unparsed original record below. */}
-  const edge={...previous,id:previous?.id||r.id,source,target,sourceLabel:r.from_label||'',targetLabel:r.to_label||'',kind,
+  const edge={...previous,sourceSystem:external?scope:undefined,sourceDataset:comptroller?(bpw?'bpw':'mdview'):undefined,sourceIdentityId:r.from_organization_id||undefined,id:previous?.id||r.id,source,target,sourceLabel:r.from_label||'',targetLabel:r.to_label||'',kind,
    relationship:['transfer','grant','contract','donation','approval','equity','debt','agency'].includes(kind)?'funding':kind,
    amount:r.amount,currency:r.currency,amountLabel:r.amount_label||'',date:r.occurred_at||'',type:r.description||kind,description:r.description||'',
    sourceUrl:r.source_url,evidence:r.evidence,notes:r.notes,status:r.status,financialMeasure,financialFactType:r.financial_fact_type,
@@ -61,7 +63,7 @@ export function projectNativeEvidence(input,records,directory=[]){
  const nativeById=new Map(newEdges.map(r=>[r.id,r]));
  data.financing=(data.financing||[]).map(r=>{const match=nativeById.get(r.id)||newEdges.find(e=>e.financingId===r.id);return match?{...r,...match,funderId:match.source,recipientId:match.target,funder:match.sourceLabel,recipient:match.targetLabel}:r;});
  data.transactionalCoverage={directoryRecords:directory.length,nativeRecords:records.length,comptrollerRecords:records.filter(r=>r.record_type==='external_financial_observation').length,unverifiedLabelNodes:data.organizations.filter(o=>o.identityStatus==='unverified_label').length};
- return data;
+ return attachSourceAgencies(data,marylandAgencyReferences(data.organizations));
 }
 // Retry only transient public-read failures; version/checksum conflicts still abort.
 export async function fetchPublicEvidenceJson(url,{fetcher=fetch,wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){

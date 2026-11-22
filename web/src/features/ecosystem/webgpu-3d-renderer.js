@@ -5,9 +5,9 @@ import {WebGPURenderer,Scene,PerspectiveCamera,OrthographicCamera,AmbientLight,D
 import {attribute,texture,uv,vec2} from 'three/tsl'
 import {spherePieAtlas} from './sphere-pies.js'
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js'
-export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',movementSpeed=()=>1,moveFourth=()=>{},orbitSelected=()=>false){
+export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',movementSpeed=()=>1,moveFourth=()=>{},orbitSelected=()=>false,{forceWebGL=false}={}){
  // Three.js falls back to WebGL 2 when WebGPU has no usable adapter.
- const renderer=new WebGPURenderer({canvas,antialias:true,alpha:true})
+ const renderer=new WebGPURenderer({canvas,antialias:true,alpha:true,forceWebGL})
  try{await renderer.init()}catch(error){renderer.dispose();throw new Error(dimension+' graphics could not start. Use the Graph tab instead.',{cause:error})}
  let quality=0,slowFrames=0,fastFrames=0
  let pendingUpdate=null,compilePromise=null
@@ -122,6 +122,12 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    const target=new Vector3(node.x,node.y,node.z||0),delta=target.clone().sub(controls.target)
    if(delta.lengthSq()<1e-12)return false
    camera.position.add(delta);controls.target.copy(target);controls.update();camera.updateMatrixWorld();return true
+  },
+  cameraView(){return {offset:camera.position.clone().sub(controls.target).toArray(),up:camera.up.toArray(),referenceDistance,minDistance:controls.minDistance,maxDistance:controls.maxDistance}},
+  restoreCameraView(view,node){
+   cancelFocus();controls.target.set(node.x,node.y,node.z||0);camera.position.copy(controls.target).add(new Vector3().fromArray(view.offset));camera.up.fromArray(view.up)
+   referenceDistance=view.referenceDistance;controls.minDistance=view.minDistance;controls.maxDistance=view.maxDistance
+   const distance=Math.max(1,camera.position.distanceTo(controls.target));camera.near=Math.max(.1,distance/1e4);camera.far=Math.max(camera.far,distance*100);camera.updateProjectionMatrix();controls.update();camera.updateMatrixWorld();changed()
   },
   cameraPosition(){camera.updateMatrixWorld();return {x:camera.position.x,y:camera.position.y,z:camera.position.z}},
   update(nodes,edges,visible,visibleEdges,selected,colors,edgeColor,updated=null){

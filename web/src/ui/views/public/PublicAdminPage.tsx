@@ -1,3 +1,6 @@
+import { OrganizationEcoMap } from '../../components/OrganizationEcoMap'
+import { OrganizationEvidence } from '../../components/OrganizationEvidence'
+import {organizationSourceBrand,withOrganizationBrandDefaults} from '../../../config/organizationBrandDefaults'
 import { OrganizationShareButton } from '../../components/OrganizationShareButton'
 import {useAutosave} from '../../hooks/useAutosave'
 import {AutosaveStatus} from '../../components/AutosaveStatus'
@@ -814,7 +817,9 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   const mergeCandidates = myAdminOrgs.filter((item) => item.id !== org.id)
   const canEditOrgImage = canManageCurrentOrg
   const tenant = getGroupSite()
-  const site=publicPortal?.organizationId===org.id?publicPortal.site:null
+  const savedSite=publicPortal?.organizationId===org.id?publicPortal.site:null
+  const site=withOrganizationBrandDefaults(org,savedSite)
+  const sourceBrand=!savedSite?organizationSourceBrand(org.id):null
   const pageTheme=organizationPageTheme(site)
   const organizationBrandImage = site?.brand_image_path||(tenant?.organization_id === org.id ? tenant.brand_image_path : null)
   const ownImage=organizationPageLogo(site,org.image_url)
@@ -823,7 +828,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   const resources=specialtyResourcesForTenant(site)
   const portalDescription=site?.home_description?.trim()
   const isNeoNatalProfile = org.id === '20df0f86-111f-4cb1-bb3d-8dff604dded6' && !dashboard
-  const coverImage = site?.home_image_url || (isNeoNatalProfile ? ownImage : null)
+  const coverImage = (sourceBrand?null:site?.home_image_url) || (isNeoNatalProfile ? ownImage : null)
   const portalAction=(label:string|null|undefined,value:string|null|undefined)=>{
     if(!label||!value)return null
     if(value==='/users/login')return <a className="btn-secondary" href={pidpAppLoginUrl(`/orgs/${encodeURIComponent(org.slug)}`)}>{label}</a>
@@ -849,7 +854,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
   }
 
   return (
-    <section className={`portal-org-page organization-profile${isNeoNatalProfile ? ' neonatal-page' : ''}`} data-brand-theme={pageTheme?'configured':undefined}>
+    <section className={`portal-org-page organization-profile${isNeoNatalProfile ? ' neonatal-page' : ''}`} data-brand-theme={pageTheme?'configured':undefined} data-source-brand={sourceBrand?'true':undefined}>
       {pageTheme && <style>{pageTheme}</style>}
 {publicPortal?.organizationId===org.id && publicPortal.error && <div role="status"><p>{publicPortal.error}</p><button type="button" className="btn-secondary" onClick={()=>{setPublicPortal(null);setPublicPortalRevision(v=>v+1)}}>Retry branding</button></div>}
       <header className="organization-profile-header" id="organization-overview">
@@ -861,6 +866,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
           <h1>{site?.home_heading || org.name}</h1>
           {site?.tagline && site.tagline !== org.description && <p className="organization-profile-tagline">{site.tagline}</p>}
         </div>
+        {sourceBrand&&<figure className="organization-profile-flag"><img src={sourceBrand.flag.url} alt={sourceBrand.flag.label}/><figcaption><a href={sourceBrand.flag.source} target="_blank" rel="noreferrer">{sourceBrand.flag.label}</a></figcaption></figure>}
         <div className="organization-profile-actions">
           <OrganizationShareButton key={org.slug} url={currentOrgUrl(org.slug)} />
           <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}/subscribe`} aria-label={`Join ${org.name}’s mailing list`} title="Join the mailing list"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg> Mailing list</Link>
@@ -873,6 +879,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
           {dashboard && <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}`}>Public profile</Link>}
         </div>
       </header>
+      <OrganizationEcoMap key={org.slug} organization={org}/>
       {Boolean(org.candidates?.length) && <ul className="organization-candidates" aria-label="Event candidacies">{org.candidates!.map(candidate=><li key={`${candidate.event_id}:${candidate.submission_id}`}>
         <Link className="organization-candidate-event" to={`/events/${encodeURIComponent(candidate.event_slug)}?tab=submissions#submissions`}><span className="organization-candidate-label">Candidate</span><strong>{candidate.event_title}</strong>{org.candidates!.filter(item=>item.event_id===candidate.event_id).length>1&&<span>{candidate.title}</span>}</Link>
         <OrganizationCandidateStar key={`${candidate.event_id}:${candidate.submission_id}`} eventId={candidate.event_id} submissionId={candidate.submission_id} title={candidate.title} stars={candidate.stars}/>
@@ -903,6 +910,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
         </div>
         {isNeoNatalProfile && <><NeoNatalFocus/>{(org.description || portalDescription) && <details className="neonatal-about"><summary>About NeoNatal AI</summary>{org.description && <BioMarkdown value={org.description}/>}</details>}</>}
         {resources.length>0 && <SpecialtyResourcesPanel resources={resources}/>}
+        {activeTab==='about' && <OrganizationEvidence key={org.slug} slug={org.slug}/>}
       </div>
       <div className="organization-profile-panel" role="tabpanel" id="org-panel-events" aria-labelledby="org-tab-events" hidden={activeTab !== 'events'}>
         {activeTab==='events' && <div id="organization-events" className="organization-event-section portal-org-nav-target" tabIndex={-1}>

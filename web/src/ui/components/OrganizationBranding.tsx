@@ -9,6 +9,7 @@ import { getGroupSite, parseGroupSite, setGroupSite, type GroupSite } from '../.
 import { applyPortalBranding } from '../../config/portalBranding'
 import { parseOrganizationThemes, standardOrganizationThemes, type OrganizationThemeImagery } from '../../../../shared/organizationThemes'
 import { TenantBrandingPage } from '../views/TenantBrandingPage'
+import {organizationSourceBrand,withOrganizationBrandDefaults} from '../../config/organizationBrandDefaults'
 
 export const organizationBrandingPath=(slug:string)=>`/orgs/${encodeURIComponent(slug)}?tab=branding`
 type Organization={id:string;slug:string;name:string;description?:string|null;image_url?:string|null}
@@ -38,8 +39,9 @@ function BrandingEditor({organization,canManage=false,onSaved,onPreview,embedded
   const controller=new AbortController();setError('');setResult(null)
   void fetch(`/api/org/api/network/orgs/public/${encodeURIComponent(organization.slug)}/branding`,{signal:controller.signal,cache:'no-store'}).then(async response=>{
    if(!response.ok)throw new Error('Could not load this organization’s branding.')
-   const data=await response.json();const site=data.portal?parseGroupSite(data.portal):null
-   if(data.portal&&!site)throw new Error('The organization branding configuration is invalid.')
+   const data=await response.json();const savedSite=data.portal?parseGroupSite(data.portal):null
+   if(data.portal&&!savedSite)throw new Error('The organization branding configuration is invalid.')
+   const site=withOrganizationBrandDefaults(organization,savedSite)
    if(!controller.signal.aborted){
     const config=parseOrganizationThemes(site?.feature_config?.brandThemes),theme=config?.themes.find(item=>item.id===config.defaultTheme)||standardOrganizationThemes[0]
     const images=theme.imagery||standardOrganizationThemes[0].imagery!
@@ -137,6 +139,7 @@ function BrandingEditor({organization,canManage=false,onSaved,onPreview,embedded
  <p role="status" aria-live="polite">{message||'All changes saved.'}</p>
  {failed&&<button type="button" className="btn-secondary" onClick={()=>{attemptedVersion.current=0;setRetry(value=>value+1)}}>Retry saving branding</button>}
  </form>}
+ {organizationSourceBrand(organization.id)&&<aside aria-label="Public identity references"><p>Public identity references: {organizationSourceBrand(organization.id)!.sources.map((source,index)=><span key={source.url}>{index>0?' · ':''}<a href={source.url} target="_blank" rel="noreferrer">{source.label}</a></span>)}</p></aside>}
  <TenantBrandingPage embedded={embedded} tenant={previewSite} imageryOverride={canManage?{...draft.imagery,...previews}:undefined} selectedThemeId={canManage?draft.themeId:undefined} onThemeChange={canManage?changeTheme:undefined} brandGuidePath={organizationBrandingPath(organization.slug)} />
  </>
 }

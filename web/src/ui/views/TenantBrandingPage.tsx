@@ -1,4 +1,5 @@
 import { parseOrganizationThemes, portalThemeColors, type OrganizationThemeImagery } from '../../../../shared/organizationThemes'
+import {logoAppearanceVariables} from '../../../../shared/logoAppearance'
 import { CmsImage } from '../components/media/CmsImage'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
@@ -132,7 +133,7 @@ export function TenantBrandingPage({brandGuidePath='/branding',tenant:organizati
       </div>
       <div className="tenant-brand-assets">
         {assets.map((asset) => <article className="tenant-brand-asset" key={asset.id}>
-          <div className={`tenant-brand-asset-preview tenant-brand-asset-${asset.id}`}>
+          <div className={`tenant-brand-asset-preview tenant-brand-asset-${asset.id}`} style={['logo','icon','avatar'].includes(asset.id)&&selectedTheme?.logoAppearance&&selectedTheme.logoAppearance.background!=='transparent'?{background:logoAppearanceVariables(selectedTheme.logoAppearance)['--logo-background'],padding:'1rem'}:undefined}>
             <CmsImage width={640} height={asset.id === 'namebanner' ? 214 : 640} style={{ objectFit: 'contain' }} src={asset.url} alt={`${profile.brandName} ${asset.label.toLowerCase()}`} />
           </div>
           <h3>{asset.label}</h3>

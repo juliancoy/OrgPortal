@@ -1,0 +1,1 @@
+export function bindPlanarNavigation(canvas:HTMLCanvasElement,callbacks:{zoom:(factor:number)=>void;pan:(xFraction:number,yFraction:number)=>void;speed?:()=>number;onNavigate?:()=>void},signal:AbortSignal):void

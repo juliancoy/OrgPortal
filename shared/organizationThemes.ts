@@ -2,7 +2,7 @@ import { validLogoAppearance, type LogoAppearance } from './logoAppearance.ts'
 export type OrganizationThemeImagery = { icon: string; avatar: string; background: string }
 export function isThemeImage(value: unknown): value is string {
  if(typeof value!=='string'||value.length>2048)return false
- if(/^\/images\/organization-themes\/[a-z0-9-]+\.(?:svg|webp)$/.test(value))return true
+ if(/^\/images\/organization-themes\/[a-z0-9-]+\.(?:svg|webp|png|jpg|gif)$/.test(value))return true
  try{const url=new URL(value);return (url.protocol==='https:'||(url.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(url.hostname)))&&!url.username&&!url.password}catch{return false}
 }
 /** Color maps use CSS custom-property names without the leading --. */

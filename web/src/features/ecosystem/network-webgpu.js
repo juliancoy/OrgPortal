@@ -1,3 +1,4 @@
+import {bindPlanarNavigation} from './planar-navigation.js'
 import {createGraphPageBuffer} from './graph-page-buffer.js'
 import {visualDuplicateGroup,visualOrganizationId,combineVisualOrganizations} from './visual-organization-groups.js'
 import {loadNeighborhoodPages} from './network-neighborhood.js'
@@ -543,28 +544,12 @@ async function initGPU(){
  if(!spatial){
   canvas.tabIndex=0
   canvas.setAttribute('aria-label','2D organization network. W zooms in, S zooms out, A pans left, D pans right, E pans up, Q pans down. Hold Shift for 10× speed; Control for 0.1× speed.')
-  const keys=new Set(),navigationKeys=new Set(['KeyW','KeyS','KeyA','KeyD','KeyE','KeyQ'])
-  let navigationFrame=0,lastNavigation=0,boosted=false,slowed=false
-  const stopNavigation=()=>{boosted=false;slowed=false;keys.clear();cancelAnimationFrame(navigationFrame);navigationFrame=0;lastNavigation=0}
-  const navigate=time=>{
-   navigationFrame=0
-   if(disposed||!keys.size)return
-   const dt=lastNavigation?Math.min((time-lastNavigation)/1000,.05):0;lastNavigation=time
-   const speed=Number($('#camera-speed').value)*(boosted?10:1)*(slowed?0.1:1),zoom=Number(keys.has('KeyW'))-Number(keys.has('KeyS'))
-   if(zoom)zoomGPU(Math.exp(zoom*1.2*speed*dt))
-   const x=Number(keys.has('KeyD'))-Number(keys.has('KeyA')),y=Number(keys.has('KeyQ'))-Number(keys.has('KeyE')),length=Math.hypot(x,y)||1
-   view.x+=x/length*view.w*.7*speed*dt;view.y+=y/length*view.h*.7*speed*dt
-   requestRender();navigationFrame=requestAnimationFrame(navigate)
-  }
-  canvas.addEventListener('keydown',event=>{
-   boosted=event.shiftKey;slowed=event.ctrlKey
-   if(!navigationKeys.has(event.code)||event.metaKey||event.altKey)return
-   event.preventDefault();centeredNode=null;centering=false;cancelAnimationFrame(cameraTransition);keys.add(event.code);if(!navigationFrame)navigationFrame=requestAnimationFrame(navigate)
-  },{signal:abort.signal})
-  window.addEventListener('keyup',event=>{boosted=event.shiftKey;slowed=event.ctrlKey;keys.delete(event.code);if(!keys.size)stopNavigation()},{signal:abort.signal})
-  canvas.addEventListener('blur',stopNavigation,{signal:abort.signal});window.addEventListener('blur',stopNavigation,{signal:abort.signal})
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)stopNavigation()},{signal:abort.signal})
-  abort.signal.addEventListener('abort',stopNavigation,{once:true})
+  bindPlanarNavigation(canvas,{
+   zoom:factor=>zoomGPU(factor),
+   pan:(x,y)=>{view.x+=x*view.w;view.y+=y*view.h;requestRender()},
+   speed:()=>Number($('#camera-speed').value),
+   onNavigate:()=>{centeredNode=null;centering=false;cancelAnimationFrame(cameraTransition)},
+  },abort.signal)
  }
  const pointers=new Map();let down=null,drag=null,pinch=null
  const pinchState=()=>{const [a,b]=[...pointers.values()];return {distance:Math.hypot(a.x-b.x,a.y-b.y),x:(a.x+b.x)/2,y:(a.y+b.y)/2}}

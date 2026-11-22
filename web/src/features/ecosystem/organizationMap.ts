@@ -1,0 +1,100 @@
+export type MapNode={id:string;name:string;slug:string|null;category:string;type?:string}
+export type MapEdge={id:string;source:string;target:string;recordCount:number;kinds:string[]}
+export type MapPage={version:string;generatedAt:string;anchor:string|null;organizations:MapNode[];relationships:MapEdge[];total:number;incoming:number;outgoing:number;offset:number;nextOffset:number|null}
+export async function loadOrganizationMap(fetchPage:(offset:number,version?:string)=>Promise<MapPage>,progress:(loaded:number,total:number)=>void=()=>{}) {
+ const nodes=new Map<string,MapNode>(),edges=new Map<string,MapEdge>();let first:MapPage|undefined,offset=0
+ for(;;){
+  const page=await fetchPage(offset,first?.version)
+  if(!Array.isArray(page.organizations)||!Array.isArray(page.relationships)||!Number.isSafeInteger(page.total)||page.total<0)throw Error('Incomplete organization map response')
+  if(!first)first=page
+  if(page.version!==first.version||page.anchor!==first.anchor||page.total!==first.total)throw Error('The map changed while loading. Retry to load one consistent snapshot.')
+  for(const node of page.organizations)nodes.set(node.id,node)
+  for(const edge of page.relationships)edges.set(edge.id,edge)
+  progress(Math.max(0,nodes.size-(page.anchor?1:0)),page.total)
+  if(page.nextOffset===null)break
+  if(!Number.isSafeInteger(page.nextOffset)||page.nextOffset<=offset)throw Error('The organization map did not finish loading. Retry.')
+  offset=page.nextOffset
+ }
+ if(first.anchor&&(!nodes.has(first.anchor)||nodes.size!==first.total+1))throw Error('Some adjacent organizations are missing. Retry.')
+ if([...edges.values()].some(edge=>!nodes.has(edge.source)||!nodes.has(edge.target)||edge.source!==first.anchor&&edge.target!==first.anchor))throw Error('Invalid direct organization relationship')
+ return {...first,organizations:[...nodes.values()],relationships:[...edges.values()],nextOffset:null}
+}
+export type PositionedNode=MapNode&{x:number;y:number;z:number;renderRadius:number;opacity:number;direction:'focus'|'incoming'|'outgoing'|'both'}
+export function organizationMapLayout(data:MapPage,mode:'2d'|'3d'='2d',options:{groupAttraction?:number}={}):PositionedNode[] {
+ const incoming=new Set(data.relationships.filter(e=>e.target===data.anchor).map(e=>e.source)),outgoing=new Set(data.relationships.filter(e=>e.source===data.anchor).map(e=>e.target))
+ const anchor=data.organizations.find(n=>n.id===data.anchor),nodes:PositionedNode[]=anchor?[{...anchor,x:0,y:0,z:0,renderRadius:15,opacity:1,direction:'focus'}]:[]
+ const neighbors=data.organizations.filter(n=>n.id!==data.anchor).sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id))
+ // Direction belongs to the arrows, not to a preferred side of the anchor.
+ // Grow capacity with circumference/surface area to keep larger maps readable.
+ const goldenAngle=Math.PI*(3-Math.sqrt(5))
+ for(let start=0,shell=0;start<neighbors.length;shell++){
+  const capacity=mode==='3d'?48*(shell+1)**2:18*(shell+1),count=Math.min(capacity,neighbors.length-start),radius=170+shell*75
+  for(let i=0;i<count;i++){
+   const node=neighbors[start+i],direction=incoming.has(node.id)?outgoing.has(node.id)?'both':'incoming':'outgoing'
+   let x:number,y:number,z=0
+   if(mode==='3d'&&count>3){
+    // Equal-area Fibonacci sampling covers both hemispheres without polar clumps.
+    const vertical=1-2*(i+.5)/count,radial=Math.sqrt(1-vertical*vertical),angle=i*goldenAngle+shell*goldenAngle
+    x=radius*radial*Math.cos(angle);y=radius*vertical;z=radius*radial*Math.sin(angle)
+   }else{
+    const angle=2*Math.PI*i/count+shell*goldenAngle
+    x=radius*Math.cos(angle);y=radius*Math.sin(angle)
+   }
+   nodes.push({...node,x,y,z,renderRadius:7,opacity:1,direction})
+  }
+  start+=count
+ }
+ const attraction=options.groupAttraction??.12
+ if(Number.isFinite(attraction)&&attraction>0)attractDirectionGroups(nodes,mode,Math.min(attraction,.25))
+ return nodes
+}
+
+function attractDirectionGroups(nodes:PositionedNode[],mode:'2d'|'3d',strength:number){
+ const neighbors=nodes.filter(n=>n.direction!=='focus')
+ const upstream=neighbors.filter(n=>n.direction!=='outgoing'),downstream=neighbors.filter(n=>n.direction!=='incoming')
+ // A single shared group already surrounds the anchor in equilibrium.
+ if(!upstream.length||!downstream.length||upstream.length===neighbors.length&&downstream.length===neighbors.length)return
+ const radii=new Map(neighbors.map(n=>[n,Math.hypot(n.x,n.y,n.z)]))
+ type Vector={x:number;y:number;z:number}
+ const mean=(group:PositionedNode[]):Vector=>{
+  const sum={x:0,y:0,z:0}
+  for(const n of group){const radius=Math.hypot(n.x,n.y,n.z);sum.x+=n.x/radius;sum.y+=n.y/radius;sum.z+=n.z/radius}
+  return {x:sum.x/group.length,y:sum.y/group.length,z:sum.z/group.length}
+ }
+ // Small deterministic radial offsets let interleaved peers pass each other.
+ neighbors.forEach((n,i)=>{const scale=1+.04*Math.sin(i*2.399963);n.x*=scale;n.y*=scale;n.z*=scale})
+ const separation=32,key=(x:number,y:number,z:number)=>`${x},${y},${z}`
+ // Bounded relaxation happens once at load; camera interaction stays independent.
+ // Group centroids replace all-to-all springs, and a spatial grid limits collisions.
+ for(let tick=0;tick<320;tick++){
+  const all=mean(neighbors),up=mean(upstream),down=mean(downstream)
+  if(tick===0&&Math.hypot(up.x-down.x,up.y-down.y,up.z-down.z)<.02){
+   // Break perfectly symmetric starting layouts using a member's position,
+   // never a fixed left/right axis. Reciprocal nodes feel both groups.
+   const seed=upstream.find(n=>n.direction==='incoming')||upstream[0],radius=radii.get(seed)!
+   for(const axis of ['x','y','z'] as const){up[axis]+=.02*seed[axis]/radius;down[axis]-=.02*seed[axis]/radius}
+  }
+  const grid=new Map<string,PositionedNode[]>()
+  for(const n of neighbors){const cell=key(Math.floor(n.x/separation),Math.floor(n.y/separation),Math.floor(n.z/separation)),bucket=grid.get(cell);if(bucket)bucket.push(n);else grid.set(cell,[n])}
+  const next=neighbors.map(n=>{
+   const radius=Math.hypot(n.x,n.y,n.z),rest=radii.get(n)!,ux=n.x/radius,uy=n.y/radius,uz=n.z/radius
+   const center=n.direction==='incoming'?up:n.direction==='outgoing'?down:{x:(up.x+down.x)/2,y:(up.y+down.y)/2,z:(up.z+down.z)/2}
+   let dx=(center.x-all.x)*radius*strength,dy=(center.y-all.y)*radius*strength,dz=(center.z-all.z)*radius*strength
+   const radial=dx*ux+dy*uy+dz*uz,restore=(rest-radius)*.04
+   dx+=(restore-radial)*ux;dy+=(restore-radial)*uy;dz+=(restore-radial)*uz
+   const cx=Math.floor(n.x/separation),cy=Math.floor(n.y/separation),cz=Math.floor(n.z/separation)
+   for(let x=cx-1;x<=cx+1;x++)for(let y=cy-1;y<=cy+1;y++)for(let z=cz-(mode==='3d'?1:0);z<=cz+(mode==='3d'?1:0);z++){
+    for(const other of grid.get(key(x,y,z))||[]){
+     if(other===n)continue
+     const x=n.x-other.x,y=n.y-other.y,z=n.z-other.z,distance=Math.hypot(x,y,z)
+     if(distance>0&&distance<separation){const push=(separation-distance)*2/distance;dx+=x*push;dy+=y*push;dz+=z*push}
+    }
+   }
+   // Attraction acts around the anchor; a soft radial spring and collision
+   // repulsion let neighbors pass each other while retaining readable spacing.
+   const step=Math.min(1,8/(Math.hypot(dx,dy,dz)||1)),x=n.x+dx*step,y=n.y+dy*step,z=mode==='3d'?n.z+dz*step:0,scale=Math.max(110,Math.hypot(x,y,z))/Math.hypot(x,y,z)
+   return {x:x*scale,y:y*scale,z:z*scale}
+  })
+  neighbors.forEach((n,i)=>Object.assign(n,next[i]))
+ }
+}

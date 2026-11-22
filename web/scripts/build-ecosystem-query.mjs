@@ -1,3 +1,4 @@
+import {organizationEvidenceProfiles} from './organization-evidence.mjs'
 import {replaceDirectory} from './release-cache.mjs'
 import {transactionTime,dateCoverage} from '../src/features/ecosystem/transaction-time.js'
 import {fiscalMetrics} from './fiscal-metrics.mjs'
@@ -25,6 +26,7 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
  for(const value of raw)hash.update(value)
  const sourceFolder=new URL('src/features/ecosystem/',root)
  for(const name of (await readdir(sourceFolder)).filter(n=>/\.(?:js|ts|json)$/.test(n)).sort())hash.update(await readFile(new URL(name,sourceFolder)))
+ for(const name of ['organization-evidence.mjs','source-agency-references.mjs','maryland-agency-references.mjs','unified-ecosystem.mjs'])hash.update(await readFile(new URL(name,import.meta.url)));
  hash.update(await readFile(new URL(import.meta.url)));hash.update(await readFile(new URL('server/ecosystem-query.mjs',root)))
  const version=hash.digest('hex').slice(0,24),folder=new URL('public/ecosystem-data/query/',root)
  try{const previous=JSON.parse(await readFile(new URL('manifest.json',folder),'utf8'));if(previous.version===version&&process.env.ORGPORTAL_REBUILD_ECOSYSTEM!=='1')return previous}catch{}
@@ -87,6 +89,9 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
   for(let i=0;i<16;i++)await write(`${name}/grams-${i}.json`,buckets[i])
   for(let start=0;start<records.length;start+=PAGE_SIZE)await write(`${name}/${Math.floor(start/PAGE_SIZE)}.json`,records.slice(start,start+PAGE_SIZE))
  }
+ const profiles=organizationEvidenceProfiles(data)
+ await write('organization-evidence/index.json',profiles.aliases)
+ for(let index=0;index<profiles.entries.length;index+=PAGE_SIZE)await write(`organization-evidence/${index/PAGE_SIZE}.json`,profiles.entries.slice(index,index+PAGE_SIZE))
  const relational=r=>({id:r.id,search:[r.sourceLabel,r.targetLabel,r.type,r.kind,r.date].filter(Boolean).join(' '),date:r.date,filters:{org:[r.source,r.target],kind:[r.kind||r.relationship]}})
  await collection('relationships',data.relationships,relational)
  await collection('events',data.events,r=>({id:r.id,search:[r.title,r.organizationName,r.location,r.date].filter(Boolean).join(' '),date:r.date,filters:{org:[r.organizationId]}}))
@@ -120,7 +125,7 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
   topology.adjacency=Object.fromEntries(Object.entries(topology.adjacency).map(([id,neighbors])=>[id,neighbors.map(n=>ids.get(n))]))
  }
  await write('topology.json',topology)
- const manifest={version,temporalIndexVersion:1,fiscalYears,dateCoverage:dateCoverage(data.relationships),generatedAt:new Date().toISOString(),governmentCoverage:data.governmentCoverage,marylandBudgetCoverage:data.marylandBudgetCoverage,nonprofitCoverage:data.nonprofitCoverage,transactionalCoverage:{datasetId:snapshot.datasetId,exportedAt:snapshot.exportedAt,...data.transactionalCoverage},totals:{organizations:organizations.length,relationships:edges.length},metricMax:{connections:Math.max(1,...Object.values(topology.degree)),incoming:Math.max(1,...analysis.incoming.values()),outgoing:Math.max(1,...analysis.outgoing.values())},groups,performance:performanceMeta}
+ const manifest={version,organizationEvidenceIndexVersion:1,temporalIndexVersion:1,fiscalYears,dateCoverage:dateCoverage(data.relationships),generatedAt:new Date().toISOString(),governmentCoverage:data.governmentCoverage,marylandBudgetCoverage:data.marylandBudgetCoverage,nonprofitCoverage:data.nonprofitCoverage,transactionalCoverage:{datasetId:snapshot.datasetId,exportedAt:snapshot.exportedAt,...data.transactionalCoverage},totals:{organizations:organizations.length,relationships:edges.length},metricMax:{connections:Math.max(1,...Object.values(topology.degree)),incoming:Math.max(1,...analysis.incoming.values()),outgoing:Math.max(1,...analysis.outgoing.values())},groups,performance:performanceMeta}
  await mkdir(folder,{recursive:true});try{if(process.env.ORGPORTAL_REBUILD_ECOSYSTEM==='1')await replaceDirectory(fileURLToPath(temp),fileURLToPath(target));else await rename(temp,target)}catch(error){if(!['EEXIST','ENOTEMPTY'].includes(error.code))throw error;await rm(temp,{recursive:true,force:true})}
  const manifestTemp=new URL(`manifest-${version}-${randomUUID()}.tmp`,folder);await writeFile(manifestTemp,JSON.stringify(manifest));await rename(manifestTemp,new URL('manifest.json',folder))
  const versions=(await readdir(folder)).filter(name=>/^[a-f0-9]{24}$/.test(name)&&name!==version)

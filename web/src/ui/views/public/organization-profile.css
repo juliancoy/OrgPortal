@@ -26,6 +26,14 @@
 }
 .organization-profile-avatar:disabled { opacity: 1; cursor: default; }
 .organization-profile-avatar img { width: 100%; height: 100%; object-fit: contain; }
+.organization-profile[data-source-brand] .organization-profile-header { border-top:6px solid var(--brand-red); border-bottom:3px solid var(--brand-gold); padding:1.25rem; margin-bottom:1.25rem; background:var(--panel); border-radius:12px; }
+.organization-profile[data-source-brand] .organization-profile-avatar { flex-basis:110px; width:110px; height:90px; padding:10px; background:#FFFFFF; }
+.organization-profile[data-source-brand] .organization-profile-avatar img { border-radius:0 !important; padding:0; }
+.organization-profile[data-source-brand] .organization-profile-actions { flex-basis:100%; }
+.organization-profile-flag { margin:0; width:150px; flex:0 0 150px; }
+.organization-profile-flag img { display:block; width:100%; height:auto; }
+.organization-profile-flag figcaption { margin-top:.4rem; font-size:.75rem; text-align:center; }
+@media(max-width:600px) { .organization-profile[data-source-brand] .organization-profile-header { padding:1rem; gap:.85rem; }.organization-profile[data-source-brand] .organization-profile-identity { flex-basis:calc(100% - 130px); }.organization-profile-flag { width:120px; flex-basis:120px; } }
 .organization-profile-identity { flex: 1 1 18rem; min-width: 0; }
 .organization-profile-identity h1 { margin: 0; font-size: clamp(1.65rem, 3vw, 2.6rem); line-height: 1.15; overflow-wrap: anywhere; }
 .organization-profile-tagline { margin: .55rem 0 0; max-width: 65ch; color: var(--text-secondary); line-height: 1.5; }

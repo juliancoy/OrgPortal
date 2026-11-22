@@ -268,9 +268,11 @@ class FakeD1 {
           organization_image_url: this.organizations.find((org) => org.id === event.host_org_id)?.image_url || null,
         })) as T[];
     }
-    if (sql.includes('WITH known AS (') && sql.includes('FROM people p')) {
-      const excluded = params.slice(0, directoryExcludedAccountIds.length).map(String);
-      const terms = params.slice(directoryExcludedAccountIds.length, -2).map(String);
+    if (sql.includes('WITH aliases AS (') && sql.includes('FROM people p')) {
+      // Directory queries bind identity aliases, registered people and exclusions
+      // before the scalar exclusion IDs and name terms. These fixtures use no aliases.
+      const excluded = params.slice(3, 3 + directoryExcludedAccountIds.length).map(String);
+      const terms = params.slice(3 + directoryExcludedAccountIds.length, -2).map(String);
       return [...this.contacts]
         .filter(row => !excluded.includes(String(row.user_id)))
         .filter(row => terms.every(term => String(row.user_name).toLowerCase().includes(term)))

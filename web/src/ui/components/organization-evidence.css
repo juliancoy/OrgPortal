@@ -1,0 +1,16 @@
+.organization-evidence { margin-top:1.5rem; padding:1.25rem; border:1px solid var(--border); border-radius:12px; min-width:0; }
+.organization-evidence h2,.organization-evidence h3 { margin-top:0; }
+.organization-evidence details { margin:.75rem 0; }
+.organization-evidence summary { cursor:pointer; font-weight:600; }
+.organization-evidence-members { list-style:none; padding:0; }
+.organization-evidence-members li { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:.65rem 0; border-bottom:1px solid var(--border); }
+.organization-evidence-members li span { min-width:0; overflow-wrap:anywhere; }
+.organization-evidence-members button { flex-shrink:0; }
+.organization-evidence-actions { display:flex; gap:.75rem; flex-wrap:wrap; margin:1rem 0; }
+.organization-evidence-records { margin-top:1.5rem; }
+.organization-evidence-records select { max-width:100%; }
+.organization-evidence-list { padding-left:1.5rem; }
+.organization-evidence-list li { padding:.75rem 0; border-bottom:1px solid var(--border); overflow-wrap:anywhere; }
+.organization-evidence-list p { margin:.5rem 0; }
+@media(max-width:600px) { .organization-evidence { padding:.85rem; } .organization-evidence-members li { align-items:flex-start; flex-direction:column; gap:.5rem; } }
+.organization-evidence-selection { scroll-margin-top:6rem; outline-offset:.5rem; }

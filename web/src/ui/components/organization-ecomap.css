@@ -1,0 +1,27 @@
+.organization-ecomap { margin:0 0 1.25rem; padding:1rem; border:1px solid var(--border); border-radius:14px; background:var(--panel); min-width:0; }
+.organization-ecomap-heading { display:flex; align-items:start; justify-content:space-between; flex-wrap:wrap; gap:.75rem; }
+.organization-ecomap-heading h2 { margin:0; font-size:1.2rem; }
+.organization-ecomap-heading p,.organization-ecomap p { margin:.5rem 0; }
+.organization-ecomap-heading>a { white-space:nowrap; }
+.organization-ecomap-legend,.organization-ecomap-controls,.organization-ecomap-selected { display:flex; align-items:center; flex-wrap:wrap; gap:.75rem; }
+.organization-ecomap-legend { font-size:.8rem; }
+.organization-ecomap .incoming { color:#9b59d0; }
+.organization-ecomap .outgoing { color:#d55e00; }
+.organization-ecomap-controls { margin:.75rem 0; }
+.organization-ecomap-controls label { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.organization-ecomap-controls .organization-ecomap-find { margin-left:auto; }
+.organization-ecomap-keyboard-help { font-size:.85rem; color:var(--text-secondary); }
+.organization-ecomap-canvas:focus-within { outline:3px solid var(--primary); outline-offset:3px; }
+.organization-ecomap-canvas canvas:focus-visible { outline:none; }
+.organization-ecomap-controls input { max-width:100%; min-width:0; }
+.organization-ecomap-canvas { position:relative; height:390px; overflow:hidden; border:1px solid var(--border); border-radius:10px; background:var(--surface); }
+.organization-ecomap-canvas canvas { display:block; width:100%; height:100%; cursor:grab; touch-action:none; }
+.organization-ecomap-canvas canvas:active { cursor:grabbing; }
+.organization-ecomap-labels { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.organization-ecomap-labels button { position:absolute; transform:translateX(-50%); max-width:125px; min-height:0; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:0; padding:2px 4px; border-radius:4px; font-size:11px; background:var(--panel); color:var(--text-primary); pointer-events:auto; }
+.organization-ecomap-labels button.focus { font-weight:700; border:1px solid var(--border); max-width:210px; }
+.organization-ecomap-selected { margin:.75rem 0; padding:.75rem; background:var(--surface); border-radius:8px; }
+.organization-ecomap-note { font-size:.8rem; }
+.organization-ecomap-search { display:flex; flex-wrap:wrap; gap:.4rem; margin:.5rem 0; }
+.organization-ecomap-search p { flex-basis:100%; }
+@media(max-width:600px) { .organization-ecomap { padding:.75rem; }.organization-ecomap-canvas { height:340px; }.organization-ecomap-controls .organization-ecomap-find { margin-left:0; width:100%; }.organization-ecomap-controls input { flex:1; width:140px; } }

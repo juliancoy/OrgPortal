@@ -55,6 +55,7 @@ const OrgProfilePage = lazy(() => import('../views/orgs/OrgProfilePage').then(mo
 const OrgAccountPage = lazy(() => import('../views/orgs/OrgAccountPage').then(module => ({ default: module.OrgAccountPage })))
 const OrgEventsPage = lazy(() => import('../views/orgs/OrgEventsPage').then(module => ({ default: module.OrgEventsPage })))
 const NewsletterSignupPage = lazy(() => import('../views/email/NewsletterSignupPage').then(module => ({ default: module.NewsletterSignupPage })))
+const EcosystemOrganizationPage = lazy(() => import('../views/public/EcosystemOrganizationPage').then(module => ({ default: module.EcosystemOrganizationPage })))
 const PublicAdminPage = lazy(() => import('../views/public/PublicAdminPage').then(module => ({ default: module.PublicAdminPage })))
 const PublicContactPage = lazy(() => import('../views/public/PublicContactPage').then(module => ({ default: module.PublicContactPage })))
 const PublicEventsPage = lazy(() => import('../views/public/PublicEventsPage').then(module => ({ default: module.PublicEventsPage })))
@@ -486,6 +487,7 @@ export function createAppRouter() {
           },
           { path: '/search', element: <GlobalSearchPage /> },
 
+          { path: '/ecosystem/organizations/:nodeId', element: <EcosystemOrganizationPage /> },
           // Public profile
           { path: '/orgs/:handle/five-over-five', element: <FiveOverFivePage /> },
           { path: '/orgs/:handle/subscribe', element: <NewsletterSignupPage /> },
