@@ -1,3 +1,4 @@
+import { OrganizationMapLayout } from '../views/public/OrganizationMapLayout'
 import { RouteLoading } from '../components/RouteLoading'
 import { InvitationAcceptPage } from '../views/InvitationAcceptPage'
 import { CommunitiesPage, PlatformHomePage } from '../views/PlatformHomePage'
@@ -487,11 +488,13 @@ export function createAppRouter() {
           },
           { path: '/search', element: <GlobalSearchPage /> },
 
-          { path: '/ecosystem/organizations/:nodeId', element: <EcosystemOrganizationPage /> },
+          { element: <OrganizationMapLayout />, children: [
+            { path: '/ecosystem/organizations/:nodeId', element: <EcosystemOrganizationPage /> },
+            { path: '/orgs/:handle', element: <OrganizationProfileRoute /> },
+          ] },
           // Public profile
           { path: '/orgs/:handle/five-over-five', element: <FiveOverFivePage /> },
           { path: '/orgs/:handle/subscribe', element: <NewsletterSignupPage /> },
-          { path: '/orgs/:handle', element: <OrganizationProfileRoute /> },
           { path: '/orgs/:handle/public', element: <LegacyOrganizationRoute /> },
           { path: '/orgs/:handle/member', element: <LegacyOrganizationRoute workspace /> },
           { path: '/orgs/:handle/organizer', element: <LegacyOrganizationRoute workspace /> },

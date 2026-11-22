@@ -15,7 +15,9 @@ with sync_playwright() as p:
  section=page.get_by_role('region',name='EcoMap for State of Maryland',exact=True);surface=section.locator('canvas');labels=section.locator('.organization-ecomap-labels')
  def settled():page.evaluate('()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
  def signature():return labels.inner_html()
- def ready():expect(surface).to_have_attribute('data-ready','true',timeout=90000)
+ def ready():
+  expect(surface).to_have_attribute('data-ready','true',timeout=90000)
+  page.wait_for_function('()=>!document.querySelector(".organization-ecomap canvas")?.dataset.transitioning')
  def movement(key):
   surface.focus();before=signature();page.keyboard.down(key)
   try:page.wait_for_function('(before)=>document.querySelector(".organization-ecomap-labels").innerHTML!==before',arg=before,timeout=10000)
@@ -57,6 +59,7 @@ with sync_playwright() as p:
  section.get_by_label('Find a node').fill('Comptroller');section.locator('.organization-ecomap-search').get_by_role('button',name='Comptroller of Maryland',exact=True).click()
  comptroller=page.get_by_role('region',name='EcoMap for Comptroller of Maryland',exact=True)
  expect(comptroller.locator('canvas')).to_have_attribute('data-ready','true',timeout=90000)
+ page.wait_for_function('()=>!document.querySelector(".organization-ecomap canvas")?.dataset.transitioning')
  assert '/ecosystem/organizations/source-label' in page.url
  expect(page.get_by_role('heading',name='Comptroller of Maryland',exact=True)).to_be_visible()
  expect(comptroller.get_by_label('Map mode',exact=True)).to_have_value('3d')

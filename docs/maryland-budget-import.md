@@ -125,8 +125,9 @@ ignored local artifacts, not the public repository.
 
 ## Embedded organization EcoMap
 
-Every public organization page displays its direct EcoMap neighborhood below the
-organization heading, above the tabs. The generic
+Every public organization page displays its direct EcoMap neighborhood at the top,
+above the organization details. Directory and source-evidence routes share one
+persistent map layout. The generic
 `/api/ecosystem/organization-map?org=<id-or-unique-portal-slug>` endpoint resolves
 the same exact identity aliases as the evidence view and pages all adjacent nodes
 from the versioned topology. Incoming and outgoing relationships are both included;
@@ -169,3 +170,13 @@ rendering and movement, all six navigation keys in each mode, key release/focus
 loss, typing, pointer controls, mode switching and organization navigation. It
 also captures desktop/mobile 3D layouts in both themes. The shared keyboard
 helper has focused coverage in `planarNavigation.test.ts`.
+
+Node navigation retains the same canvas, graphics context and controls. The old
+neighborhood remains interactive while a complete, version-pinned replacement
+loads; failed requests leave it visible with a retry action. Common nodes move
+from their existing positions into the new layout over 420 ms while the camera
+recenters, retaining zoom and orientation. Reduced-motion preferences skip the
+transition. Newer navigations cancel stale requests. A 60-second cache of complete
+neighborhoods is bounded to 12 entries and 20,000 nodes; retries bypass that cache.
+`web/scripts/test-local-organization-map-continuity.py` verifies canvas and context
+identity, delayed/failed requests, rapid navigation, history and keyboard focus.

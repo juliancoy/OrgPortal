@@ -26,6 +26,8 @@ export function AppLayout() {
   const embeddedChat = isChatRoute && window.self !== window.top
 
   useEffect(() => {
+    // Node-to-node map navigation keeps its live canvas and keyboard focus.
+    if(location.state?.organizationMapView&&document.activeElement?.closest('.organization-ecomap'))return
     mainRef.current?.focus({ preventScroll: true })
   }, [location.pathname])
 

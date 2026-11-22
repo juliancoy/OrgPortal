@@ -25,3 +25,5 @@
 .organization-ecomap-search { display:flex; flex-wrap:wrap; gap:.4rem; margin:.5rem 0; }
 .organization-ecomap-search p { flex-basis:100%; }
 @media(max-width:600px) { .organization-ecomap { padding:.75rem; }.organization-ecomap-canvas { height:340px; }.organization-ecomap-controls .organization-ecomap-find { margin-left:0; width:100%; }.organization-ecomap-controls input { flex:1; width:140px; } }
+
+.organization-map-layout { padding:0; gap:0; min-width:0; }

@@ -879,7 +879,7 @@ export function PublicAdminPage({ dashboard = false }: { dashboard?: boolean }) 
           {dashboard && <Link className="btn-secondary" to={`/orgs/${encodeURIComponent(org.slug)}`}>Public profile</Link>}
         </div>
       </header>
-      <OrganizationEcoMap key={org.slug} organization={org}/>
+      {dashboard&&<OrganizationEcoMap organization={org}/>}
       {Boolean(org.candidates?.length) && <ul className="organization-candidates" aria-label="Event candidacies">{org.candidates!.map(candidate=><li key={`${candidate.event_id}:${candidate.submission_id}`}>
         <Link className="organization-candidate-event" to={`/events/${encodeURIComponent(candidate.event_slug)}?tab=submissions#submissions`}><span className="organization-candidate-label">Candidate</span><strong>{candidate.event_title}</strong>{org.candidates!.filter(item=>item.event_id===candidate.event_id).length>1&&<span>{candidate.title}</span>}</Link>
         <OrganizationCandidateStar key={`${candidate.event_id}:${candidate.submission_id}`} eventId={candidate.event_id} submissionId={candidate.submission_id} title={candidate.title} stars={candidate.stars}/>
