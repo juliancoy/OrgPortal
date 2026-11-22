@@ -741,6 +741,18 @@
       "kind": "node",
       "cases": [
         {
+          "id": "voting defaults to seven days after event end, with exact closure and start fallback",
+          "label": "voting defaults to seven days after event end, with exact closure and start fallback"
+        },
+        {
+          "id": "post-event votes remain open for a week; closure preserves ballots and permits clearing stars",
+          "label": "post-event votes remain open for a week; closure preserves ballots and permits clearing stars"
+        },
+        {
+          "id": "MCP voting configuration checks host, scopes, tenant, stale previews and receipt reuse",
+          "label": "MCP voting configuration checks host, scopes, tenant, stale previews and receipt reuse"
+        },
+        {
           "id": "MCP form discovery shares live settings and schema without exposing or writing applications",
           "label": "MCP form discovery shares live settings and schema without exposing or writing applications"
         },
@@ -2097,6 +2109,20 @@
         {
           "id": "suite",
           "label": "sync-everything.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-org-worker-test-tech-party-events-test-ts",
+      "label": "org-worker/test/tech-party-events.test.ts",
+      "category": "Events and services",
+      "source": "org-worker/test/tech-party-events.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "tech-party-events.test.ts"
         }
       ]
     },
@@ -3529,6 +3555,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-tech-party-calendar-mjs",
+      "label": "web/scripts/test-tech-party-calendar.mjs",
+      "category": "Events and services",
+      "source": "web/scripts/test-tech-party-calendar.mjs",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-tech-party-calendar.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-upload-image-compression-mjs",
       "label": "web/scripts/test-upload-image-compression.mjs",
       "category": "User interface and integrations",
@@ -4659,6 +4699,20 @@
         {
           "id": "suite",
           "label": "OrganizationFundingChart.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-PresentationVotingStatus-test-tsx",
+      "label": "web/src/ui/components/PresentationVotingStatus.test.tsx",
+      "category": "Submission and voting",
+      "source": "web/src/ui/components/PresentationVotingStatus.test.tsx",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "PresentationVotingStatus.test.tsx"
         }
       ]
     },
