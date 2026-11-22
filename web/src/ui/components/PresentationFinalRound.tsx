@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
+import { PresentationVotingStatus } from './PresentationVotingStatus'
 
 type Phase = 'shortlist' | 'open' | 'closed'
 type Result = { submission_id: string; title: string; organization_name: string; votes: number }
-type Round = { phase: Phase; finalistIds: string[]; results: Result[] }
+type Round = { phase: Phase; finalistIds: string[]; results: Result[]; votingClosesAt?: string | null; votingClosed?: boolean }
 type Candidate = Omit<Result, 'votes'> & { favorites: number; status: string }
 
 export function PresentationFinalRound({ eventId, canManage, onPhaseChange, managementOnly = false }: { eventId: string; canManage: boolean; managementOnly?: boolean; onPhaseChange: (phase: Phase) => void }) {
  const { token } = useAuth()
- const location = useLocation()
  const base = `/api/org/api/network/events/${encodeURIComponent(eventId)}/presentations`
  const [round, setRound] = useState<Round | null>(null)
  const [vote, setVote] = useState<string | null>(null)
@@ -109,7 +108,7 @@ export function PresentationFinalRound({ eventId, canManage, onPhaseChange, mana
  const leaders = round.results.filter(row => row.votes === highest && highest > 0)
  return <section className="presentation-final-round" aria-label="Final presentation vote">
   {round.phase !== 'shortlist' && <h3>Vote for the winner</h3>}
-  {round.phase !== 'shortlist' && <p>Choose one presenting team. Your final vote is separate from your preliminary favorites. {round.phase === 'open' ? 'You can change it until the host closes voting.' : 'Voting is closed.'}</p>}
+  {round.phase !== 'shortlist' && <><p>Choose one presenting team. Your final vote is separate from your preliminary favorites. {round.phase === 'open' ? 'You can change it until voting closes.' : 'Voting is closed.'}</p><PresentationVotingStatus closesAt={round.votingClosesAt??null} closed={round.phase==='closed'} signedIn={!!token}/></>}
   {canManage && round.phase === 'shortlist' && <button type="button" className="btn-secondary" onClick={() => setEditing(value => !value)}>{editing ? 'Cancel finalist selection' : 'Manage finalists'}</button>}
   {canManage && editing && round.phase === 'shortlist' && <div className="presentation-finalist-editor">
    <label>Number of presenters<input type="number" min={1} max={20} step={1} value={target} onChange={event => setTarget(Number(event.target.value))} /></label>
@@ -120,14 +119,13 @@ export function PresentationFinalRound({ eventId, canManage, onPhaseChange, mana
     {candidates.map(row => <label key={row.submission_id} className="presentation-finalist-option"><input type="checkbox" checked={selected.includes(row.submission_id)} onChange={event => setSelected(previous => event.target.checked ? [...previous, row.submission_id] : previous.filter(id => id !== row.submission_id))} /><span>{row.organization_name} — {row.title} ({row.favorites} favorites)</span></label>)}
    </fieldset>
    <button type="button" className="btn-secondary" disabled={busy || !candidatesReady || selected.length < 1 || selected.length > 20} onClick={() => void saveRound('shortlist')}>Save finalists</button>
-   <button type="button" className="btn-primary" disabled={busy || !candidatesReady || selected.length < 1 || selected.length > 20} onClick={() => void saveRound('open')}>Open final voting</button>
+   <button type="button" className="btn-primary" disabled={busy || !candidatesReady || selected.length < 1 || selected.length > 20 || round.votingClosed} onClick={() => void saveRound('open')}>Open final voting</button>
   </div>}
-  {canManage && round.phase !== 'shortlist' && <button type="button" className="btn-secondary" disabled={busy} onClick={() => void saveRound(round.phase === 'open' ? 'closed' : 'open')}>{round.phase === 'open' ? 'Close final voting' : 'Reopen final voting'}</button>}
+  {canManage && round.phase !== 'shortlist' && <button type="button" className="btn-secondary" disabled={busy || round.votingClosed} onClick={() => void saveRound(round.phase === 'open' ? 'closed' : 'open')}>{round.phase === 'open' ? 'Close final voting' : 'Reopen final voting'}</button>}
   {round.phase === 'shortlist' && round.results.length > 0 && <ul>{round.results.map(row => <li key={row.submission_id}>{row.organization_name} — {row.title}</li>)}</ul>}
   {round.phase !== 'shortlist' && <>
    <p>{total} {total === 1 ? 'vote' : 'votes'} · Updates every 3 seconds.</p>
    <p>{leaders.length === 0 ? 'No votes yet.' : `${leaders.length > 1 ? (round.phase === 'closed' ? 'Tied winners' : 'Tied for the lead') : (round.phase === 'closed' ? 'Winner' : 'Leading')}: ${leaders.map(row => row.organization_name).join(', ')}`}</p>
-   {!token && round.phase === 'open' && <p><Link to={`/users/login?next=${encodeURIComponent(location.pathname + location.search + '#submissions')}`}>Sign in</Link> to cast your final vote.</p>}
    <ol className="presentation-results" aria-label="Live final vote results">
     {round.results.map(row => <li key={row.submission_id} className={vote === row.submission_id ? 'is-selected' : ''}>
      <div className="presentation-result-heading"><strong>{row.organization_name}</strong><span>{row.votes} {row.votes === 1 ? 'vote' : 'votes'} ({total ? Math.round(row.votes / total * 100) : 0}%)</span></div>

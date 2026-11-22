@@ -172,6 +172,7 @@ export function TenantEventsContent() {
 
   if (!tenant || !orgSlug) return <TenantHomePage />
 
+  if (orgSlug === 'tech-party') return <PublicCalendarPage community="tech-party" />
   if (['lifetech', 'baltimore-medtech'].includes(orgSlug)) return <PublicCalendarPage />
   return <PublicEventsPage sourcePath={`/api/network/orgs/public/${encodeURIComponent(orgSlug)}/events?upcoming_only=false&limit=200`} heading={`${profile.brandName} Events`} description={`Upcoming and past events from ${profile.brandName}.`} />
 }

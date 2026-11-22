@@ -25,3 +25,9 @@ export function lifeTechEventCategory(event: MedicalEventCandidate): 'biotech' |
  const text=[event.title,event.name,event.description,...(Array.isArray(event.tags)?event.tags:[])].join(' ')
  return /\b(biotech(?:nology)?|life sciences?|genomics?|sequencing|biopharma|laborator(?:y|ies)|therapeutics?)\b/i.test(text) ? 'biotech' : 'medical'
 }
+
+/** Code Collective's Politics sector: use event tags, never incidental prose. */
+export function isPoliticalEvent(event: Pick<MedicalEventCandidate, 'tags'>) {
+  return Array.isArray(event.tags) && event.tags.some(tag =>
+    typeof tag === 'string' && /^(politics|civic tech|policy)$/i.test(tag.trim()))
+}

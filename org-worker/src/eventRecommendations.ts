@@ -1,4 +1,4 @@
-import { isLifeTechMedicalEvent, lifeTechEventCategory, type MedicalEventCandidate } from '../../shared/eventRelevance';
+import { isLifeTechMedicalEvent, isPoliticalEvent, lifeTechEventCategory, type MedicalEventCandidate } from '../../shared/eventRelevance';
 import { Hono } from 'hono';
 
 // SQLite accepts ISO offsets with a colon; imported calendars also use -0500.
@@ -20,7 +20,9 @@ export function eventRecommendationRoutes<Env extends { DB: D1Database }, Row>(
     const limit = Math.max(1, Math.min(parseInt(c.req.query('limit') || '25', 10) || 25, 100));
     const offset = Math.max(0, Math.min(parseInt(c.req.query('offset') || '0', 10) || 0, 100000));
     const today = new Intl.DateTimeFormat('en-CA', {timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-    const community = c.req.query('community') === 'lifetech';
+    const techParty = c.req.query('community') === 'tech-party';
+    const community = techParty || c.req.query('community') === 'lifetech';
+    const communitySlugs = techParty ? ['tech-party'] : ['lifetech', 'baltimore-medtech'];
     const category = c.req.query('category') || 'all';
     const query = (c.req.query('q') || '').trim().toLowerCase();
     const period = ['upcoming','past'].includes(c.req.query('period') || '') ? c.req.query('period')! : 'all';
@@ -35,25 +37,25 @@ export function eventRecommendationRoutes<Env extends { DB: D1Database }, Row>(
       const candidates = await c.env.DB.prepare(`SELECT e.id,e.title,e.description,e.tags,e.host_org_id,e.starts_at,e.event_date,
         o.name AS organization_name,e.host_org_name,
         EXISTS (SELECT 1 FROM event_registrations mine WHERE mine.event_id=e.id AND mine.user_id=?) AS registered,
-        CASE WHEN o.slug IN ('lifetech','baltimore-medtech') OR EXISTS (
+        CASE WHEN o.slug IN (SELECT value FROM json_each(?)) OR EXISTS (
           SELECT 1 FROM event_organizations eo JOIN organizations related ON related.id=eo.organization_id
-          WHERE eo.event_id=e.id AND related.slug IN ('lifetech','baltimore-medtech')
+          WHERE eo.event_id=e.id AND related.slug IN (SELECT value FROM json_each(?))
         ) THEN 1 ELSE 0 END AS community_event
         FROM events e LEFT JOIN organizations o ON o.id=e.host_org_id
-        ORDER BY community_event DESC,registered DESC,e.id`).bind(user?.id ?? null).all<MedicalEventCandidate & {id:string;tags:string;community_event:number;starts_at:string|null;event_date:string|null}>();
+        ORDER BY community_event DESC,registered DESC,e.id`).bind(user?.id ?? null, JSON.stringify(communitySlugs), JSON.stringify(communitySlugs)).all<MedicalEventCandidate & {id:string;tags:string;community_event:number;starts_at:string|null;event_date:string|null}>();
       const seen = new Set<string>();
       context = candidates.results.flatMap(row => {
         let tags: unknown = [];
         try { tags=JSON.parse(row.tags || '[]'); } catch { /* Invalid tags cannot establish relevance. */ }
         const event={...row,tags};
-        if (!row.community_event && !isLifeTechMedicalEvent(event)) return [];
+        if (!row.community_event && !(techParty ? isPoliticalEvent(event) : isLifeTechMedicalEvent(event))) return [];
         if (category === 'community' && !row.community_event) return [];
-        if (['biotech','medical'].includes(category) && lifeTechEventCategory(event) !== category) return [];
+        if (!techParty && ['biotech','medical'].includes(category) && lifeTechEventCategory(event) !== category) return [];
         const text=[row.title,row.description,row.organization_name,row.host_org_name,JSON.stringify(tags)].join(' ').toLowerCase();
         if (query && !query.split(/\s+/).every(term=>text.includes(term))) return [];
         const date=Date.parse(row.starts_at || row.event_date || '');
         const key=`${(row.title || '').toLowerCase().replace(/\s+/g,' ').trim()}|${Number.isFinite(date) ? date : row.id}`;
-        if (seen.has(key)) return [];
+        if (seen.has(key) && !(techParty && row.community_event)) return [];
         seen.add(key);
         return [{id:row.id,community:row.community_event}];
       });

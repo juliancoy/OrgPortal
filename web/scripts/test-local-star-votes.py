@@ -1,36 +1,42 @@
 #!/usr/bin/env python3
 """Star voting and optimistic count checks against synthetic accounts on isolated local Docker."""
-import base64,json,secrets,re,subprocess,uuid
+import json,re,subprocess,uuid
+from datetime import datetime,timedelta,timezone
 from pathlib import Path
-from urllib.parse import urlencode,urlparse
+from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright,expect
-from local_browser_test_support import BASE,preflight,PIDP_CONTAINER
-preflight()
+from local_browser_test_support import BASE,PIDP_CONTAINER
 assert PIDP_CONTAINER.startswith(('common-form-test-','android-team-form-','team-form-test-'))
+config=json.loads(subprocess.check_output(['docker','inspect',PIDP_CONTAINER],text=True))[0]
+environment=dict(item.split('=',1) for item in config['Config']['Env'] if '=' in item)
+assert config['State']['Running'] and environment.get('EMAIL_VERIFICATION_DELIVERY')=='log'
+assert BASE in (environment.get('PORTAL_AUTH_ORIGINS') or environment.get('ALLOWED_ORIGINS','')).split(',')
 run=uuid.uuid4().hex[:10]
 submission_id=str(uuid.uuid4())
 out=Path('/tmp/orgportal-star-votes');out.mkdir(exist_ok=True)
 seed='''
-import asyncio,sys,json,hashlib
+import asyncio,sys,json
 sys.path.insert(0,"/app")
-from datetime import datetime,timedelta
 from urllib.parse import urlparse
-from sqlalchemy import select
 from db import SessionLocal,engine
 from config import settings
 from models import User
+from security import create_access_token
+from browser_sessions import browser_session
 args=json.load(sys.stdin)
 assert urlparse(settings.database_url).hostname in ['common-form-test-identity-db','android-team-form-identity-db','team-form-test-identity-db']
+assert args['email'].startswith('team-form-') and args['email'].endswith('@example.com')
 async def main():
  async with SessionLocal() as session:
-  user=(await session.execute(select(User).where(User.email==args['email']))).scalar_one()
-  identity=dict(user.identity_data or {})
-  identity['email_verification']={'token_hash':hashlib.sha256(args['token'].encode()).hexdigest(),'expires_at':(datetime.utcnow()+timedelta(minutes=10)).isoformat(),'next':'/profile'}
-  user.identity_data=identity
-  await session.commit()
+  user=User(email=args['email'],full_name=args['name'],is_active=True,identity_data={'email_verified':True})
+  session.add(user);await session.commit();await session.refresh(user)
+  access=create_access_token(str(user.id),user.email,{'actor_type':'owner'})
+  cookie,age=await browser_session(session,access)
+  print(json.dumps({'cookie':cookie,'max_age':age}))
  await engine.dispose()
 asyncio.run(main())
 '''
+
 def ok(r):
  assert r.ok,f'Local fixture request failed: {r.status}'
  return r.json() if 'application/json' in r.headers.get('content-type','') else {}
@@ -39,14 +45,13 @@ with sync_playwright() as p:
  contexts=[]
  def account(role):
   c=browser.new_context(ignore_https_errors=True);contexts.append(c)
-  c.route('**/*',lambda route:route.continue_() if urlparse(route.request.url).hostname in ['localhost','127.0.0.1'] else route.abort())
-  email=f'team-form-{role}-{run}@example.com';password=secrets.token_urlsafe(32)
-  ok(c.request.post(BASE+'/pidp/auth/register',data={'email':email,'password':password,'full_name':'Dummy '+role+' '+run}))
-  token=secrets.token_urlsafe(32)
-  result=subprocess.run(['docker','exec','-i','-w','/tmp',PIDP_CONTAINER,'/venv/bin/python','-c',seed],input=json.dumps({'email':email,'token':token}),capture_output=True,text=True)
-  assert result.returncode==0,'Could not prepare local synthetic verification challenge'
-  assert c.request.get(BASE+'/pidp/auth/verify-email?'+urlencode({'email':email,'token':token}),max_redirects=0).status==303
-  ok(c.request.post(BASE+'/pidp/auth/session/login',form={'username':email,'password':password},headers={'Origin':BASE}))
+  c.route('**/*',lambda route:route.continue_() if urlparse(route.request.url).hostname in ['localhost','127.0.0.1','id.localhost'] else route.abort())
+  email=f'team-form-{role}-{run}@example.com'
+  # Create a synthetic local session; voting checks do not exercise credential login.
+  result=subprocess.run(['docker','exec','-i','-w','/tmp',PIDP_CONTAINER,'/venv/bin/python','-c',seed],input=json.dumps({'email':email,'name':'Dummy '+role+' '+run}),capture_output=True,text=True)
+  assert result.returncode==0,'Could not prepare local synthetic browser session'
+  fixture=json.loads(result.stdout)
+  c.add_cookies([{'name':'pidp_token','value':fixture['cookie'],'url':BASE,'httpOnly':True,'secure':True,'sameSite':'Lax'}])
   token=ok(c.request.get(BASE+'/pidp/auth/session-token'))['access_token']
   return c,{'Authorization':'Bearer '+token}
  host,auth=account('host')
@@ -92,7 +97,7 @@ with sync_playwright() as p:
  for candidate in page.locator('.presentation-submission').all()[:3]:
   choice=candidate.locator('.applicant-vote');choice.click();expect(choice).to_be_enabled();expect(choice).to_have_attribute('aria-pressed','true')
  remaining=page.locator('.applicant-vote[aria-pressed="false"]');expect(remaining).to_have_count(1)
- blocked_title=page.locator('.presentation-submission').filter(has=remaining).locator('.applicant-open small').inner_text()
+ blocked_title=page.locator('.presentation-submission').filter(has=remaining).locator('.applicant-open small').first.inner_text()
  blocked_card=page.locator('.applicant-row').filter(has_text=blocked_title)
  requests=[];page.on('request',lambda request:requests.append(request.url) if '/presentations/favorites/' in request.url and request.method=='PUT' else None)
  for mode in ['light','dark']:
@@ -112,4 +117,32 @@ with sync_playwright() as p:
  expect(page.locator('.applicant-vote[aria-pressed="true"]')).to_have_count(3)
  expect(blocked_card.locator('.applicant-vote span')).to_have_text('1')
  print('PASS: quota flashes red with brief text, repeatable and auto-dismissed; no panel or save; uncheck and replace stays immediate',flush=True)
+ # Applications are closed after an event, but both voting rounds keep a full week.
+ now=datetime.now(timezone.utc)
+ event_endpoint=BASE+'/api/org/api/network/events/'+event['id']
+ ok(host.request.patch(event_endpoint,headers=auth,data={'starts_at':(now-timedelta(days=2)).isoformat(),'ends_at':(now-timedelta(days=1)).isoformat()}))
+ settings=ok(host.request.get(endpoint+'/public'))
+ assert settings['closed'] is True and settings['votingClosed'] is False
+ page.reload();expect(page.locator('.presentation-voting-status')).to_contain_text('Voting closes',timeout=30000)
+ expect(page.locator('.applicant-vote[aria-pressed="true"]').first).to_be_enabled()
+ guest=browser.new_context(ignore_https_errors=True)
+ guest.route('**/*',lambda route:route.continue_() if urlparse(route.request.url).hostname in ['localhost','127.0.0.1','id.localhost'] else route.abort())
+ guest_page=guest.new_page();guest_page.goto(BASE+'/events/'+event['slug']+'#submissions')
+ login=guest_page.get_by_role('link',name='Sign in to vote');expect(login).to_be_visible(timeout=30000)
+ assert '%23submissions' in login.get_attribute('href')
+ login.click();expect(guest_page).to_have_url(re.compile(r'https://id\.localhost:\d+/app/login\?'),timeout=15000)
+ assert urlparse(guest_page.url).hostname=='id.localhost' and urlparse(guest_page.url).port==urlparse(BASE).port
+ guest.close()
+ round={'phase':'open','finalistIds':[submission_id]}
+ ok(host.request.put(endpoint+'/final-round',headers=auth,data=round))
+ final_vote=page.get_by_role('button',name='Vote: '+team['name'],exact=True)
+ expect(final_vote).to_be_visible(timeout=10000);final_vote.click()
+ expect(page.get_by_role('button',name='Your vote: '+team['name'],exact=True)).to_have_attribute('aria-pressed','true')
+ for phase in ['closed','open']:ok(host.request.put(endpoint+'/final-round',headers=auth,data={**round,'phase':phase}))
+ assert ok(host.request.get(endpoint+'/final-ballot',headers=auth))['submissionId']==submission_id
+ ok(host.request.patch(event_endpoint,headers=auth,data={'starts_at':(now-timedelta(days=9)).isoformat(),'ends_at':(now-timedelta(days=8)).isoformat()}))
+ expect(page.locator('.presentation-voting-status')).to_contain_text('Voting is closed',timeout=10000)
+ expect(page.get_by_role('button',name='Your vote: '+team['name'],exact=True)).to_have_count(0)
+ assert ok(host.request.get(endpoint+'/final-ballot',headers=auth))['submissionId']==submission_id
+ print('PASS: post-event voting, visible deadline, sign-in return link, final ballot preservation on reopen and automatic week-later closure',flush=True)
  browser.close()

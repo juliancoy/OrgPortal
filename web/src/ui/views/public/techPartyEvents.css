@@ -1,0 +1,32 @@
+/* Tech Party keeps the Code Collective palette and square geometry. */
+.tech-party-calendar { --primary:#002a61; --on-primary:#ffffff; --primary-bg:#ffffdb; }
+:root[data-theme="dark"] .tech-party-calendar { --primary:#87ceeb; --on-primary:#002a61; --primary-bg:#002a61; }
+:root[data-organization-theme="tech-party"] body,
+:root[data-organization-theme="tech-party"] body *,
+:root[data-organization-theme="tech-party"] body *::before,
+:root[data-organization-theme="tech-party"] body *::after,
+.tech-party-calendar *, .tech-party-calendar *::before, .tech-party-calendar *::after { border-radius:0!important; }
+.tech-party-calendar .lte-heading h1 { letter-spacing:-.035em; }
+.tech-party-calendar .lte-heading .lte-eyebrow>span { display:none; }
+.tech-party-calendar .lte-intro { font-size:1rem; }
+.tech-party-calendar .lte-card { grid-template-columns:58px minmax(0,1fr); }
+.tech-party-calendar .lte-card-link { display:none; }
+.tech-party-calendar .lte-card-source, .tech-party-calendar .lte-card .lte-meta,
+.tech-party-calendar .lte-card-description, .tech-party-calendar .lte-topics button,
+.tech-party-calendar .lte-view-switch button, .tech-party-calendar .lte-search input,
+.tech-party-calendar .lte-weekday, .tech-party-calendar .lte-day a { font-size:.875rem; }
+.tech-party-calendar .lte-card-tech-party { padding:24px 16px; border:1px solid #87ceeb; border-left:5px solid #87ceeb; background:#ffffdb; color:#002a61; }
+.tech-party-calendar .lte-card-tech-party :is(h3 a,.lte-card-source,.lte-meta,.lte-card-description) { color:#002a61; }
+.tech-party-calendar .lte-card-tech-party .lte-card-source { font-weight:750; }
+.tech-party-calendar .lte-card-tech-party .lte-date { background:#002a61; color:#ffffff; }
+.tech-party-calendar .lte-day a.lte-calendar-community { background:#ffffdb; color:#002a61; border:1px solid #87ceeb; border-left:4px solid #87ceeb; }
+.tech-party-event-label { display:block; margin-bottom:4px; }
+.tech-party-calendar-legend { display:flex; align-items:center; gap:10px; font-size:.875rem; }
+.tech-party-calendar-legend>span { width:16px; height:16px; flex-shrink:0; border:1px solid #002a61; border-left:5px solid #87ceeb; background:#ffffdb; }
+.tech-party-calendar .lte-community-panel svg:not(.lte-icon svg) { display:none; }
+.tech-party-calendar .lte-content { grid-template-columns:minmax(0,1fr); }
+.tech-party-calendar .lte-sidebar { grid-template-columns:1fr 1fr; border-top:1px solid var(--border-subtle); padding-top:24px; }
+@media(max-width:760px) {
+ .tech-party-calendar .lte-card { grid-template-columns:44px minmax(0,1fr); }
+ .tech-party-calendar .lte-sidebar { grid-template-columns:1fr; }
+}

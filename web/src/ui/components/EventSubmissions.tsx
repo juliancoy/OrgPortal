@@ -3,6 +3,7 @@ import {SubmissionTime} from './SubmissionTime'
 import { invalidatePublicOrganizationData } from '../../data/publicOrganization/cache'
 import { GuestPresentationReview } from './GuestPresentationReview'
 import { PresentationFinalRound } from './PresentationFinalRound'
+import { PresentationVotingStatus } from './PresentationVotingStatus'
 import { EventApplicationReview } from './EventApplicationReview'
 import type { PresentationApplication } from './EventPresentations'
 import type { SubmissionAttachment } from './submissionAttachments'
@@ -44,6 +45,10 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
  const [editableApplications,setEditableApplications]=useState<Record<string,PresentationApplication>>({})
  const [reviewOpen,setReviewOpen]=useState(false),[reviewRevision,setReviewRevision]=useState(0)
  const [finalPhase,setFinalPhase]=useState<'shortlist'|'open'|'closed'>('shortlist')
+ const [votingWindow,setVotingWindow]=useState<{votingClosesAt:string|null;votingClosed:boolean}>({votingClosesAt:null,votingClosed:false})
+ const [clock,setClock]=useState(Date.now)
+ useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),1000);return()=>clearInterval(timer)},[])
+ const votingClosed=votingWindow.votingClosed||!!votingWindow.votingClosesAt&&Date.parse(votingWindow.votingClosesAt)<=clock
  useEffect(()=>setReviewOpen(false),[base,token])
  const [managedTeams,setManagedTeams]=useState<string[]>([])
  const [limit,setLimit]=useState(3),[canManage,setCanManage]=useState(false),[limitDraft,setLimitDraft]=useState('3')
@@ -61,6 +66,7 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
    const managedIds=new Set(teams.filter(team=>team.my_role==='owner'||team.my_role==='administrator').map(team=>team.id))
    setEditableApplications(Object.fromEntries((access.submissions||[]).filter((application:PresentationApplication)=>managedIds.has(application.organization_id)).map((application:PresentationApplication)=>[application.submission_id,application])))
    setRows(data.submissions);setNext(data.next);favoriteIds.current=own.favorites;setFavorites(own.favorites);setLimit(data.favoriteLimit);setLimitDraft(String(data.favoriteLimit));setCanManage(access.canReview);setManagedTeams((access.submissions||[]).map((row:Submission)=>row.submission_id));setReady(true)
+   setVotingWindow({votingClosesAt:data.votingClosesAt??null,votingClosed:data.votingClosed===true});setClock(Date.now())
   }).catch(reason=>{if(!controller.signal.aborted)setError(reason.message)})
   return()=>{controller.abort();favoriteEpoch.current++}
  // All request dependencies are represented by base and token.
@@ -74,6 +80,7 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
  async function toggle(row:Submission){
   const id=row.submission_id,selected=!favoriteIds.current.includes(id),epoch=favoriteEpoch.current
   if(busy||!token||!ready||savingIds.current.has(id))return
+  if(selected&&votingClosed)return
   if(selected&&favoriteIds.current.length>=limit){flashQuota(id);return}
   setQuota(null);clearTimeout(quotaTimer.current)
   savingIds.current.add(id);setSavingFavorites([...savingIds.current]);setError('')
@@ -100,6 +107,7 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
  return <section className="portal-card presentation-applications" aria-label="Event submissions">
   <h2 tabIndex={-1}>Applicants</h2>
   <PresentationFinalRound eventId={eventId} canManage={canManage} onPhaseChange={setFinalPhase} />
+  {ready&&finalPhase==='shortlist'&&<PresentationVotingStatus closesAt={votingWindow.votingClosesAt} closed={votingClosed} signedIn={!!token}/>}
   {canManage&&<details className="submission-review-tools" onToggle={event=>setReviewOpen(event.currentTarget.open)}>
    <summary>Manage submissions</summary>
    {reviewOpen&&finalPhase==='shortlist'&&<PresentationFinalRound eventId={eventId} canManage={canManage} onPhaseChange={setFinalPhase} managementOnly />}
@@ -118,11 +126,11 @@ export function EventSubmissions({eventId,onEdit,onDeleted}:{eventId:string;onEd
    <button type="button" className="applicant-open" aria-label={`View ${row.organization_name} application: ${row.title}`} aria-haspopup="dialog" aria-expanded={active?.id===row.submission_id} aria-controls={active?.id===row.submission_id?`applicant-details-${row.submission_id}`:undefined} onPointerEnter={event=>{if(event.pointerType==='mouse')preview(row,event.currentTarget)}} onPointerLeave={leave} onBlur={leave} onClick={event=>open(row,event.currentTarget)}>
     <OrgImage src={row.image_url} alt=""/><span><strong>{row.organization_name}</strong><small>{row.title}</small><small className="applicant-submission-time"><SubmissionTime value={row.submitted_at} source={row.submission_time_source}/></small></span>
    </button>
-   <div className="applicant-row-vote">{finalPhase==='shortlist'?<button type="button" className={`applicant-vote${favorites.includes(row.submission_id)?' is-selected':''}${quota?.id===row.submission_id?' is-limit':''}`} aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title} (${row.favorites} ${row.favorites===1?'star':'stars'})`} disabled={!token||!ready||busy||savingFavorites.includes(row.submission_id)} onClick={()=>{void toggle(row)}}><Star size={20} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'}/><span>{row.favorites}</span></button>:<span className="applicant-vote"><Star size={20} aria-hidden="true"/>{row.favorites}</span>}
+   <div className="applicant-row-vote">{finalPhase==='shortlist'?<button type="button" className={`applicant-vote${favorites.includes(row.submission_id)?' is-selected':''}${quota?.id===row.submission_id?' is-limit':''}`} aria-pressed={favorites.includes(row.submission_id)} aria-label={`${favorites.includes(row.submission_id)?'Remove favorite':'Favorite'}: ${row.title} (${row.favorites} ${row.favorites===1?'star':'stars'})`} disabled={!token||!ready||busy||savingFavorites.includes(row.submission_id)||(votingClosed&&!favorites.includes(row.submission_id))} onClick={()=>{void toggle(row)}}><Star size={20} aria-hidden="true" fill={favorites.includes(row.submission_id)?'currentColor':'none'}/><span>{row.favorites}</span></button>:<span className="applicant-vote"><Star size={20} aria-hidden="true"/>{row.favorites}</span>}
    </div>
   </li>)}</ul>
   {quota&&<p key={quota.sequence} className="submission-vote-limit" role="status">{quotaText}</p>}
-  {active&&activeRow&&<ApplicantDetails row={activeRow} eventId={eventId} mode={active.mode} anchor={active.anchor} selected={favorites.includes(active.id)} voting={finalPhase==='shortlist'} disabled={!token||!ready||busy||savingFavorites.includes(active.id)} quotaText={quota?.id===active.id?quotaText:''} canManage={canManage||managedTeams.includes(active.id)} application={editableApplications[active.id]} onVote={()=>{void toggle(activeRow)}} onClose={()=>{cancelHover();setActive(null)}} onKeepOpen={()=>open(activeRow,active.anchor)} onEnter={cancelHover} onLeave={leave} onEdit={onEdit} onDeleted={submissionId=>{
+  {active&&activeRow&&<ApplicantDetails row={activeRow} eventId={eventId} mode={active.mode} anchor={active.anchor} selected={favorites.includes(active.id)} voting={finalPhase==='shortlist'} disabled={!token||!ready||busy||savingFavorites.includes(active.id)||(votingClosed&&!favorites.includes(active.id))} quotaText={quota?.id===active.id?quotaText:''} canManage={canManage||managedTeams.includes(active.id)} application={editableApplications[active.id]} onVote={()=>{void toggle(activeRow)}} onClose={()=>{cancelHover();setActive(null)}} onKeepOpen={()=>open(activeRow,active.anchor)} onEnter={cancelHover} onLeave={leave} onEdit={onEdit} onDeleted={submissionId=>{
    setActive(null);setRows(previous=>previous.filter(item=>item.submission_id!==submissionId));favoriteIds.current=favoriteIds.current.filter(id=>id!==submissionId);setFavorites(favoriteIds.current);setReviewRevision(value=>value+1);onDeleted(submissionId)
   }}/>}
   {next&&<button type="button" className="btn-secondary" disabled={busy} onClick={()=>{

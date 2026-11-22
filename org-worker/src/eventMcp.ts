@@ -4,6 +4,7 @@ import { emailWorkspaceSchema, emailSubscriberSchema, emailDraftSchema, emailDra
 import { recordMcpStatistics } from './mcpLiveStatistics';
 import { registerPersonnelInvitationTools } from './personnelInvitationsMcp';
 import { presentationTargetSchema, presentationApplicationSchema, runPresentationOperation } from './presentationMcp';
+import { presentationVotingSchema, runPresentationVotingOperation } from './presentationVotingMcp';
 import { registerAccountTools } from './mcpAccountTools';
 import product from '../../shared/mcp-product.json';
 import {memberTitlesSchema,organizationPeopleSchema,organizationTitlePeople,runMemberTitlesOperation} from './organizationMemberTitles';
@@ -948,14 +949,16 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
         inputSchema: schema, annotations: { readOnlyHint: false, destructiveHint: operation === 'action', idempotentHint: false }, _meta: metadata([portalReadScope, portalWriteScope]) },
         (args: Record<string, unknown>) => governanceResult(operation, args));
     }
-    const presentationResult = async (operation: 'form' | 'list' | 'save', args: unknown) => {
+    const presentationResult = async (operation: 'form' | 'list' | 'save' | 'voting', args: unknown) => {
       try {
-        const data = await runPresentationOperation(env, identity, operation, scopedArgs(args));
+        const data = operation==='voting'?await runPresentationVotingOperation(env,identity,scopedArgs(args)):await runPresentationOperation(env, identity, operation, scopedArgs(args));
         return { content: [{ type: 'text' as const, text: JSON.stringify(data) }], structuredContent: data };
       } catch (error) {
         return { isError: true, content: [{ type: 'text' as const, text: await eventErrorResponse(error, env, request).text() }] };
       }
     };
+    server.registerTool('preview_presentation_voting', { description: 'Preview opening, closing or reopening final presentation voting. Requires live host management permission. Lists the selected finalists and deadline, one week after event end. Existing stars and final ballots are preserved; finalists lock when voting opens.', inputSchema: presentationVotingSchema.omit({confirm:true,previewId:true}), annotations: {readOnlyHint:true}, _meta:metadata([readScope,writeScope]) },args=>presentationResult('voting',{...args,confirm:false}));
+    server.registerTool('apply_presentation_voting', { description: 'Apply the authorized final-voting configuration with its matching one-use previewId and confirm=true. Rechecks host permissions, shortlist and deadline. Inspect get_event_operation after an uncertain result.', inputSchema:presentationVotingSchema.extend({previewId:z.string().uuid(),confirm:z.literal(true)}), annotations:{readOnlyHint:false,destructiveHint:false}, _meta:metadata([readScope,writeScope]) },args=>presentationResult('voting',args));
     server.registerTool('get_presentation_application_form', { description: 'Discover presentation application requirements and live intake status for this hosted event before submitting. Returns the input JSON Schema, required scopes, public visibility, team permissions and preview/apply workflow. Does not create a team, invitation or application.', inputSchema: presentationTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => presentationResult('form', args));
     server.registerTool('list_presentation_applications', { description: 'List applications you manage, or all event applications if you manage the host. Private teammate references are returned only within existing application access.', inputSchema: presentationTargetSchema, annotations: { readOnlyHint: true }, _meta: metadata([readScope]) }, args => presentationResult('list', args));
     server.registerTool('preview_presentation_application', { description: 'Preview creating or editing a presentation application for a team you manage. organizationId is the event host; teamOrganizationId is your team. Supply at least one teammate: an active team userId, existing invitationId, or email to invite. New email invitations require verified acceptance before joining. Review the public title, summary and invitation recipients before applying. Reuse a generated submissionId for retries.', inputSchema: presentationApplicationSchema.omit({confirm:true,previewId:true}), annotations: { readOnlyHint: true }, _meta: metadata([readScope,writeScope,portalReadScope,portalWriteScope]) }, args => presentationResult('save', {...args,confirm:false}));

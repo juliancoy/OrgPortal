@@ -2,6 +2,7 @@ import { guestPresentationRoutes } from './guestPresentations';
 import type { GuestPresentationActor, GuestPresentationEnv } from './guestPresentationAccounts';
 import { submissionPresenters, validateSubmissionPresenters } from './submissionPresenters'
 import { presentationFinalRoundRoutes } from './presentationFinalRound'
+import { presentationVotingWindow } from './presentationVotingWindow'
 import { presentationAttachmentRoutes, publicAttachment } from './presentationAttachments'
 import { stream } from 'hono/streaming';
 import { Hono } from 'hono';
@@ -27,7 +28,7 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
  app.get('/:id/presentations/public',async c=>{
   const e=await event(c.env.DB,c.req.param('id'));
   const form=await c.env.DB.prepare('SELECT enabled,favorite_limit FROM event_presentation_forms WHERE event_id=?').bind(e.id).first<{enabled:number;favorite_limit:number}>();
-  return c.json({favoriteLimit:form?.favorite_limit??3,enabled:!!form?.enabled,closed:!e.starts_at || Date.parse(e.starts_at)<=Date.now()});
+  return c.json({favoriteLimit:form?.favorite_limit??3,enabled:!!form?.enabled,closed:!e.starts_at || Date.parse(e.starts_at)<=Date.now(),...presentationVotingWindow(e)});
  });
  // Public projection omits submitter identities; receipt time is application metadata.
  app.get('/:id/presentations/submissions',async c=>{
@@ -49,7 +50,7 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   const page=rows.results.slice(0,50);
   const attachments=page.length?await c.env.DB.prepare(`SELECT id,submission_id,name,content_type,size FROM event_presentation_attachments WHERE event_id=? AND state='ready' AND submission_id IN (${page.map(()=>'?').join(',')})`).bind(e.id,...page.map(row=>row.submission_id)).all<{id:string;submission_id:string;name:string;content_type:string;size:number}>():{results:[]};
   const presenters=await submissionPresenters(c.env.DB,e.id,page.map(row=>row.submission_id));
-  return c.json({favoriteLimit:settings?.favorite_limit??3,submissions:page.map(row=>({...row,presenters:presenters.get(row.submission_id)||[],attachments:attachments.results.filter(file=>file.submission_id===row.submission_id).map(publicAttachment)})),next:rows.results.length>50?JSON.stringify({favorites:rows.results[49].favorites,id:rows.results[49].submission_id}):null});
+  return c.json({favoriteLimit:settings?.favorite_limit??3,...presentationVotingWindow(e),submissions:page.map(row=>({...row,presenters:presenters.get(row.submission_id)||[],attachments:attachments.results.filter(file=>file.submission_id===row.submission_id).map(publicAttachment)})),next:rows.results.length>50?JSON.stringify({favorites:rows.results[49].favorites,id:rows.results[49].submission_id}):null});
  });
  app.get('/:id/presentations/team/:org',async c=>{
   const user=await auth(c.env,c.req.raw);await event(c.env.DB,c.req.param('id'));
@@ -62,13 +63,14 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id'));
   const rows=await c.env.DB.prepare(`SELECT f.submission_id FROM event_submission_favorites f JOIN event_submissions s ON s.event_id=f.event_id AND s.submission_id=f.submission_id WHERE f.event_id=? AND f.user_id=? AND ${active} AND f.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') ORDER BY f.slot`).bind(e.id,user.id).all<{submission_id:string;organization_id:string}>();
   const settings=await c.env.DB.prepare('SELECT favorite_limit FROM event_presentation_forms WHERE event_id=?').bind(e.id).first<{favorite_limit:number}>();
-  return c.json({favorites:rows.results.map(row=>row.submission_id),limit:settings?.favorite_limit??3});
+  return c.json({favorites:rows.results.map(row=>row.submission_id),limit:settings?.favorite_limit??3,...presentationVotingWindow(e)});
  });
  app.put('/:id/presentations/favorites/:org',async c=>{
   const user=await auth(c.env,c.req.raw),e=await event(c.env.DB,c.req.param('id')),org=c.req.param('org');
   const body=await c.req.json().catch(()=>null);
   if(!body||typeof body.selected!=='boolean'||Object.keys(body).some(key=>key!=='selected'))throw new HTTPException(400,{message:'selected must be a boolean'});
   if(!body.selected){await c.env.DB.batch([c.env.DB.prepare('DELETE FROM event_presentation_favorites WHERE event_id=? AND user_id=? AND organization_id=?').bind(e.id,user.id,org),c.env.DB.prepare('DELETE FROM event_submission_favorites WHERE event_id=? AND user_id=? AND submission_id=?').bind(e.id,user.id,org)]);return c.json({saved:true})}
+  if(presentationVotingWindow(e).votingClosed)throw new HTTPException(409,{message:'Voting closed one week after the event ended. You can still remove your favorites.'});
   // Select a free slot within the live event limit in the same atomic write.
   await c.env.DB.batch([
    c.env.DB.prepare("DELETE FROM event_submission_favorites WHERE event_id=? AND user_id=? AND expires_at<=strftime('%Y-%m-%dT%H:%M:%fZ','now')").bind(e.id,user.id),
@@ -76,6 +78,7 @@ export function presentationRoutes<E extends PresentationEnv>(auth: (env:E, requ
     SELECT s.event_id,?,slots.slot,s.submission_id,strftime('%Y-%m-%dT%H:%M:%fZ','now'),s.expires_at
     FROM event_submissions s CROSS JOIN (WITH RECURSIVE slots(slot) AS (SELECT 1 UNION ALL SELECT slot+1 FROM slots WHERE slot<100) SELECT slot FROM slots) slots
     WHERE s.event_id=? AND s.submission_id=? AND ${active}
+    AND EXISTS(SELECT 1 FROM events e WHERE e.id=s.event_id AND julianday(COALESCE(e.ends_at,e.starts_at),'+7 days')>julianday('now'))
     AND slots.slot<=COALESCE((SELECT favorite_limit FROM event_presentation_forms WHERE event_id=s.event_id),3)
     AND (SELECT COUNT(*) FROM event_submission_favorites f WHERE f.event_id=s.event_id AND f.user_id=?)<COALESCE((SELECT favorite_limit FROM event_presentation_forms WHERE event_id=s.event_id),3)
     AND NOT EXISTS(SELECT 1 FROM event_submission_favorites f WHERE f.event_id=s.event_id AND f.user_id=? AND f.slot=slots.slot)

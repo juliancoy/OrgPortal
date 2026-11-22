@@ -1,4 +1,6 @@
 import { runPresentationOperation } from '../src/presentationMcp';
+import { runPresentationVotingOperation } from '../src/presentationVotingMcp';
+import { presentationVotingWindow } from '../src/presentationVotingWindow';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
@@ -45,6 +47,62 @@ function finalCandidates(db:Database) {
  const insert=db.sqlite.prepare("INSERT INTO event_submissions(event_id,submission_id,organization_id,submitted_by,title,summary,status,updated_at,expires_at) VALUES('event',?,?,'applicant',?,'Details','submitted','2026-01-01','2099-04-01')");
  insert.run('final-a','team','Demo A');insert.run('final-b','two','Demo B');insert.run('final-c','one','Demo C');
 }
+test('voting defaults to seven days after event end, with exact closure and start fallback',()=>{
+ const event={starts_at:'2026-11-17T23:00:00.000Z',ends_at:'2026-11-18T01:30:00.000Z'};
+ assert.deepEqual(presentationVotingWindow(event,Date.parse('2026-11-21T12:00:00Z')),{votingClosesAt:'2026-11-25T01:30:00.000Z',votingClosed:false});
+ assert.equal(presentationVotingWindow(event,Date.parse('2026-11-25T01:29:59.999Z')).votingClosed,false);
+ assert.equal(presentationVotingWindow(event,Date.parse('2026-11-25T01:30:00Z')).votingClosed,true);
+ assert.equal(presentationVotingWindow({...event,ends_at:null}).votingClosesAt,'2026-11-24T23:00:00.000Z');
+ for(const ends_at of [null,'invalid'])assert.equal(presentationVotingWindow({starts_at:null,ends_at}).votingClosed,true);
+});
+test('post-event votes remain open for a week; closure preserves ballots and permits clearing stars',async()=>{
+ const f=fixture();try{
+  finalCandidates(f.db);
+  f.db.sqlite.exec("UPDATE events SET starts_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','-8 days'),ends_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','-1 day') WHERE id='event'");
+  const settings=await(await f.request('/public','GET','')).json() as any;
+  assert.equal(settings.closed,true);assert.equal(settings.votingClosed,false);
+  assert.equal((await f.request('/favorites/final-a','PUT','voter',{selected:true})).status,200);
+  const round={phase:'open',finalistIds:['final-a','final-b']};
+  assert.equal((await f.request('/final-round','PUT','host',round)).status,200);
+  assert.equal((await f.request('/final-ballot','PUT','voter',{submissionId:'final-a'})).status,200);
+  f.db.sqlite.exec("UPDATE events SET ends_at=strftime('%Y-%m-%dT%H:%M:%fZ','now','-7 days') WHERE id='event'");
+  assert.equal((await(await f.request('/submissions','GET','')).json() as any).votingClosed,true);
+  assert.equal((await(await f.request('/final-round','GET','')).json() as any).phase,'closed');
+  assert.equal((await f.request('/favorites/final-b','PUT','voter',{selected:true})).status,409);
+  assert.equal((await f.request('/final-ballot','PUT','voter',{submissionId:'final-b'})).status,409);
+  assert.equal((await f.request('/final-round','PUT','host',round)).status,409);
+  assert.deepEqual(await(await f.request('/final-ballot','GET','voter')).json(),{submissionId:'final-a'});
+  assert.deepEqual((await(await f.request('/favorites','GET','voter')).json() as any).favorites,['final-a']);
+  assert.equal((await f.request('/favorites/final-a','PUT','voter',{selected:false})).status,200);
+ }finally{f.db.sqlite.close()}
+});
+test('MCP voting configuration checks host, scopes, tenant, stale previews and receipt reuse',async()=>{
+ const f=fixture();try{
+  finalCandidates(f.db);
+  const env={DB:f.db.asD1()} as Env,identity={userId:'host',scopes:['org:events.read','org:events.write']};
+  const args={organizationId:'one',eventId:'event',phase:'open',finalistIds:['final-a','final-b']};
+  const run=(input:unknown,actor=identity)=>runPresentationVotingOperation(env,actor,input);
+  await assert.rejects(()=>run(args,{...identity,userId:'applicant'}));
+  await assert.rejects(()=>run(args,{...identity,scopes:['org:events.read']}),/Missing event scope/);
+  await assert.rejects(()=>run({...args,organizationId:'two'}),/Event not found/);
+  await assert.rejects(()=>run({...args,finalistIds:['foreign']}),/available submissions/);
+  let preview=await run(args);
+  assert.equal(f.db.rows('SELECT * FROM event_presentation_final_rounds').length,0);
+  await run({...args,confirm:true,previewId:preview.previewId});
+  await assert.rejects(()=>run({...args,confirm:true,previewId:preview.previewId}));
+  await f.request('/final-ballot','PUT','voter',{submissionId:'final-a'});
+  const closed={...args,phase:'closed'};
+  preview=await run(closed);await run({...closed,confirm:true,previewId:preview.previewId});
+  preview=await run(args);await run({...args,confirm:true,previewId:preview.previewId});
+  assert.deepEqual(await(await f.request('/final-ballot','GET','voter')).json(),{submissionId:'final-a'});
+  preview=await run(closed);
+  f.db.sqlite.exec("UPDATE events SET ends_at='2099-01-02T12:00:00Z' WHERE id='event'");
+  await assert.rejects(()=>run({...closed,confirm:true,previewId:preview.previewId}));
+  preview=await run(closed);
+  f.db.sqlite.exec("UPDATE organization_memberships SET status='inactive' WHERE user_id='host'");
+  await assert.rejects(()=>run({...closed,confirm:true,previewId:preview.previewId}));
+ }finally{f.db.sqlite.close()}
+});
 test('MCP form discovery shares live settings and schema without exposing or writing applications',async()=>{
  const f=fixture();try{
   const env={DB:f.db.asD1()} as Env;
