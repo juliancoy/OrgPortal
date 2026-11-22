@@ -1,12 +1,55 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { defaultPostLoginPath, normalizePidpBase, normalizePostLoginPath, portalAuthCallbackUrl, pidpSingleSignOnUrl } from './pidp'
+import { defaultPostLoginPath, normalizePidpBase, normalizePostLoginPath, portalAuthCallbackUrl, pidpSingleSignOnUrl, postLoginDocumentUrl } from './pidp'
 import * as profiles from './portalFeatures'
 import { setGroupSite } from './timebankCommunity'
 
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
   setGroupSite(null)
+})
+
+describe('Tech Party website return navigation', () => {
+  it('preserves public pages, homepage, query strings and anchors through SSO', () => {
+    vi.stubGlobal('window', { location: { origin: 'https://techparty.us', hostname: 'techparty.us' } })
+    for (const next of ['/', '/?source=nav#intro', '/platform.html?view=full#housing', '/branding', '/newsletter/20261121_epistle_to_the_democrats.html#letter', '/orgs/tech-party']) {
+      const login = new URL(pidpSingleSignOnUrl(next), window.location.origin)
+      const callback = new URL(login.searchParams.get('next')!)
+      expect(callback.origin).toBe('https://techparty.us')
+      expect(callback.pathname).toBe('/auth/callback')
+      expect(callback.searchParams.get('next')).toBe(next)
+      expect(postLoginDocumentUrl(callback.searchParams.get('next')!)).toBe(`https://techparty.us${next}`)
+    }
+  })
+
+  it('does not allow production sign-in to return to another origin or loop into login', () => {
+    vi.stubGlobal('window', { location: { origin: 'https://techparty.us', hostname: 'techparty.us' } })
+    for (const next of ['https://evil.example/', '//evil.example/', 'https://techparty.us//evil.example/', 'https://localhost:8771/', '/users/login?next=/', '/auth/callback?next=/']) {
+      expect(normalizePostLoginPath(next)).toBe(defaultPostLoginPath())
+      expect(new URL(postLoginDocumentUrl(next)!).origin).toBe('https://techparty.us')
+    }
+  })
+
+  it('returns local preview to its known website port while retaining local portal authentication', () => {
+    vi.stubGlobal('window', { location: { origin: 'https://localhost:8443', hostname: 'localhost' } })
+    for (const next of ['https://localhost:8771/', 'https://localhost:8771/platform.html?view=full#housing']) {
+      const callback = new URL(portalAuthCallbackUrl(next))
+      expect(callback.origin).toBe('https://localhost:8443')
+      expect(callback.searchParams.get('next')).toBe(`/local/website-return?next=${encodeURIComponent(next)}`)
+      expect(postLoginDocumentUrl(callback.searchParams.get('next')!)).toBe(next)
+    }
+    for (const next of ['https://localhost:8772/', 'https://127.0.0.1:8771/', 'http://localhost:8771/', 'https://localhost.evil.example:8771/', 'https://user:pass@localhost:8771/', 'https://localhost:8771//evil.example/', 'https://localhost:8771/users/login', 'https://localhost:8771/auth/callback', '/local/website-return?next=https%3A%2F%2Fevil.example%2F']) {
+      expect(normalizePostLoginPath(next)).toBe(defaultPostLoginPath())
+      expect(postLoginDocumentUrl(next)).toBeNull()
+    }
+  })
+
+  it('keeps ordinary OrgPortal destinations in the existing router', () => {
+    vi.stubGlobal('window', { location: { origin: 'https://orgportal.cc', hostname: 'orgportal.cc' } })
+    expect(postLoginDocumentUrl('/orgs/tech-party')).toBeNull()
+    expect(normalizePostLoginPath('/orgs/tech-party')).toBe('/orgs/tech-party')
+  })
 })
 
 describe('profile-aware authentication destinations', () => {

@@ -68,16 +68,44 @@ export function pidpUrl(path: string): string {
   return `${PIDP_BASE_URL}${normalizedPath}`
 }
 
+function isTechPartyWebsite(): boolean {
+  return typeof window !== 'undefined' && ['techparty.us', 'www.techparty.us'].includes(window.location.hostname)
+}
+
+const LOCAL_WEBSITE_RETURN_PATH = '/local/website-return'
+
+function localTechPartyReturnUrl(next: string): URL | null {
+  if (typeof window === 'undefined') return null
+  const current = new URL(window.location.origin)
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(current.hostname)) return null
+  try {
+    const wrapped = new URL(next, current)
+    const target = wrapped.origin === current.origin && wrapped.pathname === LOCAL_WEBSITE_RETURN_PATH
+      ? new URL(wrapped.searchParams.get('next') || '') : new URL(next)
+    // Only the known local website port, same loopback host and protocol.
+    // Production callers never accept a cross-origin return destination.
+    if (target.hostname === current.hostname && target.protocol === current.protocol
+      && ['http:', 'https:'].includes(target.protocol) && target.port === '8771'
+      && !target.username && !target.password) return target
+  } catch { /* Ordinary portal-relative path. */ }
+  return null
+}
+
 export function normalizePostLoginPath(next: string): string {
   const fallback = defaultPostLoginPath()
-  const path = toInternalPortalPath(next, fallback)
+  const localWebsite = localTechPartyReturnUrl(next)
+  if (next.startsWith(LOCAL_WEBSITE_RETURN_PATH) && !localWebsite) return fallback
+  const path = localWebsite ? `${localWebsite.pathname}${localWebsite.search}${localWebsite.hash}` : toInternalPortalPath(next, fallback)
   const parsed = new URL(path, 'https://portal.invalid')
+  // An absolute same-origin input can still contain a //host pathname.
+  // Do not let extracting that pathname turn it into an external redirect.
+  if (parsed.origin !== 'https://portal.invalid') return fallback
   const pathname = parsed.pathname
   if (getDomainCommunity() && pathname === '/timebanking') {
     return `/${parsed.search}${parsed.hash}`
   }
   if (
-    (pathname === '/' && !getDomainCommunity()) ||
+    (pathname === '/' && !getDomainCommunity() && !isTechPartyWebsite() && !localWebsite) ||
     pathname.startsWith('/auth/callback') ||
     pathname.startsWith('/users/login') ||
     pathname.startsWith('/users/register') ||
@@ -86,7 +114,19 @@ export function normalizePostLoginPath(next: string): string {
   ) {
     return fallback
   }
+  // PIdP's callback contract only accepts relative next paths. Carry the
+  // validated loopback return inside one; resolve it only after the callback.
+  if (localWebsite) return `${LOCAL_WEBSITE_RETURN_PATH}?next=${encodeURIComponent(localWebsite.href)}`
   return portalProfilePath(path, getActivePortalProfileConfig())
+}
+
+export function postLoginDocumentUrl(next: string): string | null {
+  const target = normalizePostLoginPath(next)
+  const localWebsite = localTechPartyReturnUrl(target)
+  if (localWebsite) return localWebsite.href
+  // The website Worker owns public pages, including routes such as / and
+  // /branding that also exist in the portal's client-side router.
+  return isTechPartyWebsite() ? new URL(target, window.location.origin).href : null
 }
 
 export function portalAuthCallbackUrl(next: string): string {

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../app/AppProviders'
-import { defaultPostLoginPath, normalizePostLoginPath } from '../../config/pidp'
+import { defaultPostLoginPath, normalizePostLoginPath, postLoginDocumentUrl } from '../../config/pidp'
 
 export function AuthCallbackPage() {
   const navigate = useNavigate()
@@ -10,6 +10,11 @@ export function AuthCallbackPage() {
   useEffect(() => {
     const query = new URLSearchParams(location.search)
     const next = normalizePostLoginPath(query.get('next') || defaultPostLoginPath())
+    const documentUrl = postLoginDocumentUrl(next)
+    if (documentUrl) {
+      window.location.replace(documentUrl)
+      return
+    }
     refreshSession()
     navigate(next, { replace: true })
   }, [location.search, navigate, refreshSession])

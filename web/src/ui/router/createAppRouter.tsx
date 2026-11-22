@@ -20,6 +20,7 @@ import { refreshRuntimeTokenFromSession } from '../../infrastructure/auth/sessio
 import { portalBasePath } from '../../config/portalBase'
 import { getActivePortalProfileConfig, portalProfilePath, isPortalFeatureEnabled, type PortalFeature } from '../../config/portalFeatures'
 import { tenantHomeAction } from '../../config/tenantHome'
+import { websiteHomeUrl } from '../../config/websiteHome'
 
 const GuestPresentationClaimPage = lazy(() => import('../views/GuestPresentationClaimPage').then(module => ({ default: module.GuestPresentationClaimPage })))
 const LocalNewslettersPage = lazy(() => import('../views/LocalNewslettersPage').then(module => ({ default: module.LocalNewslettersPage })))
@@ -132,9 +133,16 @@ function LegacyOrganizationRoute({ workspace = false }: { workspace?: boolean })
   return <Navigate to={`/orgs/${encodeURIComponent(handle || '')}${workspace ? '/dashboard' : ''}`} replace />
 }
 
+function WebsiteHome({ href }: { href: string }) {
+  useEffect(() => { window.location.replace(href) }, [href])
+  return <p role="status">Opening the homepage… <a href={href}>Continue to homepage</a></p>
+}
+
 function HomeRoute() {
   const { role, isLoading } = useAuth()
   const tenant = getGroupSite()
+  const websiteHome = websiteHomeUrl()
+  if (websiteHome) return <WebsiteHome href={websiteHome} />
   if (['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) return <LocalHomePage />
   if (isLoading) return null
   const profile = getActivePortalProfileConfig()

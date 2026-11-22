@@ -16,6 +16,7 @@ import { isAndroidDevice } from '../../infrastructure/platform/androidApp'
 import { OrgImage } from '../components/media/OrgImage'
 import { getActivePortalProfileConfig, portalProfilePath } from '../../config/portalFeatures'
 import { portalAssetPath } from '../../config/portalBase'
+import { websiteHomeUrl } from '../../config/websiteHome'
 
 const ORG_API_BASE = '/api/org'
 const SEARCH_MIN_LEN = 2
@@ -572,7 +573,7 @@ export function Header({ organizationId }: { organizationId?: string | null } = 
   return (
     <header className="portal-header">
       <div className="portal-header-inner">
-        <Link to={portalProfile.homeUrl} className="portal-brand">
+        <Link to={websiteHomeUrl() || portalProfile.homeUrl} reloadDocument={Boolean(websiteHomeUrl())} className="portal-brand">
           {(portalProfile.nameBannerUrl || portalProfile.brandImagePath) ? (
             <CmsImage priority width={portalProfile.nameBannerUrl ? 180 : 46} height={portalProfile.nameBannerUrl ? 60 : 46} className={portalProfile.nameBannerUrl ? 'portal-name-banner' : undefined} src={portalAssetPath(portalProfile.nameBannerUrl || portalProfile.brandImagePath!)} alt={portalProfile.brandName} />
           ) : (
