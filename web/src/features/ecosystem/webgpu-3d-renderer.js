@@ -1,11 +1,13 @@
 import {edgeArrowGeometry} from './edge-arrows.js'
 import {frameTargetMs} from './frame-budget.js'
-import {transactionEdgePath,TRANSACTION_EDGE_SEGMENTS} from './transaction-edge-path.js'
-import {WebGPURenderer,Scene,PerspectiveCamera,OrthographicCamera,AmbientLight,DirectionalLight,InstancedMesh,SphereGeometry,CylinderGeometry,ConeGeometry,MeshStandardNodeMaterial,MeshBasicNodeMaterial,MeshBasicMaterial,DataTexture,InstancedBufferAttribute,SRGBColorSpace,NearestFilter,BackSide,Object3D,Vector3,Vector2,Euler,Quaternion,Color,Raycaster,Box3,Spherical,WebGLCoordinateSystem} from 'three/webgpu'
+import {transactionEdgePath} from './transaction-edge-path.js'
+import {SPHERE_DETAIL,sphereDetailLevel,edgeSegmentCount} from './spatial-detail.js'
+import {WebGPURenderer,Scene,PerspectiveCamera,OrthographicCamera,AmbientLight,DirectionalLight,InstancedMesh,SphereGeometry,CylinderGeometry,ConeGeometry,MeshStandardNodeMaterial,MeshLambertNodeMaterial,MeshBasicNodeMaterial,MeshBasicMaterial,DataTexture,InstancedBufferAttribute,SRGBColorSpace,NearestFilter,BackSide,Object3D,Vector3,Vector2,Euler,Quaternion,Color,Raycaster,Box3,Spherical,WebGLCoordinateSystem} from 'three/webgpu'
 import {attribute,texture,uv,vec2} from 'three/tsl'
 import {spherePieAtlas} from './sphere-pies.js'
+import {createSphereTitles} from './sphere-titles.js'
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js'
-export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',movementSpeed=()=>1,moveFourth=()=>{},orbitSelected=()=>false,{forceWebGL=false}={}){
+export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',movementSpeed=()=>1,moveFourth=()=>{},orbitSelected=()=>false,{forceWebGL=false,adaptiveDetail=false}={}){
  // Three.js falls back to WebGL 2 when WebGPU has no usable adapter.
  const renderer=new WebGPURenderer({canvas,antialias:true,alpha:true,forceWebGL})
  try{await renderer.init()}catch(error){renderer.dispose();throw new Error(dimension+' graphics could not start. Use the Graph tab instead.',{cause:error})}
@@ -16,9 +18,10 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
  device?.lost.then(info=>{if(!disposed)onLost(info.message||'WebGPU device lost')})
  device?.addEventListener('uncapturederror',event=>{if(!disposed)onLost(event.error.message)})
  const scene=new Scene();let camera=new PerspectiveCamera(45,1,.1,1e7),transitionFrame=0,focusResolver=null,focusAnimating=false
+ const sphereTitles=createSphereTitles(scene)
  camera.position.set(200,120,400)
  scene.add(new AmbientLight(0xffffff,2));const light=new DirectionalLight(0xffffff,3);light.position.set(300,600,500);scene.add(light)
- const controls=new OrbitControls(camera,canvas);controls.enableDamping=false;controls.addEventListener('change',changed)
+ const controlsRoot=canvas.getRootNode(),controls=new OrbitControls(camera,canvas);controls.enableDamping=false;controls.addEventListener('change',changed)
  controls.enableRotate=false
  const cancelFocus=()=>{cancelAnimationFrame(transitionFrame);focusResolver=null;focusAnimating=false}
  controls.addEventListener('start',cancelFocus)
@@ -74,16 +77,21 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
  },{signal:input.signal})
  for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(type,event=>{if(event.pointerId===look?.id)look=null},{signal:input.signal})
 
- const geometries=[new SphereGeometry(1,32,20),new CylinderGeometry(1,1,1,5),new ConeGeometry(1,1,6),new SphereGeometry(1,32,20)]
+ let sphereQuality=adaptiveDetail?3:0,pixelQuality=sphereQuality
+ const geometries=[new SphereGeometry(1,...SPHERE_DETAIL[sphereQuality]),new CylinderGeometry(1,1,1,5),new ConeGeometry(1,1,6),new SphereGeometry(1,...SPHERE_DETAIL[sphereQuality])]
  const pieTexture=new DataTexture(new Uint8Array([255,255,255,255]),1,1)
  pieTexture.colorSpace=SRGBColorSpace;pieTexture.minFilter=pieTexture.magFilter=NearestFilter;pieTexture.generateMipmaps=false;pieTexture.needsUpdate=true
- const sphereMaterial=new MeshStandardNodeMaterial({color:0xffffff,roughness:.65,metalness:.05})
+ // Compact organization maps need diffuse lighting, not a physical BRDF.
+ // Besides cheaper shading, this avoids r186's shared DFG LUT retaining
+ // disposed renderers through texture listeners. Keep full EcoMap materials.
+ const sphereMaterial=adaptiveDetail?new MeshLambertNodeMaterial({color:0xffffff}):new MeshStandardNodeMaterial({color:0xffffff,roughness:.65,metalness:.05})
  const atlas=attribute('pieAtlas','vec3')
  sphereMaterial.colorNode=texture(pieTexture,vec2(uv().x.mul(atlas.z).add(atlas.x),atlas.y)).rgb
  const materials=[sphereMaterial,new MeshBasicNodeMaterial({color:0xffffff,transparent:true,depthWrite:false}),new MeshBasicNodeMaterial({color:0xffffff,transparent:true,depthWrite:false}),new MeshBasicMaterial({color:0xffffff,side:BackSide})]
  materials[1].opacityNode=attribute('edgeOpacity','float');materials[2].opacityNode=attribute('edgeOpacity','float')
  const meshes=[null,null,null,null],object=new Object3D(),up=new Vector3(0,1,0),a=new Vector3(),b=new Vector3(),direction=new Vector3(),color=new Color(),ray=new Raycaster()
- let renderedNodes=[],renderedEdges=[],outlinedNodes=[],atlasNodes=[],pieFacingDirty=true
+ let renderedNodes=[],renderedEdges=[],outlinedNodes=[],atlasNodes=[],pieFacingDirty=true,segmentOwners=[],segmentOffsets=[]
+ const projection=new Vector3(),projectedHit={x:0,y:0,visible:false,depth:0}
  const pieFacing=new Quaternion(),lastCameraOrientation=new Quaternion(),piePole=new Quaternion().setFromAxisAngle(new Vector3(0,0,1),-Math.PI/2).multiply(new Quaternion().setFromAxisAngle(new Vector3(1,0,0),Math.PI/2))
  function mesh(index,count){
   let m=meshes[index]
@@ -95,6 +103,26 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
  }
  function place(m,index,position,scale,rotation,tint){object.position.copy(position);object.scale.copy(scale);object.quaternion.copy(rotation);object.updateMatrix();m.setMatrixAt(index,object.matrix);m.setColorAt(index,color.set(tint))}
  const scale=new Vector3(),identity=object.quaternion.clone()
+ function setSphereQuality(next){
+  if(next===sphereQuality)return
+  sphereQuality=next
+  for(const index of [0,3]){
+   const old=geometries[index],geometry=new SphereGeometry(1,...SPHERE_DETAIL[next]),previous=meshes[index]
+   if(index===0&&old.getAttribute('pieAtlas'))geometry.setAttribute('pieAtlas',old.getAttribute('pieAtlas').clone())
+   // r186 geometry disposal also deletes instancing buffers. Reusing the mesh
+   // leaves cached vertex bindings pointing to deleted buffers after an LOD
+   // change. Give the new mesh independent attributes and fresh bindings.
+   if(previous){
+    const replacement=new InstancedMesh(geometry,materials[index],previous.instanceMatrix.count)
+    replacement.instanceMatrix.copy(previous.instanceMatrix)
+    if(previous.instanceColor)replacement.instanceColor=previous.instanceColor.clone()
+    replacement.count=previous.count;replacement.frustumCulled=false
+    scene.remove(previous);previous.dispose();meshes[index]=replacement;scene.add(replacement)
+   }
+   geometries[index]=geometry;old.dispose()
+  }
+  compiled=false
+ }
  const api={
   backend:renderer.backend.isWebGPUBackend?'webgpu':'webgl2',
   attach(object){scene.add(object);compiled=false;changed()},
@@ -136,9 +164,11 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    const previousNodes=renderedNodes,previousEdges=renderedEdges
    renderedNodes=nodes.filter(n=>visible.has(n.id)&&!n.clipped4D);renderedEdges=edges.filter(e=>visibleEdges.has(e.id)&&!e.source.clipped4D&&!e.target.clipped4D)
    if(updated&&(previousNodes.length!==renderedNodes.length||previousEdges.length!==renderedEdges.length||renderedNodes.some((n,i)=>n.id!==previousNodes[i]?.id)||renderedEdges.some((e,i)=>e.id!==previousEdges[i]?.id)))updated=null
-   geometries[1].setAttribute('edgeOpacity',new InstancedBufferAttribute(Float32Array.from({length:renderedEdges.length*TRANSACTION_EDGE_SEGMENTS},(_,i)=>renderedEdges[Math.floor(i/TRANSACTION_EDGE_SEGMENTS)].opacity??.2),1))
+   segmentOwners=[];segmentOffsets=[]
+   renderedEdges.forEach((edge,i)=>{segmentOffsets.push(segmentOwners.length);for(let j=0;j<edgeSegmentCount(edge,adaptiveDetail);j++)segmentOwners.push(i)})
+   geometries[1].setAttribute('edgeOpacity',new InstancedBufferAttribute(Float32Array.from(segmentOwners,i=>renderedEdges[i].opacity??.2),1))
    geometries[2].setAttribute('edgeOpacity',new InstancedBufferAttribute(Float32Array.from(renderedEdges,e=>e.opacity??.2),1))
-   const spheres=mesh(0,renderedNodes.length),bodies=mesh(1,renderedEdges.length*TRANSACTION_EDGE_SEGMENTS),arrows=mesh(2,renderedEdges.length)
+   const spheres=mesh(0,renderedNodes.length),bodies=mesh(1,segmentOwners.length),arrows=mesh(2,renderedEdges.length)
    canvas.dataset.transactionEdges=String(renderedEdges.length)
    canvas.dataset.transactionEdgeSegments=String(bodies.count)
    if(atlasNodes.length!==renderedNodes.length||renderedNodes.some((n,i)=>atlasNodes[i].id!==n.id||atlasNodes[i].pie!==n.financialPie)){
@@ -150,18 +180,19 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    }else if(!geometries[0].getAttribute('pieAtlas')){
     geometries[0].setAttribute('pieAtlas',new InstancedBufferAttribute(new Float32Array([.5,.5,0]),3))
    }
-   outlinedNodes=renderedNodes.filter(n=>n.financialPie?.slices.length)
+   outlinedNodes=renderedNodes.filter(n=>n.financialPie?.slices.length||n.volumeColor!==undefined&&n.id===selected)
    const outlines=mesh(3,outlinedNodes.length)
-   outlinedNodes.forEach((n,i)=>{if(updated&&!updated.has(n.id))return;a.set(n.x,n.y,n.z||0);scale.setScalar(n.renderRadius+(n.id===selected?2:1));place(outlines,i,a,scale,identity,n.id===selected?0xe56d3c:n.opacity<1?0x606c76:colors[n.category]??0x77878c)})
-   renderedNodes.forEach((n,i)=>{if(updated&&!updated.has(n.id))return;a.set(n.x,n.y,n.z||0);scale.setScalar(n.renderRadius);place(spheres,i,a,scale,identity,n.financialPie?.slices.length?0xffffff:n.id===selected?0xe56d3c:n.opacity<1?0x606c76:colors[n.category]??0x77878c)})
+   outlinedNodes.forEach((n,i)=>{if(updated&&!updated.has(n.id))return;a.set(n.x,n.y,n.z||0);scale.setScalar(n.renderRadius+(n.id===selected?2:1));place(outlines,i,a,scale,identity,n.volumeColor!==undefined&&n.id===selected?0x57c7ff:n.id===selected?0xe56d3c:n.opacity<1?0x606c76:colors[n.category]??0x77878c)})
+   renderedNodes.forEach((n,i)=>{if(updated&&!updated.has(n.id))return;a.set(n.x,n.y,n.z||0);scale.setScalar(n.renderRadius);place(spheres,i,a,scale,identity,n.volumeColor??(n.financialPie?.slices.length?0xffffff:n.id===selected?0xe56d3c:n.opacity<1?0x606c76:colors[n.category]??0x77878c))})
    renderedEdges.forEach((e,i)=>{
     if(updated&&!updated.has(e.source.id)&&!updated.has(e.target.id))return
     const geometry=edgeArrowGeometry(transactionEdgePath(e),e.quantityWidth||1.4,e.directional),points=geometry.shaft,tint=edgeColor(e),thickness=geometry.width/2
-    for(let segment=0;segment<TRANSACTION_EDGE_SEGMENTS;segment++){
-     a.copy(points[segment]);b.copy(points[segment+1]);direction.subVectors(b,a)
+    const count=edgeSegmentCount(e,adaptiveDetail)
+    for(let segment=0;segment<count;segment++){
+     a.copy(points[segment]);b.copy(count===1?points.at(-1):points[segment+1]);direction.subVectors(b,a)
      const length=Math.max(.01,direction.length());direction.normalize();object.quaternion.setFromUnitVectors(up,direction)
      b.add(a).multiplyScalar(.5);scale.set(thickness,length,thickness)
-     place(bodies,i*TRANSACTION_EDGE_SEGMENTS+segment,b,scale,object.quaternion,tint)
+     place(bodies,segmentOffsets[i]+segment,b,scale,object.quaternion,tint)
     }
     if(geometry.head){const head=geometry.head;direction.set(head.direction.x,head.direction.y,head.direction.z);object.quaternion.setFromUnitVectors(up,direction);b.set(head.base.x,head.base.y,head.base.z||0).addScaledVector(direction,head.length/2);scale.set(head.halfWidth,head.length,head.halfWidth)}else{b.copy(points.at(-1));scale.set(0,0,0)};place(arrows,i,b,scale,object.quaternion,tint)
    })
@@ -171,11 +202,19 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    if(disposed)return false
    if(focusResolver&&!focusAnimating){const point=focusResolver();if(point){const delta=new Vector3(point.x,point.y,point.z||0).sub(controls.target);if(delta.lengthSq()>1e-12){camera.position.add(delta);controls.target.add(delta);controls.update()}}}
    // Keep the pie pole facing the camera so every slice remains visible.
-   if(meshes[0]&&(pieFacingDirty||!lastCameraOrientation.equals(camera.quaternion))){
+   if(outlinedNodes.some(n=>n.financialPie?.slices.length)&&meshes[0]&&(pieFacingDirty||!lastCameraOrientation.equals(camera.quaternion))){
     pieFacing.copy(camera.quaternion).multiply(piePole);lastCameraOrientation.copy(camera.quaternion);pieFacingDirty=false
     renderedNodes.forEach((n,i)=>{if(!n.financialPie?.slices.length)return;object.position.set(n.x,n.y,n.z||0);object.scale.setScalar(n.renderRadius);object.quaternion.copy(pieFacing);object.updateMatrix();meshes[0].setMatrixAt(i,object.matrix)})
     meshes[0].instanceMatrix.needsUpdate=true
    }
+   if(adaptiveDetail&&!compiling){
+    camera.updateMatrixWorld()
+    let radius=0
+    for(const node of renderedNodes){projection.set(node.x,node.y,node.z||0).applyMatrix4(camera.matrixWorldInverse);if(projection.z>=-camera.near)continue;radius=Math.max(radius,node.renderRadius*height*(camera.isOrthographicCamera?camera.zoom/(camera.top-camera.bottom):1/(-2*projection.z*Math.tan(camera.fov*Math.PI/360))))}
+    pixelQuality=sphereDetailLevel(radius,pixelQuality);setSphereQuality(Math.max(pixelQuality,quality))
+    canvas.dataset.sphereDetail=String(sphereQuality)
+   }
+   if(!compiling){const titles=sphereTitles.update(renderedNodes,camera,height);canvas.dataset.sphereTitles=String(titles.count);if(titles.changed)compiled=false}
    if(!compiled){if(!compiling){compiling=true;compilePromise=renderer.compileAsync(scene,camera).then(()=>{compiling=false;compiled=true;if(!disposed){if(pendingUpdate){const args=pendingUpdate;pendingUpdate=null;api.update(...args)}changed()}}).catch(error=>{compiling=false;if(!disposed)onLost(error.message)})}return false}
    renderer.render(scene,camera)
    return true
@@ -186,12 +225,12 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    const next=slowFrames>=4?Math.min(3,quality+1):fastFrames>=300?Math.max(0,quality-1):quality
    if(next===quality)return
    quality=next;slowFrames=0;fastFrames=0
-   const [segments,rings]=[[32,20],[16,10],[8,6],[6,4]][quality]
-   for(const index of [0,3]){const old=geometries[index],geometry=new SphereGeometry(1,segments,rings);if(index===0&&old.getAttribute('pieAtlas'))geometry.setAttribute('pieAtlas',old.getAttribute('pieAtlas'));geometries[index]=geometry;if(meshes[index])meshes[index].geometry=geometry;old.dispose()}
+   setSphereQuality(adaptiveDetail?Math.max(pixelQuality,quality):quality)
    renderer.setPixelRatio(Math.min(devicePixelRatio,2)*[1,.8,.65,.4][quality]);renderer.setSize(width,height,false);compiled=false
+   changed()
   },
   resize(w,h){width=Math.max(1,w);height=Math.max(1,h);renderer.setPixelRatio(Math.min(devicePixelRatio,2)*[1,.8,.65,.4][quality]);renderer.setSize(width,height,false);if(camera.isOrthographicCamera){const half=(camera.top-camera.bottom)/2;camera.left=-half*width/height;camera.right=half*width/height}else camera.aspect=width/height;camera.updateProjectionMatrix()},
-  project(n){if(n.clipped4D)return {x:0,y:0,visible:false,depth:Infinity};const p=new Vector3(n.x,n.y,n.z||0).project(camera);return {x:(p.x+1)*width/2,y:(1-p.y)*height/2,visible:p.z>=(camera.coordinateSystem===WebGLCoordinateSystem?-1:0)&&p.z<=1&&Math.abs(p.x)<=1&&Math.abs(p.y)<=1,depth:p.z}},
+  project(n,result={}){if(n.clipped4D){result.x=0;result.y=0;result.visible=false;result.depth=Infinity;return result}const p=projection.set(n.x,n.y,n.z||0).project(camera);result.x=(p.x+1)*width/2;result.y=(1-p.y)*height/2;result.visible=p.z>=(camera.coordinateSystem===WebGLCoordinateSystem?-1:0)&&p.z<=1&&Math.abs(p.x)<=1&&Math.abs(p.y)<=1;result.depth=p.z;return result},
   fit(nodes){
    cancelFocus()
    nodes=nodes.filter(n=>!n.clipped4D)
@@ -214,11 +253,24 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    // Keep small, distant orbs usable without requiring a subpixel-perfect click.
    const tolerance=event.pointerType==='touch'?12:8,x=event.clientX-rect.left,y=event.clientY-rect.top
    let nearest=null,best=tolerance*tolerance
-   for(const node of renderedNodes){const point=api.project(node);if(!point.visible)continue;const distance=(point.x-x)**2+(point.y-y)**2;if(distance<best){nearest=node;best=distance}}
+   for(const node of renderedNodes){const point=api.project(node,projectedHit);if(!point.visible)continue;const distance=(point.x-x)**2+(point.y-y)**2;if(distance<best){nearest=node;best=distance}}
    if(nearest)return {node:nearest}
    const first=ray.intersectObjects([meshes[1],meshes[2]].filter(Boolean),false)[0];if(!first)return {}
-   return {edge:renderedEdges[first.object===meshes[1]?Math.floor(first.instanceId/TRANSACTION_EDGE_SEGMENTS):first.instanceId]}
+   return {edge:renderedEdges[first.object===meshes[1]?segmentOwners[first.instanceId]:first.instanceId]}
   },
-  dispose(){cancelAnimationFrame(transitionFrame);disposed=true;stopMovement();input.abort();if(previousTabIndex===null)canvas.removeAttribute('tabindex');else canvas.setAttribute('tabindex',previousTabIndex);if(previousLabel===null)canvas.removeAttribute('aria-label');else canvas.setAttribute('aria-label',previousLabel);controls.dispose();const release=()=>{for(const m of meshes)if(m)m.dispose();geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());pieTexture.dispose();renderer.dispose()};if(compilePromise&&compiling)void compilePromise.finally(release);else release()},
+  dispose(){
+   if(disposed)return
+   cancelAnimationFrame(transitionFrame);disposed=true;stopMovement();input.abort()
+   if(previousTabIndex===null)canvas.removeAttribute('tabindex');else canvas.setAttribute('tabindex',previousTabIndex)
+   if(previousLabel===null)canvas.removeAttribute('aria-label');else canvas.setAttribute('aria-label',previousLabel)
+   // Three r186 looks up getRootNode() again on disconnect. React's passive
+   // cleanup runs after detachment, when that returns the canvas, not the
+   // original document/shadow root. Remove its two capture listeners there too.
+   controlsRoot.removeEventListener('keydown',controls._interceptControlDown,true)
+   controlsRoot.removeEventListener('keyup',controls._interceptControlUp,true)
+   controls.removeEventListener('change',changed);controls.removeEventListener('start',cancelFocus);controls.dispose()
+   const release=()=>{sphereTitles.dispose();for(const m of meshes)if(m)m.dispose();geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());pieTexture.dispose();renderer.dispose()}
+   if(compilePromise&&compiling)void compilePromise.finally(release);else release()
+  },
  };return api
 }

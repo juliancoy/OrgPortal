@@ -49,10 +49,12 @@ with sync_playwright() as p:
  # Preserve one GPU renderer across native and source-only organization pages.
  page.get_by_label('Map mode',exact=True).select_option('3d');surface=ready('State of Maryland')
  page.get_by_label('Navigation',exact=True).select_option('fly');page.get_by_label('Navigation speed',exact=True).select_option('0.25')
+ page.get_by_label('Color by',exact=True).select_option('volume')
  remember();select('TEDCO');ready('TEDCO');continuous()
  page.go_back();ready('State of Maryland');continuous()
  select('Comptroller of Maryland');ready('Comptroller of Maryland');continuous()
  expect(page.get_by_label('Map mode',exact=True)).to_have_value('3d')
+ expect(page.get_by_label('Color by',exact=True)).to_have_value('volume')
  expect(page.get_by_label('Navigation',exact=True)).to_have_value('fly')
  expect(page.get_by_label('Navigation speed',exact=True)).to_have_value('0.25')
  # Keyboard controls remain active after several graph replacements.

@@ -15,7 +15,13 @@ export async function organizationGroup(read,readRows,manifest,params){
  const ids=new Set(profiles.map(p=>p.organization.id)),recordIndices=[...new Set(profiles.flatMap(p=>p.recordIndices))].sort((a,b)=>a-b),recordKinds=Object.create(null)
  for(const profile of profiles)for(const [kind,indices] of Object.entries(profile.recordKinds))recordKinds[kind]=[...new Set([...(recordKinds[kind]||[]),...indices])].sort((a,b)=>a-b)
  const relatives=key=>[...new Map(profiles.flatMap(p=>p[key]).filter(p=>!ids.has(p.id)).map(p=>[p.id,p])).values()]
- return {...root,organization:{...root.organization,recordCount:recordIndices.length},parents:relatives('parents'),children:relatives('children'),
+ let recordFiscalYears
+ if(profiles.every(p=>p.recordFiscalYears)){
+  recordFiscalYears=Object.create(null)
+  for(const profile of profiles)for(const [year,indices] of Object.entries(profile.recordFiscalYears))recordFiscalYears[year]=[...new Set([...(recordFiscalYears[year]||[]),...indices])].sort((a,b)=>a-b)
+ }
+ const financialMembers=[...new Set(profiles.flatMap(p=>p.financialMembers||[p.organization.id]))].sort()
+ return {...root,recordFiscalYears,financialMembers,financialTotalsByYear:undefined,financialTotals:undefined,organization:{...root.organization,recordCount:recordIndices.length},parents:relatives('parents'),children:relatives('children'),
   groups:Object.entries(recordKinds).map(([kind,indices])=>({kind,count:indices.length})),recordIndices,recordKinds,
   members:profiles.map(p=>p.organization),missingMembers:missing}
 }

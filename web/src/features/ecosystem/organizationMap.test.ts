@@ -1,7 +1,54 @@
 import {expect,it} from 'vitest'
-import {loadOrganizationMap,organizationMapLayout,type MapPage} from './organizationMap'
+import {loadOrganizationMap,organizationMapLayout,organizationNodeRadius,type MapPage} from './organizationMap'
 const node=(id:string)=>({id,name:id,slug:null,category:'general'})
 const page=(offset=0):MapPage=>({version:'v1',generatedAt:'2026-11-21',anchor:'center',organizations:[node('center'),node(offset?'downstream':'upstream')],relationships:[offset?{id:'out',source:'center',target:'downstream',recordCount:20,kinds:['transfer']}:{id:'in',source:'upstream',target:'center',recordCount:2,kinds:['agency']}],total:2,incoming:1,outgoing:1,offset,nextOffset:offset?null:1})
+for(const mixed of [false,true])it(`3D gravity survives dense ${mixed?'mixed-direction':'all-recipient'} neighborhoods and keeps spheres apart`,()=>{
+ const organizations=[{...node('center'),financialAmount:2e10},...Array.from({length:90},(_,i)=>({...node('n'+String(i).padStart(3,'0')),financialAmount:i<6?1e10:1e5}))]
+ const relationships=organizations.slice(1).map((n,i)=>({id:n.id,source:mixed&&i%2?n.id:'center',target:mixed&&i%2?'center':n.id,recordCount:1,kinds:['transfer']}))
+ const data={...page(),organizations,relationships},spatial=organizationMapLayout(data,'3d'),planar=organizationMapLayout(data,'2d')
+ const distance=(n:typeof spatial[number])=>Math.hypot(n.x,n.y,n.z)
+ const large=spatial.slice(1,7),small=spatial.slice(7),mean=(nodes:typeof spatial)=>nodes.reduce((s,n)=>s+distance(n),0)/nodes.length
+ expect(mean(large)).toBeLessThan(100)
+ expect(mean(large)).toBeLessThan(mean(small)*.65)
+ expect(mean(large)).toBeLessThan(mean(planar.slice(1,7))*.85)
+ expect(spatial[0]).toMatchObject({x:0,y:0,z:0})
+ expect(large.some(n=>Math.abs(n.z)>10)).toBe(true)
+ for(let i=0;i<spatial.length;i++)for(let j=i+1;j<spatial.length;j++){
+  const a=spatial[i],b=spatial[j]
+  expect(Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z)).toBeGreaterThan(a.renderRadius+b.renderRadius)
+ }
+ expect(organizationMapLayout({...data,organizations:[...organizations].reverse(),relationships:[...relationships].reverse()},'3d')).toEqual(spatial)
+})
+for(const mode of ['2d','3d'] as const)it(`${mode} pulls larger financial volumes inward and allocates inner shells by money`,()=>{
+ const organizations=[node('center'),{...node('z-largest'),financialAmount:1e10},{...node('a-small'),financialAmount:1e5},node('unknown'),{...node('invalid'),financialAmount:Infinity}]
+ const data={...page(),organizations,relationships:[]}
+ const layout=organizationMapLayout(data,mode),distance=(id:string)=>{const n=layout.find(n=>n.id===id)!;return Math.hypot(n.x,n.y,n.z)}
+ expect(distance('z-largest')).toBeLessThan(distance('a-small'))
+ expect(distance('a-small')).toBeLessThan(distance('unknown'))
+ expect(distance('invalid')).toBe(distance('unknown'))
+ expect(layout[0]).toMatchObject({x:0,y:0,z:0})
+ const crowded=organizationMapLayout({...data,organizations:[...organizations,...Array.from({length:100},(_,i)=>({...node('b'+i),financialAmount:100}))]},mode)
+ expect(crowded[1].id).toBe('z-largest')
+ for(const n of crowded.slice(1))expect(Math.hypot(n.x,n.y,n.z)).toBeGreaterThan(n.renderRadius+crowded[0].renderRadius)
+ expect(organizationMapLayout({...data,organizations:[...organizations].reverse()},mode)).toEqual(layout)
+})
+it('sizes nodes by money independently of focus, neighborhood, mode and color',()=>{
+ const organizations=[{...node('cvs'),financialAmount:761764295.29},{...node('dbm'),financialAmount:15e9},{...node('equal'),financialAmount:761764295.29}]
+ const data={...page(),anchor:'cvs',organizations,relationships:[]}
+ for(const mode of ['2d','3d'] as const){
+  const layout=organizationMapLayout(data,mode),radii=new Map(layout.map(n=>[n.id,n.renderRadius]))
+  expect(radii.get('dbm')!).toBeGreaterThan(radii.get('cvs')!)
+  expect(radii.get('equal')).toBe(radii.get('cvs'))
+  const next=organizationMapLayout({...data,anchor:'dbm',organizations:[...organizations,{...node('huge'),financialAmount:1e15}]},mode)
+  for(const node of next)if(radii.has(node.id))expect(node.renderRadius).toBe(radii.get(node.id))
+ }
+})
+it('keeps missing, zero and invalid volumes finite, and preserves size ratios while zooming out',()=>{
+ for(const value of [undefined,null,0,-1,NaN,Infinity])expect(organizationNodeRadius(value)).toBe(organizationNodeRadius(0))
+ const amounts=[0,1,1e3,1e6,1e9,1e12,1e15,Number.MAX_VALUE]
+ for(let i=1;i<amounts.length;i++)expect(organizationNodeRadius(amounts[i])).toBeGreaterThan(organizationNodeRadius(amounts[i-1]))
+ for(const scale of [.001,.1,.5,1,10])expect(organizationNodeRadius(1e9,scale)/organizationNodeRadius(1e6,scale)).toBeCloseTo(organizationNodeRadius(1e9)/organizationNodeRadius(1e6),12)
+})
 it('loads every page once, pins the snapshot and preserves both directions',async()=>{
  const requests:{offset:number;version?:string}[]=[]
  const data=await loadOrganizationMap(async(offset,version)=>{requests.push({offset,version});return page(offset)})

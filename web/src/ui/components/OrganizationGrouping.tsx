@@ -27,8 +27,8 @@ export function OrganizationGroupingProvider({reference,children}:{reference:str
  const current=state?.reference===reference?state:null
  useEffect(()=>{
   const group=current?.group
-  if(group&&reference!==group.slug&&reference!==group.organizationId&&group.members.includes(reference))navigate(`/orgs/${encodeURIComponent(group.slug)}`,{replace:true,state:location.state})
- },[current,navigate,reference,location.state])
+  if(group&&reference!==group.slug&&reference!==group.organizationId&&group.members.includes(reference))navigate(`/orgs/${encodeURIComponent(group.slug)}${location.search}`,{replace:true,state:location.state})
+ },[current,navigate,reference,location.state,location.search])
  return <Context.Provider value={{reference,group:current?.group||null,ready:!!current,error:current?.error||'',changed:group=>setState({reference,group,error:''})}}>{children}</Context.Provider>
 }
 export function OrganizationGrouping(){

@@ -1,5 +1,7 @@
 import {organizationMap} from './organization-map.mjs'
 import {organizationGroup} from './organization-group.mjs'
+import {organizationFinancialTotals} from './organization-financial-totals.mjs'
+import {organizationEvidenceYear} from './organization-evidence-year.mjs'
 import {fiscalTopology,fiscalMatches} from '../src/features/ecosystem/transaction-time.js'
 import {graphSummary} from './graph-summary.mjs'
 import {graphNeighborhood} from '../src/features/ecosystem/graph-neighborhood.js'
@@ -40,7 +42,6 @@ export async function queryEcosystem(read,section,params){
  if(fy&&fy!=='all'&&!manifest.temporalIndexVersion)throw Error('Fiscal-year indexes are refreshing. Retry shortly.')
  const meta={version,fy:fy||'all',fiscalYears:manifest.fiscalYears||[],dateCoverage:manifest.dateCoverage,generatedAt:manifest.generatedAt,governmentCoverage:manifest.governmentCoverage,marylandBudgetCoverage:manifest.marylandBudgetCoverage,nonprofitCoverage:manifest.nonprofitCoverage,transactionalCoverage:manifest.transactionalCoverage}
  if(section==='organization-map'){
-  if(fy&&fy!=='all')throw Error('Invalid fiscal-year filter for organization map')
   return organizationMap(read,readRows,manifest,params,meta)
  }
  if(section==='organization-group'){
@@ -48,17 +49,18 @@ export async function queryEcosystem(read,section,params){
   return {body:{...meta,organization:group?.organization||null,members:group?.members||[],missingMembers:group?.missingMembers||[]}}
  }
  if(section==='organization-evidence'){
-  if(fy&&fy!=='all')throw Error('Invalid fiscal-year filter for organization evidence')
   const handle=params.get('org');if(!handle||handle.length>300)throw Error('Invalid organization reference')
   const aliases=await read(`${version}/organization-evidence/index.json`)
   if(!Object.hasOwn(aliases,handle))return {body:{...meta,organization:null,parents:[],children:[],groups:[],records:[],total:0,offset:0,nextOffset:null}}
   if(aliases[handle]===null)throw Error('Invalid ambiguous organization reference')
   const position=aliases[handle];if(!Number.isSafeInteger(position)||position<0)throw Error('Invalid evidence index')
-  const {recordIndices,recordKinds,...profile}=params.has('members')?await organizationGroup(read,readRows,manifest,params):manifest.organizationEvidenceIndexVersion===1?(await readRows(read,version,'organization-evidence',[position]))[0]:await read(`${version}/organization-evidence/${position}.json`)
+  const sourceProfile=params.has('members')?await organizationGroup(read,readRows,manifest,params):manifest.organizationEvidenceIndexVersion===1?(await readRows(read,version,'organization-evidence',[position]))[0]:await read(`${version}/organization-evidence/${position}.json`)
+  const {recordIndices,recordKinds,recordFiscalYears,...profile}=await organizationEvidenceYear(read,readRows,manifest,sourceProfile,fy)
   const offset=integer(params,'offset',0,1e7),limit=integer(params,'limit',25,MAX_PAGE);if(!limit)throw Error('Invalid limit')
   const kind=params.get('kind');if(kind&&kind.length>80)throw Error('Invalid evidence filter')
   const ids=kind?(Object.hasOwn(recordKinds,kind)?recordKinds[kind]:[]):recordIndices
-  return {body:{...meta,...profile,records:await readRows(read,version,'relationships',ids.slice(offset,offset+limit)),total:ids.length,offset,nextOffset:offset+limit<ids.length?offset+limit:null}}
+  const financialTotals=await organizationFinancialTotals(read,readRows,manifest,{...profile,recordKinds},fy)
+  return {body:{...meta,...profile,financialTotals,records:await readRows(read,version,'relationships',ids.slice(offset,offset+limit)),total:ids.length,offset,nextOffset:offset+limit<ids.length?offset+limit:null}}
  }
  if(section==='overview')return {body:{...meta,...await read(`${version}/overview.json`)}}
  if(section==='funding'){

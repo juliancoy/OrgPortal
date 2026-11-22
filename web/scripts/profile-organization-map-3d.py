@@ -96,8 +96,14 @@ with sync_playwright() as p:
     page.keyboard.press('Escape')
     # Explicit GC measures retained JS objects, not GPU memory or leak proof.
     def retained():
+        # Request console cleanup before GC. Playwright's isolated-world
+        # selector diagnostics may still retain elements; inspect heap paths.
+        cdp.send('Runtime.discardConsoleEntries')
         cdp.send('HeapProfiler.collectGarbage')
-        return {'heapBytes':metrics()['JSHeapUsedSize'],'dom':cdp.send('Memory.getDOMCounters'),'resources':page.evaluate('profile3d.resources'),'contextLosses':page.evaluate('profile3d.contextLosses')}
+        document=cdp.send('Runtime.evaluate',{'expression':'document','objectGroup':'retention'})['result']['objectId']
+        listeners=cdp.send('DOMDebugger.getEventListeners',{'objectId':document})['listeners']
+        cdp.send('Runtime.releaseObjectGroup',{'objectGroup':'retention'})
+        return {'heapBytes':metrics()['JSHeapUsedSize'],'dom':cdp.send('Memory.getDOMCounters'),'documentKeyboardListeners':sum(e['type'] in ['keydown','keyup'] for e in listeners),'resources':page.evaluate('profile3d.resources'),'contextLosses':page.evaluate('profile3d.contextLosses')}
     initial=retained();heaps=[]
     for _ in range(3):
         page.get_by_label('Map mode',exact=True).select_option('2d')
@@ -105,6 +111,11 @@ with sync_playwright() as p:
         switch();page.wait_for_timeout(300)
         heaps.append(retained())
     result['retention']={'initial':initial,'afterSwitchCycles':heaps,'contextsCreated':page.evaluate('profile3d.contexts')}
+    assert all(h['documentKeyboardListeners']==initial['documentKeyboardListeners'] for h in heaps),'Mode switches retained document keyboard listeners'
+    if os.environ.get('PROFILE_HEAP')=='1':
+        with (out/'retained.heapsnapshot').open('w') as snapshot:
+            cdp.on('HeapProfiler.addHeapSnapshotChunk',lambda event:snapshot.write(event['chunk']))
+            cdp.send('HeapProfiler.takeHeapSnapshot')
     result['requests']=page.evaluate("performance.getEntriesByType('resource').map(e=>({url:e.name,start:e.startTime,ms:e.duration,bytes:e.encodedBodySize}))")
     assert '2,527 adjacent nodes' in result['status'],result['status']
     assert not errors,errors

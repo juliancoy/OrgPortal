@@ -6,12 +6,12 @@ import {marylandAgencyReferences} from './maryland-agency-references.mjs'
 import {projectNativeEvidence} from './unified-ecosystem.mjs'
 import {queryEcosystem} from '../server/ecosystem-query.mjs'
 const fixture=()=>({organizations:[{id:'state',name:'Example state',portalSlug:'example-state'},{id:'department',name:'Department',governmentParentId:'state',governmentClassification:'department',governmentSourceUrl:'https://example.gov/agencies'},{id:'recipient',name:'Recipient'},{id:'heading',name:'Budget heading',governmentParentId:'state',governmentClassification:'budget_heading',entityType:'budget_heading'}],relationships:[{id:'appropriation',source:'state',target:'department',kind:'appropriation',amount:100},{id:'payment',source:'department',target:'recipient',kind:'transfer',amount:20,sourceSystem:'source',sourceDataset:'payments'},{id:'approval',source:'department',target:'recipient',kind:'approval',amount:-10},{id:'grant',source:'state',target:'recipient',kind:'grant',amount:30}],financing:[]})
-test('generic hierarchy includes complete structural entries, not funding recipients; records stay at the agency',()=>{
+test('generic hierarchy rolls up documented children, not funding recipients; original agencies retain their records',()=>{
  const data=fixture(),profiles=organizationEvidenceProfiles(data),state=profiles.entries[profiles.aliases['example-state']],department=profiles.entries[profiles.aliases.department]
  assert.deepEqual(state.children.map(x=>x.id),['heading','department'])
  assert.deepEqual(department.parents.map(x=>x.id),['state'])
  assert.equal(state.children.find(x=>x.id==='department').recordCount,3)
- assert.deepEqual(state.recordIndices,[0,3]);assert.deepEqual(department.recordIndices,[0,1,2])
+ assert.deepEqual(state.recordIndices,[0,1,2,3]);assert.deepEqual(department.recordIndices,[0,1,2])
  assert.equal(department.groups.find(x=>x.kind==='approval').count,1)
  assert.equal(state.children.some(x=>x.id==='recipient'),false)
 })
@@ -59,5 +59,5 @@ test('public evidence endpoint resolves slug and ID, paginates, filters, and pin
  assert.equal((await queryEcosystem(read,'organization-evidence',new URLSearchParams({org:'missing'}))).body.organization,null)
  assert.equal((await queryEcosystem(read,'organization-evidence',new URLSearchParams({org:'state',version:'old'}))).status,409)
  await assert.rejects(queryEcosystem(read,'organization-evidence',new URLSearchParams({org:'state',limit:'101'})),/Invalid limit/)
- await assert.rejects(queryEcosystem(read,'organization-evidence',new URLSearchParams({org:'state',fy:'2027'})),/Invalid fiscal-year/)
+ assert.equal((await queryEcosystem(read,'organization-evidence',new URLSearchParams({org:'state',fy:'2027'}))).body.total,0)
 })

@@ -31,6 +31,17 @@ test('a single map page reads only its visible organization detail shards',async
  assert.equal(body.organizations.length,2)
  assert(calls.filter(key=>/\/organizations\/\d+\.json$/.test(key)).length<=2,'hidden detail shards must remain lazy')
 })
+test('node volume uses the master financial metric, preserving missing and zero without summing pair counts',async()=>{
+ const f=fixture()
+ f.organizations.find(n=>n.id==='a').networkMetrics.amount=123456
+ f.organizations.find(n=>n.id==='b').networkMetrics.amount=0
+ f.organizations.find(n=>n.id==='d').networkMetrics.amount=-5
+ const {body}=await query(f.read)
+ assert.equal(body.organizations.find(n=>n.id==='a').financialAmount,123456)
+ assert.equal(body.organizations.find(n=>n.id==='b').financialAmount,0)
+ assert.equal(body.organizations.find(n=>n.id==='d').financialAmount,null)
+ assert.equal(body.organizations.find(n=>n.id==='g0').financialAmount,null)
+})
 test('reciprocal links and repeated records retain separate directions, with compressed endpoint IDs',async()=>{
  const f=fixture();f.topology.nodeIds=f.organizations.map(o=>o.id)
  f.topology.edges.push(['b','a','transfer'],['a','b','approval'],['b','b','transfer']);f.topology.edgesByOrg.b.push(4,5,6)

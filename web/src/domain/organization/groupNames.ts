@@ -19,12 +19,14 @@ const limit = 28
 export function abbreviateBoardLabel(name: string): string {
   return name.replace(/\bBoard\s+of\s+Directors\b/gi, 'BD')
     .replace(/\bBoard\s+of\s+Trustees\b/gi, 'BT')
+    .replace(/\bUniversity\s+of\s+Maryland\b/gi, 'UMD')
+    .replace(/\bMaryland\b/gi, 'MD')
 }
 
 /** Compact display aliases only; never use these to identify or merge groups. */
 export function shortGroupName(name: string): string {
   const full = abbreviateBoardLabel(name).replace(/\s+/g, ' ').trim()
-  const key = normalize(full)
+  const key = normalize(name)
   const alias = Object.hasOwn(aliases, key) ? aliases[key] : undefined
   if (alias) return alias
   if (full.length <= limit) return full

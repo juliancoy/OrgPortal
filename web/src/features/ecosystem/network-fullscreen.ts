@@ -14,7 +14,7 @@ export function mountNetworkFullscreen(host: HTMLElement) {
   const sync = () => {
     const fullscreen = active()
     host.classList.toggle('eco-fullscreen', fullscreen)
-    const canvasArea = host.querySelector('#network-canvas, .eco-practice-view') || host
+    const canvasArea = host.querySelector('#network-canvas, .eco-practice-view, .organization-ecomap-stage') || host
     if (fullscreenButton.parentElement !== canvasArea) canvasArea.append(fullscreenButton)
     host.querySelectorAll<HTMLButtonElement>(buttonSelector).forEach(button => {
       const label = fullscreen ? 'Exit fullscreen' : 'Fullscreen'
@@ -60,11 +60,9 @@ export function mountNetworkFullscreen(host: HTMLElement) {
     if (event.target instanceof Element && event.target.closest(buttonSelector)) void toggle()
   }
   const keydown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape' && expanded) {
+    if (event.key === 'Escape' && active()) {
       event.preventDefault()
-      expanded = false
-      sync()
-      restoreFocus()
+      void toggle()
     }
   }
   host.addEventListener('click', click)

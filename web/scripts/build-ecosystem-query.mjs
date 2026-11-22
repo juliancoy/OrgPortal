@@ -1,4 +1,4 @@
-import {organizationEvidenceProfiles} from './organization-evidence.mjs'
+import {organizationEvidenceProfiles,consolidatedFinancialMetrics} from './organization-evidence.mjs'
 import {replaceDirectory} from './release-cache.mjs'
 import {transactionTime,dateCoverage} from '../src/features/ecosystem/transaction-time.js'
 import {fiscalMetrics} from './fiscal-metrics.mjs'
@@ -27,6 +27,7 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
  const sourceFolder=new URL('src/features/ecosystem/',root)
  for(const name of (await readdir(sourceFolder)).filter(n=>/\.(?:js|ts|json)$/.test(n)).sort())hash.update(await readFile(new URL(name,sourceFolder)))
  for(const name of ['organization-evidence.mjs','source-agency-references.mjs','maryland-agency-references.mjs','unified-ecosystem.mjs'])hash.update(await readFile(new URL(name,import.meta.url)));
+ hash.update(await readFile(new URL('server/organization-financial-totals.mjs',root)))
  hash.update(await readFile(new URL(import.meta.url)));hash.update(await readFile(new URL('server/ecosystem-query.mjs',root)))
  const version=hash.digest('hex').slice(0,24),folder=new URL('public/ecosystem-data/query/',root)
  try{const previous=JSON.parse(await readFile(new URL('manifest.json',folder),'utf8'));if(previous.version===version&&process.env.ORGPORTAL_REBUILD_ECOSYSTEM!=='1')return previous}catch{}
@@ -52,8 +53,10 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
  }
  const budgets=budgetAppropriations(folded.organizations,edges)
  const counts=transactionCounts(edges)
+ const profiles=organizationEvidenceProfiles(data),profilesById=new Map(profiles.entries.map(profile=>[profile.organization.id,profile]))
  const organizations=folded.organizations.map(o=>({...o,sourceRows:undefined,publicEmails:undefined,positions:positions.organizations?.[o.id],networkMetrics:{budgetAppropriations:budgets.get(o.id),pie:compactPie(summaries.pies.get(o.id)),contextPie:compactPie(contextPies.get(o.id)),totals:summaries.totals.get(o.id),counterparties:summaries.counterparties.get(o.id),obligations:summaries.obligationIds.has(o.id),incoming:analysis.incoming.get(o.id),outgoing:analysis.outgoing.get(o.id),amount:amounts.get(o.id),connections:analysis.adjacency.get(o.id)?.size||0,recordCount:counts.get(o.id)||0}})).sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id))
 
+ for(const org of organizations)Object.assign(org.networkMetrics,consolidatedFinancialMetrics(profilesById.get(org.id)))
  await mkdir(folder,{recursive:true})
  const temp=new URL('file://'+(await mkdtemp(fileURLToPath(new URL(`.${version}-`,folder))))+'/'),target=new URL(`${version}/`,folder)
  await mkdir(temp,{recursive:true})
@@ -89,7 +92,6 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
   for(let i=0;i<16;i++)await write(`${name}/grams-${i}.json`,buckets[i])
   for(let start=0;start<records.length;start+=PAGE_SIZE)await write(`${name}/${Math.floor(start/PAGE_SIZE)}.json`,records.slice(start,start+PAGE_SIZE))
  }
- const profiles=organizationEvidenceProfiles(data)
  await write('organization-evidence/index.json',profiles.aliases)
  for(let index=0;index<profiles.entries.length;index+=PAGE_SIZE)await write(`organization-evidence/${index/PAGE_SIZE}.json`,profiles.entries.slice(index,index+PAGE_SIZE))
  const relational=r=>({id:r.id,search:[r.sourceLabel,r.targetLabel,r.type,r.kind,r.date].filter(Boolean).join(' '),date:r.date,filters:{org:[r.source,r.target],kind:[r.kind||r.relationship]}})
@@ -107,7 +109,7 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
  const research=data.fundingResearch||{rounds:[]}
  await write('funding.json',{organizations:data.organizations.filter(o=>o.category==='company').map(({id,name,category})=>({id,name,category})),financing:data.financing.filter(r=>r.kind==='transfer'&&(fundingStage(r.type)||r.type==='Financing round (stage undisclosed)')),research:research.rounds})
  const fiscalYears=[...new Set(data.relationships.map(row=>row.fiscalYear).filter(Boolean))].sort()
- for(const year of [...fiscalYears,'unassigned']){const metrics=fiscalMetrics(data,String(year),compactPie);for(let offset=0;offset<organizations.length;offset+=100)await write(`fiscal/${year}/metrics/${offset/100}.json`,organizations.slice(offset,offset+100).map(org=>metrics.get(org.id)||{}))}
+ for(const year of [...fiscalYears,'unassigned']){const metrics=fiscalMetrics(data,String(year),compactPie);for(let offset=0;offset<organizations.length;offset+=100)await write(`fiscal/${year}/metrics/${offset/100}.json`,organizations.slice(offset,offset+100).map(org=>({...metrics.get(org.id),...consolidatedFinancialMetrics(profilesById.get(org.id),String(year))})))}
  const topology={adjacency:Object.fromEntries([...analysis.adjacency].map(([id,neighbors])=>[id,[...neighbors].sort()])),degree:Object.fromEntries([...analysis.adjacency].map(([id,neighbors])=>[id,neighbors.size])),edges:edges.map(e=>[e.source,e.target,e.kind,e.date,e.fiscalYear||null]),edgesByOrg:{}}
  edges.forEach((e,i)=>{for(const id of new Set([e.source,e.target]))(topology.edgesByOrg[id]??=[]).push(i)})
  const located=organizations.filter(o=>geographicPoint(o)),geoGroups=new Map()

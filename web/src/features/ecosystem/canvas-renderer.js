@@ -1,4 +1,5 @@
 import {edgeArrowGeometry} from './edge-arrows.js'
+import {paintSphereTitle} from './sphere-title-text.js'
 // The default graph uses batched 2D paths: no per-edge GPU meshes or raycast tubes.
 import { curvePoints } from './webgpu-renderer.js'
 const cssColor = color => typeof color === 'string' ? color : `#${color.toString(16).padStart(6, '0')}`
@@ -6,10 +7,11 @@ export function createNetworkCanvas(canvas) {
  const context = canvas.getContext('2d')
  if (!context) throw new Error('The network canvas is unavailable.')
  const edgePaths=new Map(),nodePaths=new Map()
- let strokes = [], arrows = [], disks = [], disposed = false
+ let strokes = [], arrows = [], disks = [], titles=[], disposed = false
  const circle = (path, x, y, radius) => { path.moveTo(x + radius, y); path.arc(x, y, radius, 0, Math.PI * 2) }
  return {
   update(nodes, edges, visible, visibleEdges, selected, colors, edgeColor,updated=null) {
+   titles=nodes.filter(n=>visible.has(n.id)&&n.sphereTitle)
    if(!updated){edgePaths.clear();nodePaths.clear()}
    for(const edge of edges){
     if(!visibleEdges.has(edge.id)||(updated&&!updated.has(edge.source.id)&&!updated.has(edge.target.id)))continue
@@ -25,7 +27,8 @@ export function createNetworkCanvas(canvas) {
    }
    for(const n of nodes){
     if(!visible.has(n.id)||(updated&&!updated.has(n.id)))continue
-    const color=cssColor(n.id===selected?0xe56d3c:colors[n.category]??0x77878c)+(n.opacity<1?Math.round(n.opacity*255).toString(16).padStart(2,'0'):''),path=new Path2D(),pieces=[[color,path]]
+    const color=cssColor(n.volumeColor??(n.id===selected?0xe56d3c:colors[n.category]??0x77878c))+(n.opacity<1?Math.round(n.opacity*255).toString(16).padStart(2,'0'):''),path=new Path2D(),pieces=[[color,path]]
+    if(n.volumeColor!==undefined&&n.id===selected){const outline=new Path2D();circle(outline,n.x,n.y,n.renderRadius+2);pieces.unshift(['#57c7ff',outline])}
     circle(path,n.x,n.y,n.renderRadius+(n.financialPie?n.id===selected?2:1:0))
     for(const slice of n.financialPie?.slices||[]){const path=new Path2D();path.moveTo(n.x,n.y);path.arc(n.x,n.y,n.renderRadius,slice.startAngle,slice.endAngle);path.closePath();pieces.push([slice.color,path])}
     nodePaths.set(n.id,pieces)
@@ -49,6 +52,13 @@ export function createNetworkCanvas(canvas) {
    for (const {color, path, opacity} of arrows) { context.globalAlpha=Math.max(.55,opacity); context.fillStyle=color; context.fill(path) }
    context.globalAlpha = 1
    for (const [color, path] of disks) { context.fillStyle=color; context.fill(path) }
+   let count=0
+   for(const node of titles){
+    if(node.x+node.renderRadius<view.x||node.x-node.renderRadius>view.x+view.w||node.y+node.renderRadius<view.y||node.y-node.renderRadius>view.y+view.h||node.renderRadius*canvas.width/view.w<7)continue
+    context.save();context.globalAlpha=node.opacity??1;context.beginPath();context.arc(node.x,node.y,node.renderRadius,0,Math.PI*2);context.clip()
+    paintSphereTitle(context,node.sphereTitle,node.x,node.y,node.renderRadius*1.65,node.renderRadius*1.3);context.restore();count++
+   }
+   canvas.dataset.sphereTitles=String(count)
   },
   resize(width, height, pixelRatio = 1) {
    // Bound backing-store pixels even on tall/high-DPI viewports.
@@ -57,7 +67,7 @@ export function createNetworkCanvas(canvas) {
    if (canvas.width !== w) canvas.width=w
    if (canvas.height !== h) canvas.height=h
   },
-  dispose() { edgePaths.clear();nodePaths.clear();disposed=true; strokes=[]; arrows=[]; disks=[]; canvas.width=canvas.height=1 },
+  dispose() { edgePaths.clear();nodePaths.clear();disposed=true; strokes=[]; arrows=[]; disks=[]; titles=[];canvas.width=canvas.height=1 },
  }
 }
 

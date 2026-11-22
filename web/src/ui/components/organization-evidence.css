@@ -14,3 +14,14 @@
 .organization-evidence-list p { margin:.5rem 0; }
 @media(max-width:600px) { .organization-evidence { padding:.85rem; } .organization-evidence-members li { align-items:flex-start; flex-direction:column; gap:.5rem; } }
 .organization-evidence-selection { scroll-margin-top:6rem; outline-offset:.5rem; }
+.organization-financial-totals { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin:0 0 1rem; }
+.organization-financial-totals > div { padding:1rem; border:1px solid var(--border); border-radius:10px; min-width:0; }
+.organization-financial-totals > [data-direction='received'] { background:#ecfdf3; border-color:#86cfa5; color:#166534; }
+.organization-financial-totals > [data-direction='disbursed'] { background:#fff1f2; border-color:#f3a6ad; color:#9f1239; }
+[data-theme='dark'] .organization-financial-totals > [data-direction='received'] { background:#12382a; border-color:#32875d; color:#a7f3c4; }
+[data-theme='dark'] .organization-financial-totals > [data-direction='disbursed'] { background:#451e29; border-color:#b95870; color:#fecdd3; }
+.organization-financial-totals dt { font-size:1rem; font-weight:600; }
+.organization-financial-totals dd { margin:.5rem 0 0; font-size:clamp(1.15rem,2.3vw,1.65rem); font-weight:700; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.organization-financial-totals dd span { display:block; }
+.organization-financial-summary > p { max-width:80ch; }
+@media(max-width:600px) { .organization-financial-totals { grid-template-columns:1fr; } }

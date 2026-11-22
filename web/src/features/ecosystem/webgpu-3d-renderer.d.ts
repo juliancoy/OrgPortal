@@ -1,12 +1,14 @@
 import type {CanvasNode,CanvasEdge} from './canvas-renderer.js'
 export type CameraView={offset:number[];up:number[];referenceDistance:number;minDistance:number;maxDistance:number}
-export type SpatialNode=CanvasNode&{z?:number}
+export type SpatialNode=CanvasNode&{z?:number;volumeColor?:number}
+export type ProjectedNode={x:number;y:number;visible:boolean;depth:number}
 export type Network3DRenderer={
  backend:string
  update(nodes:SpatialNode[],edges:CanvasEdge[],visible:Set<string>,visibleEdges:Set<string>,selected:string,colors:Record<string,number>,edgeColor:(edge:CanvasEdge)=>number):void
  render():boolean
  resize(width:number,height:number):void
- project(node:SpatialNode):{x:number;y:number;visible:boolean;depth:number}
+ project(node:SpatialNode,target?:ProjectedNode):ProjectedNode
+ adapt(milliseconds:number,minimumFPS?:number):void
  fit(nodes:SpatialNode[]):void
  focus(node:SpatialNode,immediate?:boolean):void
  stopFocus():void
@@ -17,4 +19,4 @@ export type Network3DRenderer={
  cameraPosition():{x:number;y:number;z:number}
  dispose():void
 }
-export function createNetworkGPU3D(canvas:HTMLCanvasElement,onLost:(message:string)=>void,changed:()=>void,dimension?:string,movementSpeed?:()=>number,moveFourth?:(delta:number[])=>void,orbitSelected?:()=>boolean,options?:{forceWebGL?:boolean}):Promise<Network3DRenderer>
+export function createNetworkGPU3D(canvas:HTMLCanvasElement,onLost:(message:string)=>void,changed:()=>void,dimension?:string,movementSpeed?:()=>number,moveFourth?:(delta:number[])=>void,orbitSelected?:()=>boolean,options?:{forceWebGL?:boolean;adaptiveDetail?:boolean}):Promise<Network3DRenderer>
