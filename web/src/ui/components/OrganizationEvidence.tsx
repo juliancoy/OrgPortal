@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useEcosystemQuery, type QueryMeta } from '../../features/ecosystem/ecosystemApi'
 import './organization-evidence.css'
+import {useGroupingMembers} from './OrganizationGrouping'
 
 type RelatedOrganization = {id:string; name:string; slug:string|null; classification:string; recordCount:number; sourceUrl?:string}
 type Evidence = {id:string; sourceLabel:string; targetLabel:string; kind:string; amount:number|null; currency:string|null; amountLabel?:string; date?:string; fiscalYear?:number; sourceUrl?:string; description?:string; notes?:string; sourceSystem?:string; sourceDataset?:string; agencyAttachment?:{method:string}; sourceAgency?:{label:string;code:string}}
@@ -9,9 +10,9 @@ type Report = QueryMeta & {organization:RelatedOrganization|null; parents:Relate
 const labels:Record<string,string> = {transfer:'Reported payments / transfers',approval:'Approval observations',appropriation:'Budget appropriations',agency:'Organizational listings',affiliation:'Affiliations',terms:'Program terms',obligation:'Obligations'}
 const safeSourceUrl=(value?:string)=>{try{const url=new URL(value||'');return ['http:','https:'].includes(url.protocol)?url.href:undefined}catch{return undefined}}
 const classificationLabels:Record<string,string> = {department:'Departments',agency:'Agencies, offices and branches',budget_heading:'Budget headings',organization:'Related organizations'}
-function EvidenceRecords({handle}:{handle:string}) {
+function EvidenceRecords({handle,members}:{handle:string;members?:string}) {
  const [offset,setOffset]=useState(0),[kind,setKind]=useState('')
- const {data,error}=useEcosystemQuery<Report>('organization-evidence',{org:handle,offset,kind,limit:25})
+ const {data,error}=useEcosystemQuery<Report>('organization-evidence',{org:handle,members,offset,kind,limit:25})
  if(error)return <p role="alert">Unable to load organization evidence: {error} <button onClick={()=>window.location.reload()}>Reload</button></p>
  if(!data)return <p role="status">Loading organization evidence…</p>
  if(!data.organization)return null
@@ -32,7 +33,8 @@ function EvidenceRecords({handle}:{handle:string}) {
  </section>
 }
 export function OrganizationEvidence({slug}:{slug:string}) {
- const {data,error}=useEcosystemQuery<Report>('organization-evidence',{org:slug,limit:1})
+ const members=useGroupingMembers(slug)
+ const {data,error}=useEcosystemQuery<Report>('organization-evidence',{org:slug,members,limit:1})
  const [selected,setSelected]=useState<string|null>(null),[showRecords,setShowRecords]=useState(false)
  const recordsRef=useRef<HTMLDivElement>(null)
  useEffect(()=>{if(showRecords){recordsRef.current?.scrollIntoView({block:'start'});recordsRef.current?.focus({preventScroll:true})}},[selected,showRecords])
@@ -47,7 +49,7 @@ export function OrganizationEvidence({slug}:{slug:string}) {
    {[...groups].sort(([a],[b])=>['department','agency','organization','budget_heading'].indexOf(a)-['department','agency','organization','budget_heading'].indexOf(b)).map(([classification,members])=><details key={classification} open={classification==='department'}><summary>{classificationLabels[classification]||classification} ({members.length})</summary><ul className="organization-evidence-members">{members.map(member=><li key={member.id}><span>{member.slug?<Link to={`/orgs/${encodeURIComponent(member.slug)}`}>{member.name}</Link>:member.name}</span><button onClick={()=>{setSelected(member.id);setShowRecords(true)}} aria-label={`View evidence for ${member.name}`}>View evidence ({member.recordCount.toLocaleString()})</button></li>)}</ul></details>)}
   </>}
   <div className="organization-evidence-actions"><button onClick={()=>{setSelected(null);setShowRecords(true)}}>View {data.organization.name} evidence ({data.organization.recordCount.toLocaleString()})</button>{showRecords&&<button onClick={()=>setShowRecords(false)}>Hide records</button>}</div>
-  {showRecords&&current&&<div ref={recordsRef} tabIndex={-1} className="organization-evidence-selection"><EvidenceRecords key={current.id} handle={current.id}/><button onClick={()=>setShowRecords(false)}>Hide records</button></div>}
+  {showRecords&&current&&<div ref={recordsRef} tabIndex={-1} className="organization-evidence-selection"><EvidenceRecords key={current.id+(members||'')} handle={current.id} members={selected?undefined:members}/><button onClick={()=>setShowRecords(false)}>Hide records</button></div>}
   <p className="muted">Evidence snapshot: {new Date(data.generatedAt).toLocaleString()}. Source labels without reviewed identity links remain separate.</p>
  </section>
 }

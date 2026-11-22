@@ -1,4 +1,5 @@
 import {organizationMap} from './organization-map.mjs'
+import {organizationGroup} from './organization-group.mjs'
 import {fiscalTopology,fiscalMatches} from '../src/features/ecosystem/transaction-time.js'
 import {graphSummary} from './graph-summary.mjs'
 import {graphNeighborhood} from '../src/features/ecosystem/graph-neighborhood.js'
@@ -42,6 +43,10 @@ export async function queryEcosystem(read,section,params){
   if(fy&&fy!=='all')throw Error('Invalid fiscal-year filter for organization map')
   return organizationMap(read,readRows,manifest,params,meta)
  }
+ if(section==='organization-group'){
+  const group=await organizationGroup(read,readRows,manifest,params)
+  return {body:{...meta,organization:group?.organization||null,members:group?.members||[],missingMembers:group?.missingMembers||[]}}
+ }
  if(section==='organization-evidence'){
   if(fy&&fy!=='all')throw Error('Invalid fiscal-year filter for organization evidence')
   const handle=params.get('org');if(!handle||handle.length>300)throw Error('Invalid organization reference')
@@ -49,7 +54,7 @@ export async function queryEcosystem(read,section,params){
   if(!Object.hasOwn(aliases,handle))return {body:{...meta,organization:null,parents:[],children:[],groups:[],records:[],total:0,offset:0,nextOffset:null}}
   if(aliases[handle]===null)throw Error('Invalid ambiguous organization reference')
   const position=aliases[handle];if(!Number.isSafeInteger(position)||position<0)throw Error('Invalid evidence index')
-  const {recordIndices,recordKinds,...profile}=manifest.organizationEvidenceIndexVersion===1?(await readRows(read,version,'organization-evidence',[position]))[0]:await read(`${version}/organization-evidence/${position}.json`)
+  const {recordIndices,recordKinds,...profile}=params.has('members')?await organizationGroup(read,readRows,manifest,params):manifest.organizationEvidenceIndexVersion===1?(await readRows(read,version,'organization-evidence',[position]))[0]:await read(`${version}/organization-evidence/${position}.json`)
   const offset=integer(params,'offset',0,1e7),limit=integer(params,'limit',25,MAX_PAGE);if(!limit)throw Error('Invalid limit')
   const kind=params.get('kind');if(kind&&kind.length>80)throw Error('Invalid evidence filter')
   const ids=kind?(Object.hasOwn(recordKinds,kind)?recordKinds[kind]:[]):recordIndices

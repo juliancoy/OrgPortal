@@ -48,7 +48,10 @@ export default defineConfig(({ command }) => ({
     watch: {
       usePolling: process.env.CHOKIDAR_USEPOLLING === '1',
       interval: Number(process.env.CHOKIDAR_INTERVAL || 200),
-      ignored: ['**/dist/**', '**/playwright-report/**', '**/test-results/**', '**/public/test-status.json*'],
+      // Immutable query shards are served on demand. Watching tens of thousands
+      // of them every 200ms consumes CPU even with no browser connected. The API
+      // reads the atomically replaced manifest on each request for freshness.
+      ignored: ['**/dist/**', '**/playwright-report/**', '**/test-results/**', '**/public/test-status.json*', '**/public/ecosystem-data/query/**'],
     },
     proxy: {
       ...(chatApiOrigin ? { '/api/chat': { target: chatApiOrigin, changeOrigin: true, xfwd: true, ws: true, rewrite: (path: string) => path.replace(/^\/api\/chat/, '') } } : {}),
