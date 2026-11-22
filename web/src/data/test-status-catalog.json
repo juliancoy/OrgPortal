@@ -1349,6 +1349,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-organization-evidence-groups-test-ts",
+      "label": "org-worker/test/organization-evidence-groups.test.ts",
+      "category": "Organizations and membership",
+      "source": "org-worker/test/organization-evidence-groups.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-evidence-groups.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-organization-evidence-import-test-ts",
       "label": "org-worker/test/organization-evidence-import.test.ts",
       "category": "Organizations and membership",
@@ -1592,6 +1606,10 @@
       "source": "org-worker/test/organization-replication.test.ts",
       "kind": "node",
       "cases": [
+        {
+          "id": "public grouping additions and removals replicate, including empty anchors; other identity mappings stay private",
+          "label": "public grouping additions and removals replicate, including empty anchors; other identity mappings stay private"
+        },
         {
           "id": "snapshot covers every org, excludes identities, ETag unchanged checks transfer no body",
           "label": "snapshot covers every org, excludes identities, ETag unchanged checks transfer no body"
@@ -3205,6 +3223,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-grouping-py",
+      "label": "web/scripts/test-local-organization-grouping.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-grouping.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-grouping.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-map-continuity-py",
       "label": "web/scripts/test-local-organization-map-continuity.py",
       "category": "Organizations and membership",
@@ -3635,6 +3667,20 @@
         {
           "id": "suite",
           "label": "review.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-server-organization-group-test-mjs",
+      "label": "web/server/organization-group.test.mjs",
+      "category": "Organizations and membership",
+      "source": "web/server/organization-group.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-group.test.mjs"
         }
       ]
     },
