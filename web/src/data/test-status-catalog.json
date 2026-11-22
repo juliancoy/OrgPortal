@@ -2831,6 +2831,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-spatial-detail-test-mjs",
+      "label": "web/scripts/spatial-detail.test.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/spatial-detail.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "spatial-detail.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-sphere-pies-test-mjs",
       "label": "web/scripts/sphere-pies.test.mjs",
       "category": "Ecosystem and data",
@@ -2841,6 +2855,20 @@
         {
           "id": "suite",
           "label": "sphere-pies.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-sphere-titles-test-mjs",
+      "label": "web/scripts/sphere-titles.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/sphere-titles.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "sphere-titles.test.mjs"
         }
       ]
     },
@@ -3167,6 +3195,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-3d-gravity-py",
+      "label": "web/scripts/test-local-organization-3d-gravity.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-3d-gravity.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-3d-gravity.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-board-py",
       "label": "web/scripts/test-local-organization-board.py",
       "category": "Organizations and membership",
@@ -3237,6 +3279,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-hidden-parent-py",
+      "label": "web/scripts/test-local-organization-hidden-parent.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-hidden-parent.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-hidden-parent.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-map-continuity-py",
       "label": "web/scripts/test-local-organization-map-continuity.py",
       "category": "Organizations and membership",
@@ -3251,6 +3307,34 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-map-fullscreen-py",
+      "label": "web/scripts/test-local-organization-map-fullscreen.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-map-fullscreen.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-map-fullscreen.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-map-layout-py",
+      "label": "web/scripts/test-local-organization-map-layout.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-map-layout.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-map-layout.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-map-navigation-py",
       "label": "web/scripts/test-local-organization-map-navigation.py",
       "category": "Organizations and membership",
@@ -3261,6 +3345,62 @@
         {
           "id": "suite",
           "label": "test-local-organization-map-navigation.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-map-node-visibility-py",
+      "label": "web/scripts/test-local-organization-map-node-visibility.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-map-node-visibility.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-map-node-visibility.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-map-parent-py",
+      "label": "web/scripts/test-local-organization-map-parent.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-map-parent.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-map-parent.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-map-sizing-py",
+      "label": "web/scripts/test-local-organization-map-sizing.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-map-sizing.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-map-sizing.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-map-volume-py",
+      "label": "web/scripts/test-local-organization-map-volume.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-map-volume.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-map-volume.py"
         }
       ]
     },
@@ -3307,6 +3447,34 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-rollup-py",
+      "label": "web/scripts/test-local-organization-rollup.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-rollup.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-rollup.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-sphere-titles-py",
+      "label": "web/scripts/test-local-organization-sphere-titles.py",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/test-local-organization-sphere-titles.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-sphere-titles.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-views-py",
       "label": "web/scripts/test-local-organization-views.py",
       "category": "Organizations and membership",
@@ -3317,6 +3485,20 @@
         {
           "id": "suite",
           "label": "test-local-organization-views.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-year-py",
+      "label": "web/scripts/test-local-organization-year.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-year.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-year.py"
         }
       ]
     },
@@ -3685,6 +3867,20 @@
       ]
     },
     {
+      "id": "suite-web-server-organization-financial-totals-test-mjs",
+      "label": "web/server/organization-financial-totals.test.mjs",
+      "category": "Organizations and membership",
+      "source": "web/server/organization-financial-totals.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-financial-totals.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-server-organization-group-test-mjs",
       "label": "web/server/organization-group.test.mjs",
       "category": "Organizations and membership",
@@ -3695,6 +3891,34 @@
         {
           "id": "suite",
           "label": "organization-group.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-server-organization-rollup-test-mjs",
+      "label": "web/server/organization-rollup.test.mjs",
+      "category": "Organizations and membership",
+      "source": "web/server/organization-rollup.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-rollup.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-server-organization-year-test-mjs",
+      "label": "web/server/organization-year.test.mjs",
+      "category": "Organizations and membership",
+      "source": "web/server/organization-year.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organization-year.test.mjs"
         }
       ]
     },
@@ -4343,6 +4567,48 @@
       ]
     },
     {
+      "id": "suite-web-src-features-ecosystem-organizationMapLayoutClient-test-ts",
+      "label": "web/src/features/ecosystem/organizationMapLayoutClient.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/organizationMapLayoutClient.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationMapLayoutClient.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-organizationMapNavigation-test-ts",
+      "label": "web/src/features/ecosystem/organizationMapNavigation.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/organizationMapNavigation.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationMapNavigation.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-organizationYear-test-ts",
+      "label": "web/src/features/ecosystem/organizationYear.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/organizationYear.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationYear.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-features-ecosystem-performance-test-ts",
       "label": "web/src/features/ecosystem/performance.test.ts",
       "category": "Ecosystem and data",
@@ -4395,6 +4661,20 @@
         {
           "id": "suite",
           "label": "readEvidenceResponse.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-volume-color-test-ts",
+      "label": "web/src/features/ecosystem/volume-color.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/volume-color.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "volume-color.test.ts"
         }
       ]
     },
@@ -4745,6 +5025,20 @@
         {
           "id": "suite",
           "label": "OrganizationAvatar.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-OrganizationFinancialTotals-test-tsx",
+      "label": "web/src/ui/components/OrganizationFinancialTotals.test.tsx",
+      "category": "Organizations and membership",
+      "source": "web/src/ui/components/OrganizationFinancialTotals.test.tsx",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "OrganizationFinancialTotals.test.tsx"
         }
       ]
     },
