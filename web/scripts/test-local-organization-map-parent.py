@@ -48,8 +48,9 @@ with sync_playwright() as p:
   canvas=page.locator('.organization-ecomap canvas');box=canvas.bounding_box()
   canvas.click(position={'x':box['width']/2,'y':box['height']/2})
   ready(mode,'parent-large');same_canvas()
-  # Selecting a different node retains ordinary direct navigation.
-  label('Selected recipient').click();ready(mode,'parent-selected')
+  # Crowded labels can be omitted after recentering; search still selects any neighbor.
+  page.get_by_label('Find a node').fill('Selected recipient')
+  page.locator('.organization-ecomap-search').get_by_role('button',name='Selected recipient',exact=True).click();ready(mode,'parent-selected')
   page.get_by_label('Find a node').fill('Small parent')
   page.locator('.organization-ecomap-search').get_by_role('button',name='Small parent',exact=True).click()
   ready(mode,'parent-small');same_canvas()

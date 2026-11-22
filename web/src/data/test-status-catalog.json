@@ -3391,6 +3391,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-map-touch-py",
+      "label": "web/scripts/test-local-organization-map-touch.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-map-touch.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-map-touch.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-map-volume-py",
       "label": "web/scripts/test-local-organization-map-volume.py",
       "category": "Organizations and membership",

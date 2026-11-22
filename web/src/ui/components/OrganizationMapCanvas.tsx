@@ -133,17 +133,21 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    const node=id===data.anchor?largestOrganizationParent(data):byId.get(id);if(!node)return
    select.current(node,{viewportTop:element.getBoundingClientRect().top,mode,titlePlacement:titlePlacementRef.current,colorScheme:colorSchemeRef.current,navigation:navigationRef.current,speed:speedRef.current,...(gpu?{camera:gpu.cameraView()}:{planarWidth:view.w})})
   }
-  let drag:{id:number;x:number;y:number;view:CanvasView}|null=null
-  const down=(event:PointerEvent)=>{if(event.button!==0||!event.isPrimary)return;finishTransition();surface.focus({preventScroll:true});drag={id:event.pointerId,x:event.clientX,y:event.clientY,view:{...view}};if(!spatial)surface.setPointerCapture(event.pointerId)}
-  const move=(event:PointerEvent)=>{if(!drag||spatial||event.pointerId!==drag.id)return;view={...drag.view,x:drag.view.x-(event.clientX-drag.x)*drag.view.w/width,y:drag.view.y-(event.clientY-drag.y)*drag.view.h/height};schedule()}
-  const cancel=()=>{drag=null}
+  const pointers=new Set<number>()
+  let drag:{id:number;x:number;y:number;slop:number;moved:boolean;view:CanvasView}|null=null
+  const down=(event:PointerEvent)=>{pointers.add(event.pointerId);if(pointers.size>1){drag=null;return}if(event.button!==0||!event.isPrimary)return;finishTransition();surface.focus({preventScroll:true});drag={id:event.pointerId,x:event.clientX,y:event.clientY,slop:event.pointerType==='touch'?12:6,moved:false,view:{...view}};if(!spatial)surface.setPointerCapture(event.pointerId)}
+  const move=(event:PointerEvent)=>{if(!drag||event.pointerId!==drag.id)return;drag.moved ||= Math.hypot(event.clientX-drag.x,event.clientY-drag.y)>=drag.slop;if(spatial||!drag.moved)return;view={...drag.view,x:drag.view.x-(event.clientX-drag.x)*drag.view.w/width,y:drag.view.y-(event.clientY-drag.y)*drag.view.h/height};schedule()}
+  const cancel=(event:PointerEvent)=>{pointers.delete(event.pointerId);if(event.pointerId===drag?.id)drag=null}
   const up=(event:PointerEvent)=>{
+   pointers.delete(event.pointerId)
    if(!drag||event.pointerId!==drag.id)return
-   const click=Math.hypot(event.clientX-drag.x,event.clientY-drag.y)<6;drag=null
+   const click=!drag.moved&&Math.hypot(event.clientX-drag.x,event.clientY-drag.y)<drag.slop
+   // Pick where the finger landed, before the small movement of a normal tap.
+   const hit={clientX:drag.x,clientY:drag.y,pointerType:event.pointerType};drag=null
    if(!spatial&&surface.hasPointerCapture(event.pointerId))surface.releasePointerCapture(event.pointerId)
    if(!click)return
-   if(gpu){const node=gpu.hit(event).node;if(node)focus(node.id);return}
-   const rect=surface.getBoundingClientRect(),x=view.x+(event.clientX-rect.left)*view.w/width,y=view.y+(event.clientY-rect.top)*view.h/height
+   if(gpu){const node=gpu.hit(hit).node;if(node)focus(node.id);return}
+   const rect=surface.getBoundingClientRect(),x=view.x+(hit.clientX-rect.left)*view.w/width,y=view.y+(hit.clientY-rect.top)*view.h/height
    const nearest=nodes.reduce<{node:typeof nodes[number]|null;distance:number}>((best,node)=>{const distance=Math.hypot(node.x-x,node.y-y);return distance<best.distance?{node,distance}:best},{node:null,distance:Infinity})
    if(nearest.node&&nearest.distance<Math.max(nearest.node.renderRadius,12*view.w/width))focus(nearest.node.id)
   }

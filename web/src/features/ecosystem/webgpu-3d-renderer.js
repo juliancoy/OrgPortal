@@ -66,16 +66,24 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
  window.addEventListener('keyup',event=>{boosted=event.shiftKey;slowed=event.ctrlKey;keys.delete(event.code);if(!keys.size){cancelAnimationFrame(moveFrame);moveFrame=0;lastMove=0}},{signal:input.signal})
  canvas.addEventListener('blur',stopMovement,{signal:input.signal});window.addEventListener('blur',stopMovement,{signal:input.signal})
  document.addEventListener('visibilitychange',()=>{if(document.hidden)stopMovement()},{signal:input.signal})
- canvas.addEventListener('pointerdown',event=>{canvas.focus({preventScroll:true});if(event.button===0&&event.isPrimary){look={id:event.pointerId,x:event.clientX,y:event.clientY};canvas.setPointerCapture(event.pointerId)}},{signal:input.signal})
+ const touchPointers=new Set()
+ canvas.addEventListener('pointerdown',event=>{
+  if(event.pointerType==='touch'){touchPointers.add(event.pointerId);if(touchPointers.size>1){look=null;return}}
+  canvas.focus({preventScroll:true})
+  if(event.button===0&&event.isPrimary){look={id:event.pointerId,x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY,dragging:event.pointerType!=='touch'};canvas.setPointerCapture(event.pointerId)}
+ },{signal:input.signal})
  canvas.addEventListener('pointermove',event=>{
   if(!look||event.pointerId!==look.id)return
+  // Finger jitter must not rotate a node away before tap selection runs.
+  // Two-finger gestures belong entirely to OrbitControls' pinch/pan handling.
+  if(!look.dragging){if(Math.hypot(event.clientX-look.startX,event.clientY-look.startY)<12)return;look.dragging=true}
   if(orbitSelected()){orbit(-(event.clientX-look.x)*.004,-(event.clientY-look.y)*.004);look.x=event.clientX;look.y=event.clientY;return}
   rotation.setFromQuaternion(camera.quaternion);rotation.y-=(event.clientX-look.x)*.004;rotation.x=Math.max(-Math.PI/2+.01,Math.min(Math.PI/2-.01,rotation.x-(event.clientY-look.y)*.004))
   look.x=event.clientX;look.y=event.clientY
   const distance=camera.position.distanceTo(controls.target)
   camera.quaternion.setFromEuler(rotation);camera.getWorldDirection(forward);controls.target.copy(camera.position).addScaledVector(forward,distance);controls.update();changed()
  },{signal:input.signal})
- for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(type,event=>{if(event.pointerId===look?.id)look=null},{signal:input.signal})
+ for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(type,event=>{touchPointers.delete(event.pointerId);if(event.pointerId===look?.id)look=null},{signal:input.signal})
 
  let sphereQuality=adaptiveDetail?3:0,pixelQuality=sphereQuality
  const geometries=[new SphereGeometry(1,...SPHERE_DETAIL[sphereQuality]),new CylinderGeometry(1,1,1,5),new ConeGeometry(1,1,6),new SphereGeometry(1,...SPHERE_DETAIL[sphereQuality])]
