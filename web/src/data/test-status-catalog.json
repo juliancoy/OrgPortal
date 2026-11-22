@@ -3461,6 +3461,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-techparty-home-py",
+      "label": "web/scripts/test-local-techparty-home.py",
+      "category": "User interface and integrations",
+      "source": "web/scripts/test-local-techparty-home.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-techparty-home.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-unified-organization-py",
       "label": "web/scripts/test-local-unified-organization.py",
       "category": "Organizations and membership",
