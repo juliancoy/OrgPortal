@@ -1,4 +1,5 @@
 /** Public organization metadata only. Identity and authorization never replicate. */
+import {evidenceGroupSource} from '../../shared/organizationEvidenceGroups';
 export interface ReplicaEnv {
   DB: D1Database;
   ORGANIZATION_REPLICA_SOURCE?: string;
@@ -17,8 +18,9 @@ export function snapshotEtagMatches(header: string | null | undefined, etag: str
 }
 export async function organizationSnapshot(db: D1Database, request: Request) {
   // D1 batch is transactional: organizations and evidence describe one committed state.
-  const rows = await db.batch(Object.entries(columns).map(([table, fields]) => db.prepare(`SELECT ${fields.join(',')} FROM ${table} ORDER BY id`)));
-  const body = JSON.stringify({version:3,organizations:rows[0].results,support:rows[1].results,financingRecipients:rows[2].results,financingAgencies:rows[3].results,financingEvents:rows[4].results});
+  const rows = await db.batch([...Object.entries(columns).map(([table, fields]) => db.prepare(`SELECT ${fields.join(',')} FROM ${table} ORDER BY id`)),
+   db.prepare('SELECT external_id,organization_id FROM organization_source_identities WHERE source=? ORDER BY external_id').bind(evidenceGroupSource)]);
+  const body = JSON.stringify({version:3,organizations:rows[0].results,support:rows[1].results,financingRecipients:rows[2].results,financingAgencies:rows[3].results,financingEvents:rows[4].results,evidenceGroupMappings:rows[5].results});
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(body)))].map(b=>b.toString(16).padStart(2,'0')).join('');
   const etag = `"${hash}"`;
   const headers = {'ETag':etag,'Cache-Control':'public, max-age=60','Content-Type':'application/json'};
@@ -80,6 +82,10 @@ export async function replicateOrganizations(env: ReplicaEnv, fetcher: typeof fe
     if (Array.isArray(snapshot.organizations)) snapshot.organizations = snapshot.organizations.map((row: Record<string,unknown>) => ({links_json:'[]',...row}));
     validateRows(snapshot.organizations,'organizations');validateRows(snapshot.support,'organization_support_records');
     validateRows(snapshot.financingRecipients,'financing_recipients'); validateRows(snapshot.financingAgencies,'financing_agency_recipients'); validateRows(snapshot.financingEvents,'financing_events');
+    if(snapshot.evidenceGroupMappings!==undefined){
+      const known=new Set(snapshot.organizations.map((row:{id:string})=>row.id)),seen=new Set();
+      if(!Array.isArray(snapshot.evidenceGroupMappings)||snapshot.evidenceGroupMappings.some((row:{external_id:string;organization_id:string})=>!row||typeof row.external_id!=='string'||!row.external_id||row.external_id.length>300||!known.has(row.organization_id)||seen.has(row.external_id)||!seen.add(row.external_id)))throw new Error('Invalid evidence grouping snapshot');
+    }
     const orgs=JSON.stringify(snapshot.organizations.map((row:Record<string,unknown>)=>({id:row.id,slug:row.slug})));
     const payloads = {organizations:jsonChunks(snapshot.organizations), organization_support_records:jsonChunks(snapshot.support), financing_recipients:jsonChunks(snapshot.financingRecipients), financing_agency_recipients:jsonChunks(snapshot.financingAgencies), financing_events:jsonChunks(snapshot.financingEvents)};
     const remaps = (await env.DB.prepare("SELECT o.id AS old_id,json_extract(r.value,'$.id') AS new_id FROM organizations o JOIN json_each(?) r ON o.slug=json_extract(r.value,'$.slug') WHERE o.id!=json_extract(r.value,'$.id') AND o.id NOT IN (SELECT json_extract(value,'$.id') FROM json_each(?))").bind(orgs,orgs).all<{old_id:string;new_id:string}>()).results || [];
@@ -96,6 +102,11 @@ export async function replicateOrganizations(env: ReplicaEnv, fetcher: typeof fe
       return payloads[table].map(data=>env.DB.prepare(`INSERT INTO ${table} (${fields.join(',')}) SELECT ${fields.map(c=>`json_extract(value,'$.${c}')`).join(',')} FROM json_each(?) WHERE true ON CONFLICT(id) DO UPDATE SET ${fields.filter(c=>c!=='id').map(c=>`${c}=excluded.${c}`).join(',')}`).bind(data));
     }
     statements.push(...upserts('organizations'));
+    if(snapshot.evidenceGroupMappings!==undefined){
+      statements.push(env.DB.prepare('DELETE FROM organization_source_identities WHERE source=?').bind(evidenceGroupSource));
+      for(const chunk of jsonChunks(snapshot.evidenceGroupMappings))statements.push(env.DB.prepare(`INSERT INTO organization_source_identities(source,external_id,organization_id)
+       SELECT ?,json_extract(value,'$.external_id'),json_extract(value,'$.organization_id') FROM json_each(?)`).bind(evidenceGroupSource,chunk));
+    }
     if (remaps.length) {
       // Seeded local IDs can differ for the same organization slug. Repoint local
       // references after the primary ID exists, before pruning the seeded row.

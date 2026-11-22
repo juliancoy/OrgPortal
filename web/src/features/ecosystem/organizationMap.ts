@@ -63,10 +63,15 @@ function attractDirectionGroups(nodes:PositionedNode[],mode:'2d'|'3d',strength:n
  }
  // Small deterministic radial offsets let interleaved peers pass each other.
  neighbors.forEach((n,i)=>{const scale=1+.04*Math.sin(i*2.399963);n.x*=scale;n.y*=scale;n.z*=scale})
- const separation=32,key=(x:number,y:number,z:number)=>`${x},${y},${z}`
+ const separation=32,ticks=320
+ // Every step moves at most 8 units. This bound makes numeric grid keys unique
+ // throughout relaxation, avoiding millions of short-lived string keys.
+ const cells=Math.ceil((Math.max(...radii.values())*1.04+8*ticks+110)/separation)+2,span=2*cells+1
+ const key=(x:number,y:number,z:number)=>((x+cells)*span+y+cells)*span+z+cells
+ const grid=new Map<number,number>(),links=new Int32Array(neighbors.length),next=new Float64Array(neighbors.length*3)
  // Bounded relaxation happens once at load; camera interaction stays independent.
  // Group centroids replace all-to-all springs, and a spatial grid limits collisions.
- for(let tick=0;tick<320;tick++){
+ for(let tick=0;tick<ticks;tick++){
   const all=mean(neighbors),up=mean(upstream),down=mean(downstream)
   if(tick===0&&Math.hypot(up.x-down.x,up.y-down.y,up.z-down.z)<.02){
    // Break perfectly symmetric starting layouts using a member's position,
@@ -74,9 +79,10 @@ function attractDirectionGroups(nodes:PositionedNode[],mode:'2d'|'3d',strength:n
    const seed=upstream.find(n=>n.direction==='incoming')||upstream[0],radius=radii.get(seed)!
    for(const axis of ['x','y','z'] as const){up[axis]+=.02*seed[axis]/radius;down[axis]-=.02*seed[axis]/radius}
   }
-  const grid=new Map<string,PositionedNode[]>()
-  for(const n of neighbors){const cell=key(Math.floor(n.x/separation),Math.floor(n.y/separation),Math.floor(n.z/separation)),bucket=grid.get(cell);if(bucket)bucket.push(n);else grid.set(cell,[n])}
-  const next=neighbors.map(n=>{
+  grid.clear()
+  // Reverse insertion preserves the original collision traversal order.
+  for(let i=neighbors.length-1;i>=0;i--){const n=neighbors[i],cell=key(Math.floor(n.x/separation),Math.floor(n.y/separation),Math.floor(n.z/separation));links[i]=grid.get(cell)??-1;grid.set(cell,i)}
+  neighbors.forEach((n,i)=>{
    const radius=Math.hypot(n.x,n.y,n.z),rest=radii.get(n)!,ux=n.x/radius,uy=n.y/radius,uz=n.z/radius
    const center=n.direction==='incoming'?up:n.direction==='outgoing'?down:{x:(up.x+down.x)/2,y:(up.y+down.y)/2,z:(up.z+down.z)/2}
    let dx=(center.x-all.x)*radius*strength,dy=(center.y-all.y)*radius*strength,dz=(center.z-all.z)*radius*strength
@@ -84,7 +90,8 @@ function attractDirectionGroups(nodes:PositionedNode[],mode:'2d'|'3d',strength:n
    dx+=(restore-radial)*ux;dy+=(restore-radial)*uy;dz+=(restore-radial)*uz
    const cx=Math.floor(n.x/separation),cy=Math.floor(n.y/separation),cz=Math.floor(n.z/separation)
    for(let x=cx-1;x<=cx+1;x++)for(let y=cy-1;y<=cy+1;y++)for(let z=cz-(mode==='3d'?1:0);z<=cz+(mode==='3d'?1:0);z++){
-    for(const other of grid.get(key(x,y,z))||[]){
+    for(let index=grid.get(key(x,y,z))??-1;index!==-1;index=links[index]){
+     const other=neighbors[index]
      if(other===n)continue
      const x=n.x-other.x,y=n.y-other.y,z=n.z-other.z,distance=Math.hypot(x,y,z)
      if(distance>0&&distance<separation){const push=(separation-distance)*2/distance;dx+=x*push;dy+=y*push;dz+=z*push}
@@ -93,8 +100,8 @@ function attractDirectionGroups(nodes:PositionedNode[],mode:'2d'|'3d',strength:n
    // Attraction acts around the anchor; a soft radial spring and collision
    // repulsion let neighbors pass each other while retaining readable spacing.
    const step=Math.min(1,8/(Math.hypot(dx,dy,dz)||1)),x=n.x+dx*step,y=n.y+dy*step,z=mode==='3d'?n.z+dz*step:0,scale=Math.max(110,Math.hypot(x,y,z))/Math.hypot(x,y,z)
-   return {x:x*scale,y:y*scale,z:z*scale}
+   next[i*3]=x*scale;next[i*3+1]=y*scale;next[i*3+2]=z*scale
   })
-  neighbors.forEach((n,i)=>Object.assign(n,next[i]))
+  neighbors.forEach((n,i)=>{n.x=next[i*3];n.y=next[i*3+1];n.z=next[i*3+2]})
  }
 }

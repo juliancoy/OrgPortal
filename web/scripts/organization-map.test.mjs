@@ -24,6 +24,13 @@ test('neighborhood pagination keeps its anchor and exposes every neighbor above 
  do {const {body}=await query(read,{offset:String(offset),limit:'250'});assert.equal(body.total,602);assert(body.organizations.some(o=>o.id==='b'));for(const o of body.organizations)nodes.add(o.id);for(const e of body.relationships)pairs.add(e.id);offset=body.nextOffset}while(offset!==null)
  assert.equal(nodes.size,603);assert.equal(pairs.size,602)
 })
+test('a single map page reads only its visible organization detail shards',async()=>{
+ const f=fixture(600),calls=[]
+ const read=async key=>{calls.push(key);return f.read(key)}
+ const {body}=await query(read,{limit:'1'})
+ assert.equal(body.organizations.length,2)
+ assert(calls.filter(key=>/\/organizations\/\d+\.json$/.test(key)).length<=2,'hidden detail shards must remain lazy')
+})
 test('reciprocal links and repeated records retain separate directions, with compressed endpoint IDs',async()=>{
  const f=fixture();f.topology.nodeIds=f.organizations.map(o=>o.id)
  f.topology.edges.push(['b','a','transfer'],['a','b','approval'],['b','b','transfer']);f.topology.edgesByOrg.b.push(4,5,6)

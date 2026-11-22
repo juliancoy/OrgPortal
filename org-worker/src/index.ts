@@ -18,6 +18,7 @@ import {organizationPortalLinks} from './organizationPortalUrls';
 import {canonicalOrganizationHref,organizationPagePath,organizationRoutingBase} from '../../shared/organizationUrls';
 import {organizationPageStatisticsRoutes} from './organizationPageStatistics';
 import { organizationBrandingRoutes } from './organizationBranding';
+import {organizationEvidenceGrouping,changeOrganizationEvidenceGrouping} from './organizationEvidenceGroups';
 import { organizationRecognitionRoutes } from './organizationRecognition';
 import { z } from 'zod'
 import { lookupPortalPeople } from './portalPeople'
@@ -3262,6 +3263,24 @@ app.get("/api/network/orgs/public/:slug", async (c) => {
     .first<{ n: number }>();
   c.header('Cache-Control','no-store');
   return c.json({ ...mapOrganization(row, Number(count?.n || 0)), candidates: await organizationCandidates(c.env.DB,row.id), public_url: await orgPublicUrl(c.env, c.req.raw, row.slug), ...await organizationGroupHome(c.env, c.req.raw, row) });
+});
+
+app.get('/api/network/evidence-groups/public',async c=>{
+ const handle=c.req.query('org')||'';
+ if(!handle||handle.length>300)return c.json({error:'Invalid organization reference'},400);
+ c.header('Cache-Control','no-store');
+ return c.json({group:await organizationEvidenceGrouping(c.env.DB,handle)});
+});
+app.get('/api/network/orgs/:organizationId/evidence-group/access',async c=>{
+ if(c.env.ORGANIZATION_REPLICA_SOURCE)return c.json({canManage:false,reason:'Edit shared groupings on the authoritative portal.'});
+ const user=await currentUser(c.env,c.req.raw);c.header('Cache-Control','no-store');
+ try{await authorizeOrganization(c.env.DB,organizationActor(user,c.env),'manage',c.req.param('organizationId'));return c.json({canManage:true});}
+ catch(error){return eventErrorResponse(error,c.env,c.req.raw);}
+});
+app.put('/api/network/orgs/:organizationId/evidence-group',bodyLimit({maxSize:4096}),async c=>{
+ const user=await currentUser(c.env,c.req.raw);
+ try{return c.json({group:await changeOrganizationEvidenceGrouping(c.env.DB,organizationActor(user,c.env),c.req.param('organizationId'),await c.req.json())});}
+ catch(error){return eventErrorResponse(error,c.env,c.req.raw);}
 });
 
 app.get('/api/network/initiatives/public',async c=>{

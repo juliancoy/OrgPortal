@@ -15,9 +15,15 @@ const aliases: Record<string, string> = {
 const normalize = (name: string) => name.toLowerCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim()
 const limit = 28
 
+/** Render-time abbreviations; preserve the original name for identity and tooltips. */
+export function abbreviateBoardLabel(name: string): string {
+  return name.replace(/\bBoard\s+of\s+Directors\b/gi, 'BD')
+    .replace(/\bBoard\s+of\s+Trustees\b/gi, 'BT')
+}
+
 /** Compact display aliases only; never use these to identify or merge groups. */
 export function shortGroupName(name: string): string {
-  const full = name.replace(/\s+/g, ' ').trim()
+  const full = abbreviateBoardLabel(name).replace(/\s+/g, ' ').trim()
   const key = normalize(full)
   const alias = Object.hasOwn(aliases, key) ? aliases[key] : undefined
   if (alias) return alias

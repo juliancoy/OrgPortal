@@ -1,0 +1,9 @@
+.organization-grouping{margin:1rem 0;padding:1rem;border:1px solid var(--border-color,#425866);border-radius:1rem;min-width:0}
+.organization-grouping summary{cursor:pointer;font-weight:700}
+.organization-grouping ul{list-style:none;padding:0}
+.organization-grouping li{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.65rem 0;border-bottom:1px solid var(--border-color,#425866)}
+.organization-grouping li>div{min-width:0;overflow-wrap:anywhere}
+.organization-grouping small{display:block;opacity:.75;overflow-wrap:anywhere}
+.organization-grouping button{flex-shrink:0}
+.organization-grouping label{display:grid;gap:.5rem}
+.organization-grouping input{max-width:100%;min-width:0}

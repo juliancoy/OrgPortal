@@ -6,13 +6,28 @@ import {organizationSnapshot,replicateOrganizations,replicaStatus} from '../src/
 function setup() {
  const db=new TimebankDatabase();
  for(const name of ['0002_org_event_directories.sql','0043_organization_media.sql','0057_organization_support.sql','0061_organization_replication.sql','0065_financing_records.sql','0066_financing_portfolio_tags.sql']) db.sqlite.exec(readFileSync(new URL(`../migrations/${name}`,import.meta.url),'utf8'));
- db.sqlite.exec('CREATE TABLE organization_source_identities (organization_id TEXT REFERENCES organizations(id) ON DELETE RESTRICT)');
+ db.sqlite.exec('CREATE TABLE organization_source_identities (source TEXT NOT NULL,external_id TEXT NOT NULL,organization_id TEXT REFERENCES organizations(id) ON DELETE RESTRICT,PRIMARY KEY(source,external_id))');
  return db;
 }
 function insert(db:TimebankDatabase,id:string,name=id) {db.sqlite.prepare('INSERT INTO organizations(id,name,slug) VALUES(?,?,?)').run(id,name,id);}
 const source='https://primary.example/api/network/replication/snapshot';
 const env=(db:TimebankDatabase)=>({DB:db.asD1(),ORGANIZATION_REPLICA_SOURCE:source});
 function expire(db:TimebankDatabase){db.sqlite.exec("UPDATE organization_replica_state SET checked_at='2000-01-01T00:00:00Z'");}
+test('public grouping additions and removals replicate, including empty anchors; other identity mappings stay private',async()=>{
+ const primary=setup(),local=setup();
+ try{
+  insert(primary,'one');
+  primary.sqlite.exec("INSERT INTO organization_source_identities VALUES('orgportal:evidence-group','one','one'),('orgportal:evidence-group','source-node','one'),('private-connector','private-id','one')");
+  const fetcher:typeof fetch=async()=>organizationSnapshot(primary.asD1(),new Request(source));
+  const body=await(await fetcher(source)).json() as {evidenceGroupMappings:unknown[]};assert.equal(body.evidenceGroupMappings.length,2);assert(!JSON.stringify(body).includes('private-id'));
+  await replicateOrganizations(env(local),fetcher);
+  assert.equal(local.sqlite.prepare('SELECT count(*) n FROM organization_source_identities').get()!.n,2);
+  primary.sqlite.exec("DELETE FROM organization_source_identities WHERE external_id='source-node'");expire(local);await replicateOrganizations(env(local),fetcher);
+  assert.deepEqual(local.sqlite.prepare('SELECT external_id FROM organization_source_identities').all().map(r=>r.external_id),['one']);
+  expire(local);await assert.rejects(replicateOrganizations(env(local),async()=>Response.json({...body,version:3,evidenceGroupMappings:[{external_id:'bad',organization_id:'missing'}]})));
+  assert.deepEqual(local.sqlite.prepare('SELECT external_id FROM organization_source_identities').all().map(r=>r.external_id),['one']);
+ }finally{primary.sqlite.close();local.sqlite.close()}
+});
 test('snapshot covers every org, excludes identities, ETag unchanged checks transfer no body',async()=>{
  const primary=setup(),local=setup();
  try {

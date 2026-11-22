@@ -1,4 +1,5 @@
 import {useEffect,useId,useMemo,useRef,useState} from 'react'
+import {abbreviateBoardLabel} from '../../domain/organization/groupNames'
 import {organizationMapLayout,type MapNode,type MapPage} from '../../features/ecosystem/organizationMap'
 import {createNetworkCanvas,type CanvasView,type CanvasEdge} from '../../features/ecosystem/canvas-renderer.js'
 import {bindPlanarNavigation} from '../../features/ecosystem/planar-navigation.js'
@@ -146,10 +147,10 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    <label>Speed<select aria-label="Navigation speed" value={speed} onChange={event=>setSpeed(Number(event.target.value))}><option value={.25}>0.25×</option><option value={1}>1×</option><option value={3}>3×</option></select></label>
    <label className="organization-ecomap-find">Find a node<input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Organization name"/></label>
   </div>
-  {search&&<div className="organization-ecomap-search"><p role="status">{matches.length} matching nodes{matches.length>20?' · Showing the first 20; refine your search.':''}</p>{matches.slice(0,20).map(node=><button disabled={!ready} key={node.id} onClick={()=>controls.current?.focus(node.id)}>{node.name}</button>)}</div>}
+  {search&&<div className="organization-ecomap-search"><p role="status">{matches.length} matching nodes{matches.length>20?' · Showing the first 20; refine your search.':''}</p>{matches.slice(0,20).map(node=><button disabled={!ready} key={node.id} title={node.name} aria-label={node.name} onClick={()=>controls.current?.focus(node.id)}>{abbreviateBoardLabel(node.name)}</button>)}</div>}
   {status&&<p role="status">{status}</p>}
   {error&&<p role="alert">{error} {mode==='3d'&&<button onClick={()=>onModeChange('2d')}>Use 2D map</button>}</p>}
   <p id={helpId} className="organization-ecomap-keyboard-help">{keyboardActive?'Keyboard navigation active. ':'Click or Tab into the map to navigate. '}{mode==='2d'?'W/S zoom · A/D pan left/right · E/Q pan up/down. Drag to pan.':navigation==='orbit'?'W/S zoom · A/D orbit left/right · E/Q orbit up/down. Drag to orbit.':'W/S forward/back · A/D left/right · E/Q up/down. Drag to look.'} Scroll to zoom. Shift: faster · Ctrl: slower · Esc: release keyboard.</p>
-  <div ref={host} className="organization-ecomap-canvas"><canvas key={mode} ref={canvas} tabIndex={0} data-mode={mode} data-anchor={data.anchor||''} aria-describedby={helpId} onFocus={()=>setKeyboardActive(true)} onBlur={()=>setKeyboardActive(false)} aria-label={`${data.organizations.find(n=>n.id===data.anchor)?.name} and all ${data.total} adjacent nodes`} role="img"/><div className="organization-ecomap-labels">{labels.map(label=><button key={label.id} className={label.focus?'focus':''} style={{left:label.x,top:label.y}} title={label.name} onClick={()=>controls.current?.focus(label.id)}>{label.name}</button>)}</div></div>
+  <div ref={host} className="organization-ecomap-canvas"><canvas key={mode} ref={canvas} tabIndex={0} data-mode={mode} data-anchor={data.anchor||''} aria-describedby={helpId} onFocus={()=>setKeyboardActive(true)} onBlur={()=>setKeyboardActive(false)} aria-label={`${data.organizations.find(n=>n.id===data.anchor)?.name} and all ${data.total} adjacent nodes`} role="img"/><div className="organization-ecomap-labels">{labels.map(label=><button key={label.id} className={label.focus?'focus':''} style={{left:label.x,top:label.y}} title={label.name} aria-label={label.name} onClick={()=>controls.current?.focus(label.id)}>{abbreviateBoardLabel(label.name)}</button>)}</div></div>
  </>
 }

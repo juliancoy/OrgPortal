@@ -1,0 +1,70 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {EventTestDb} from './event-test-db';
+import {organizationEvidenceGrouping,changeOrganizationEvidenceGrouping} from '../src/organizationEvidenceGroups';
+import {defaultEvidenceGroups,evidenceGroupSource} from '../../shared/organizationEvidenceGroups';
+const actor={id:'pidp-user',name:'Fixture editor',email:null,isOperator:false};
+function setup(){return new EventTestDb(`
+ CREATE TABLE audit_events(id TEXT PRIMARY KEY,actor_user_id TEXT,action TEXT,resource_type TEXT,resource_id TEXT,metadata_json TEXT,created_at TEXT);
+ CREATE TABLE organization_source_identities(source TEXT NOT NULL,external_id TEXT NOT NULL,organization_id TEXT NOT NULL REFERENCES organizations(id),PRIMARY KEY(source,external_id));
+ CREATE TABLE ecosystem_public_datasets(id TEXT PRIMARY KEY,state TEXT); INSERT INTO ecosystem_public_datasets VALUES('published','active');
+ CREATE TABLE ecosystem_public_records(dataset_id TEXT,collection TEXT,payload_json TEXT);
+ INSERT INTO ecosystem_public_records VALUES('published','organizations','{"id":"source-one","name":"Source One"}'),('published','organizations','{"id":"source-two","name":"Source Two"}');
+ CREATE TABLE master_transaction_records_before_ecosystem(from_label TEXT,to_label TEXT,record_type TEXT,evidence TEXT,from_organization_id TEXT,to_organization_id TEXT);
+ `)}
+const node={id:'source-one',name:'Source One'};
+test('authorized reversible grouping preserves original organizations, source records and permissions',async()=>{
+ const db=setup(),d1=db as unknown as D1Database;
+ try{
+  assert.deepEqual((await organizationEvidenceGrouping(d1,'one'))?.members,[]);
+  const add=()=>changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',member:node});
+  assert.deepEqual((await add())?.members,['source-one']);await add();
+  assert.equal((await organizationEvidenceGrouping(d1,node.id))?.slug,'one');
+  assert.deepEqual((await changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'remove',member:node}))?.members,[]);
+  assert.equal(await organizationEvidenceGrouping(d1,node.id),null);
+  assert.equal((await db.prepare('SELECT count(*) n FROM ecosystem_public_records').first()).n,2);
+  assert.equal((await db.prepare('SELECT count(*) n FROM organizations').first()).n,1);
+  assert.equal((await db.prepare('SELECT role FROM organization_memberships').first()).role,'owner');
+  assert.equal((await db.prepare("SELECT count(*) n FROM audit_events WHERE action='organization.evidence_group'").first()).n,3);
+  assert.deepEqual((await db.prepare('SELECT external_id FROM organization_source_identities').all()).results.map(row=>row.external_id),['org-one']);
+ }finally{db.close()}
+});
+test('denies other tenants, inactive editors, unknown nodes, directory merges, and conflicting group membership',async()=>{
+ const db=setup(),d1=db as unknown as D1Database;
+ try{
+  await db.prepare("INSERT INTO organizations(id,name,slug) VALUES('org-two','Two','two')").run();
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-two',{action:'add',member:node}),/management access/);
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',member:{id:'missing',name:'Missing'}}),/existing public/);
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',member:{id:'org-two',name:'Two'}}),/directory organizations/);
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'remove',member:{id:'org-one',name:'One'}}),/fixed center/);
+  await changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',member:node});
+  await db.prepare("INSERT INTO organization_memberships VALUES('org-two','pidp-user','administrator','active')").run();
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-two',{action:'add',member:node}),/another grouping/);
+  await db.prepare("UPDATE organization_memberships SET status='inactive' WHERE organization_id='org-one'").run();
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'remove',member:node}),/management access/);
+  assert.deepEqual((await organizationEvidenceGrouping(d1,'one'))?.members,['source-one']);
+ }finally{db.close()}
+});
+test('source label hashes and source systems are exact, not inferred by similar names',async()=>{
+ const db=setup(),d1=db as unknown as D1Database;
+ try{
+  const name='EXAMPLE UTILITY',hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(name)))].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32);
+  const member={id:`source-label:maryland_comptroller:recipient:${hash}`,name};
+  await db.prepare("INSERT INTO master_transaction_records_before_ecosystem VALUES('Agency',?,'external_financial_observation','maryland_comptroller',NULL,NULL)").bind(name).run();
+  await changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',member});
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',member:{...member,name:'Example Utility'}}),/label does not match/);
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',member:{...member,id:member.id.replace('maryland_comptroller','other_system')}}),/not in the public/);
+ }finally{db.close()}
+});
+test('removing all initial BGE members persists an empty group and never restores defaults',async()=>{
+ const db=setup(),d1=db as unknown as D1Database,id=Object.keys(defaultEvidenceGroups)[0];
+ try{
+  await db.prepare('INSERT INTO organizations(id,name,slug) VALUES(?,?,?)').bind(id,'BGE','bge').run();
+  const operator={...actor,isOperator:true};
+  assert.equal((await organizationEvidenceGrouping(d1,'bge'))?.members.length,7);
+  for(const member of defaultEvidenceGroups[id])await changeOrganizationEvidenceGrouping(d1,operator,id,{action:'remove',member:{id:member,name:member}});
+  assert.deepEqual((await organizationEvidenceGrouping(d1,'bge'))?.members,[]);
+  assert.equal(await organizationEvidenceGrouping(d1,defaultEvidenceGroups[id][0]),null);
+  assert.equal((await db.prepare('SELECT count(*) n FROM organization_source_identities WHERE source=?').bind(evidenceGroupSource).first()).n,1);
+ }finally{db.close()}
+});
