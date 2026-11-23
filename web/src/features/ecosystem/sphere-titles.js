@@ -1,5 +1,5 @@
 import {CanvasTexture,Mesh,MeshBasicNodeMaterial,SphereGeometry,SRGBColorSpace,Vector3} from 'three/webgpu'
-import {paintSphereTitle} from './sphere-title-text.js'
+import {paintSphereTitle,sphereTitleReadable} from './sphere-title-text.js'
 
 // Curved, transparent decals sit just above the actual sphere surface. Camera
 // facing keeps them readable while depth testing lets nearer spheres occlude them.
@@ -7,7 +7,7 @@ export function createSphereTitles(scene){
  const geometry=new SphereGeometry(1,24,12,Math.PI/2-.95,1.9,Math.PI/2-.55,1.1),labels=new Map(),point=new Vector3()
  const remove=id=>{const label=labels.get(id);scene.remove(label.mesh);label.texture.dispose();label.mesh.material.dispose();labels.delete(id)}
  return {
-  update(nodes,camera,height){
+  update(nodes,camera,height,pixelRatio=1){
    camera.updateMatrixWorld()
    const candidates=[]
    for(const node of nodes){
@@ -16,7 +16,7 @@ export function createSphereTitles(scene){
     if(point.z>=-camera.near)continue
     const pixels=node.renderRadius*height*(camera.isOrthographicCamera?camera.zoom/(camera.top-camera.bottom):1/(-2*point.z*Math.tan(camera.fov*Math.PI/360)))
     point.set(node.x,node.y,node.z||0).project(camera)
-    if(pixels<7||Math.abs(point.x)>1.1||Math.abs(point.y)>1.1||point.z>1)continue
+    if(!sphereTitleReadable(node.sphereTitle,pixels,true,pixelRatio)||Math.abs(point.x)>1.1||Math.abs(point.y)>1.1||point.z>1)continue
     candidates.push({node,pixels})
    }
    // Bound texture memory and draw calls in very large neighborhoods. Zooming
@@ -41,6 +41,7 @@ export function createSphereTitles(scene){
    }
    return {changed,count:labels.size}
   },
+  has(id){return labels.has(id)},
   dispose(){for(const id of labels.keys())remove(id);geometry.dispose()},
  }
 }

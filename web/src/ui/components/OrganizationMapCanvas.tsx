@@ -65,7 +65,9 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    const grid=createLabelGrid();let placed=0
    // Layout order already puts the selected anchor first. Reuse a bounded pool
    // of buttons; camera movement changes styles without rebuilding React trees.
-   for(const node of titlePlacementRef.current==='surface'?[]:nodes){
+   for(const node of nodes){
+    // Native text stays sharp when distant surface decals would be subpixel.
+    if(titlePlacementRef.current==='surface'&&(gpu||planar)?.hasSurfaceTitle(node.id))continue
     if(gpu&&!gpu.project(node,projected).visible)continue
     const x=gpu?projected.x:(node.x-view.x)*scale,y=gpu?projected.y+12:(node.y-view.y)*height/view.h+node.renderRadius*scale+6,focus=node.id===data.anchor||node.id===selected
     if(x<30||x>width-30||y<0||y>height-25)continue
@@ -206,7 +208,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
   <details className="organization-ecomap-help"><summary>Map help<span>{keyboardActive?'Keyboard active · Esc to release':'Navigation & reading the map'}</span></summary>
    <p>Click a node to open its page. Click the selected node to open its largest incoming parent by recorded USD volume. Arrows show direct upstream and downstream relationships.</p>
   <p id={helpId} className="organization-ecomap-keyboard-help">{keyboardActive?'Keyboard navigation active. ':'Click or Tab into the map to navigate. '}{mode==='2d'?'W/S zoom · A/D pan left/right · E/Q pan up/down. Drag to pan.':navigation==='orbit'?'W/S zoom · A/D orbit left/right · E/Q orbit up/down. Drag to orbit.':'W/S forward/back · A/D left/right · E/Q up/down. Drag to look.'} Scroll to zoom. Shift: faster · Ctrl: slower · Esc: release keyboard.</p>
-  <p className="organization-ecomap-note">Node size: recorded USD volume · logarithmic scale. Larger volumes are pulled closer to the center. Zero or undisclosed amounts use the smallest marker. Blue outline: selected organization.{titlePlacement==='surface'&&' Titles follow the sphere surface; zoom in to read smaller nodes, or use Find a node.'}</p>
+  <p className="organization-ecomap-note">Node size: recorded USD volume · logarithmic scale. Larger volumes are pulled closer to the center. Zero or undisclosed amounts use the smallest marker. Blue outline: selected organization.{titlePlacement==='surface'&&' Titles follow the sphere surface when readable; distant nodes use fixed-size labels. Find a node searches every connection.'}</p>
   </details>
   <div className="organization-ecomap-stage"><div ref={host} className="organization-ecomap-canvas"><canvas key={`${mode}-${attempt}`} ref={canvas} tabIndex={0} data-mode={mode} data-anchor={data.anchor||''} aria-describedby={helpId} onFocus={()=>setKeyboardActive(true)} onBlur={()=>setKeyboardActive(false)} aria-label={`${data.organizations.find(n=>n.id===data.anchor)?.name} and all ${data.total} adjacent nodes`} role="img"/><div ref={labelLayer} className="organization-ecomap-labels"/></div><OrganizationFinancialBubbles totals={data.financialTotals} fy={data.fy}/></div>
  </>

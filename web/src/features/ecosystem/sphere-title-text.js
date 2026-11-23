@@ -9,6 +9,24 @@ export function sphereTitleLines(title,columns=18,maxLines=5){
  if(lines.length>maxLines){lines.length=maxLines;lines[maxLines-1]=Array.from(lines[maxLines-1]).slice(0,columns-1).join('')+'…'}
  return lines
 }
+// Decide in CSS pixels, independently of zoom, monitor density and the GPU's
+// adaptive resolution. Small text uses the screen-space label layer instead.
+const titleMetrics=new Map()
+export function sphereTitleReadable(title,radius,curved=false,pixelRatio=1){
+ if(!title||!Number.isFinite(radius)||radius<12)return false
+ let metrics=titleMetrics.get(title)
+ if(!metrics){
+  const lines=sphereTitleLines(title)
+  if(!lines.length)return false
+  metrics={lines:lines.length,columns:Math.max(...lines.map(line=>Array.from(line).length))}
+  titleMetrics.set(title,metrics)
+  if(titleMetrics.size>512)titleMetrics.delete(titleMetrics.keys().next().value)
+ }
+ const size=curved
+  ?Math.min(224/(metrics.lines*1.18),480/(metrics.columns*.64))*2*Math.sin(.55)*radius/256
+  :Math.min(1.3*radius/(metrics.lines*1.18),1.65*radius/(metrics.columns*.64))
+ return size*Math.min(1,pixelRatio)>=12
+}
 export function paintSphereTitle(context,title,x,y,width,height){
  const lines=sphereTitleLines(title)
  if(!lines.length)return

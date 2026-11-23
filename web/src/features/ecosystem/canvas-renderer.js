@@ -1,12 +1,13 @@
 import {edgeArrowGeometry} from './edge-arrows.js'
-import {paintSphereTitle} from './sphere-title-text.js'
+import {paintSphereTitle,sphereTitleReadable} from './sphere-title-text.js'
 // The default graph uses batched 2D paths: no per-edge GPU meshes or raycast tubes.
 import { curvePoints } from './webgpu-renderer.js'
 const cssColor = color => typeof color === 'string' ? color : `#${color.toString(16).padStart(6, '0')}`
 export function createNetworkCanvas(canvas) {
  const context = canvas.getContext('2d')
  if (!context) throw new Error('The network canvas is unavailable.')
- const edgePaths=new Map(),nodePaths=new Map()
+ const edgePaths=new Map(),nodePaths=new Map(),surfaceTitles=new Set()
+ let cssWidth=1,backingRatio=1
  let strokes = [], arrows = [], disks = [], titles=[], disposed = false
  const circle = (path, x, y, radius) => { path.moveTo(x + radius, y); path.arc(x, y, radius, 0, Math.PI * 2) }
  return {
@@ -52,17 +53,20 @@ export function createNetworkCanvas(canvas) {
    for (const {color, path, opacity} of arrows) { context.globalAlpha=Math.max(.55,opacity); context.fillStyle=color; context.fill(path) }
    context.globalAlpha = 1
    for (const [color, path] of disks) { context.fillStyle=color; context.fill(path) }
-   let count=0
+   surfaceTitles.clear()
    for(const node of titles){
-    if(node.x+node.renderRadius<view.x||node.x-node.renderRadius>view.x+view.w||node.y+node.renderRadius<view.y||node.y-node.renderRadius>view.y+view.h||node.renderRadius*canvas.width/view.w<7)continue
+    if(node.x+node.renderRadius<view.x||node.x-node.renderRadius>view.x+view.w||node.y+node.renderRadius<view.y||node.y-node.renderRadius>view.y+view.h||!sphereTitleReadable(node.sphereTitle,node.renderRadius*cssWidth/view.w,false,backingRatio))continue
     context.save();context.globalAlpha=node.opacity??1;context.beginPath();context.arc(node.x,node.y,node.renderRadius,0,Math.PI*2);context.clip()
-    paintSphereTitle(context,node.sphereTitle,node.x,node.y,node.renderRadius*1.65,node.renderRadius*1.3);context.restore();count++
+    paintSphereTitle(context,node.sphereTitle,node.x,node.y,node.renderRadius*1.65,node.renderRadius*1.3);context.restore();surfaceTitles.add(node.id)
    }
-   canvas.dataset.sphereTitles=String(count)
+   canvas.dataset.sphereTitles=String(surfaceTitles.size)
   },
+  hasSurfaceTitle(id){return surfaceTitles.has(id)},
   resize(width, height, pixelRatio = 1) {
+   cssWidth=Math.max(1,width)
    // Bound backing-store pixels even on tall/high-DPI viewports.
    const ratio = Math.min(pixelRatio, 1.5, Math.sqrt(2_000_000 / Math.max(1, width*height)))
+   backingRatio=ratio
    const w = Math.max(1, Math.round(width*ratio)), h = Math.max(1, Math.round(height*ratio))
    if (canvas.width !== w) canvas.width=w
    if (canvas.height !== h) canvas.height=h

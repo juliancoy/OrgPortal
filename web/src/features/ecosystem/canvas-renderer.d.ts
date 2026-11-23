@@ -5,5 +5,6 @@ export function createNetworkCanvas(canvas:HTMLCanvasElement):{
  update(nodes:CanvasNode[],edges:CanvasEdge[],visible:Set<string>,visibleEdges:Set<string>,selected:string,colors:Record<string,number>,edgeColor:(edge:CanvasEdge)=>number):void
  render(view:CanvasView):void
  resize(width:number,height:number,pixelRatio?:number):void
+ hasSurfaceTitle(id:string):boolean
  dispose():void
 }

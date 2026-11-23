@@ -17,6 +17,7 @@ export type Network3DRenderer={
  cameraView():CameraView
  restoreCameraView(view:CameraView,node:SpatialNode):void
  cameraPosition():{x:number;y:number;z:number}
+ hasSurfaceTitle(id:string):boolean
  dispose():void
 }
 export function createNetworkGPU3D(canvas:HTMLCanvasElement,onLost:(message:string)=>void,changed:()=>void,dimension?:string,movementSpeed?:()=>number,moveFourth?:(delta:number[])=>void,orbitSelected?:()=>boolean,options?:{forceWebGL?:boolean;adaptiveDetail?:boolean}):Promise<Network3DRenderer>

@@ -222,11 +222,12 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
     pixelQuality=sphereDetailLevel(radius,pixelQuality);setSphereQuality(Math.max(pixelQuality,quality))
     canvas.dataset.sphereDetail=String(sphereQuality)
    }
-   if(!compiling){const titles=sphereTitles.update(renderedNodes,camera,height);canvas.dataset.sphereTitles=String(titles.count);if(titles.changed)compiled=false}
+   if(!compiling){const titles=sphereTitles.update(renderedNodes,camera,height,renderer.getPixelRatio());canvas.dataset.sphereTitles=String(titles.count);if(titles.changed)compiled=false}
    if(!compiled){if(!compiling){compiling=true;compilePromise=renderer.compileAsync(scene,camera).then(()=>{compiling=false;compiled=true;if(!disposed){if(pendingUpdate){const args=pendingUpdate;pendingUpdate=null;api.update(...args)}changed()}}).catch(error=>{compiling=false;if(!disposed)onLost(error.message)})}return false}
    renderer.render(scene,camera)
    return true
   },
+  hasSurfaceTitle(id){return sphereTitles.has(id)},
   adapt(milliseconds,minimumFPS=10){
    const limit=frameTargetMs(minimumFPS)
    slowFrames=milliseconds>limit*.75?slowFrames+1:0;fastFrames=milliseconds<limit*.4?fastFrames+1:0

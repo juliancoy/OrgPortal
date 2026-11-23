@@ -33,8 +33,8 @@ with sync_playwright() as p:
   page.wait_for_function('()=>{const c=document.querySelector(".organization-ecomap canvas");return c?.dataset.ready==="true"&&!c.dataset.transitioning}')
  def frames():page.evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
  def titles():
-  page.wait_for_function('Number(document.querySelector(".organization-ecomap canvas")?.dataset.sphereTitles)>0',timeout=60000)
-  expect(page.locator('.organization-ecomap-labels button:visible')).to_have_count(0)
+  page.wait_for_function('Number(document.querySelector(".organization-ecomap canvas")?.dataset.sphereTitles)>0 || document.querySelector(".organization-ecomap-labels button:not([hidden])")',timeout=60000)
+  assert page.locator('.organization-ecomap-labels button:visible').count()<=45 # Distant nodes retain crisp screen labels.
  def select(name,mode,anchor):
   page.get_by_label('Find a node',exact=True).fill(name)
   page.locator('.organization-ecomap-search').get_by_role('button',name=name,exact=True).click()
@@ -64,7 +64,7 @@ with sync_playwright() as p:
   page.wait_for_function('document.querySelector(".organization-ecomap canvas").dataset.sphereTitles==="0"')
   expect(page.locator('.organization-ecomap-labels').get_by_role('button',name='State of Maryland',exact=True)).to_be_visible()
   page.get_by_label('Title placement',exact=True).select_option('surface');titles()
-  # Search and actual sphere clicks remain usable with no DOM label boxes.
+  # Search and actual sphere clicks remain usable with adaptive surface titles.
   select('Maryland Department of Health',mode,'title-health');titles()
   expect(page.get_by_label('Title placement',exact=True)).to_have_value('surface')
   canvas=page.locator('.organization-ecomap canvas');box=canvas.bounding_box()
@@ -79,5 +79,5 @@ with sync_playwright() as p:
  page.reload(wait_until='domcontentloaded');ready('3d');expect(page.get_by_label('Title placement',exact=True)).to_have_value('surface')
  assert not errors,errors
  browser.close()
-print('PASS: actual 2D geometry pulls larger amounts inward; curved/flat titles replace boxes; toggling, colors, orbiting, search and sphere navigation, reload preference, mobile layout; no browser errors.')
+print('PASS: actual 2D geometry pulls larger amounts inward; curved/flat titles with readable distant labels; toggling, colors, orbiting, search and sphere navigation, reload preference, mobile layout; no browser errors.')
 print(out)

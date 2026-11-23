@@ -3293,6 +3293,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-label-sharpness-py",
+      "label": "web/scripts/test-local-organization-label-sharpness.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-label-sharpness.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-label-sharpness.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-map-continuity-py",
       "label": "web/scripts/test-local-organization-map-continuity.py",
       "category": "Organizations and membership",
