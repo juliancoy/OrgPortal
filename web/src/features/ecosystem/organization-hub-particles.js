@@ -55,7 +55,10 @@ export function settleOrganizationHubs(nodes,edges,anchor,dimensions=2,spacing=1
   .force('y',forceY(n=>guides.get(n.id).y).strength(.12))
  if(dimensions===3)simulation.force('z',forceZ(n=>guides.get(n.id).z).strength(.12))
  // Settle once in the layout worker; no background physics after convergence.
- simulation.tick(260);simulation.stop()
+ // The seeded branch guides already separate large graphs. Bound total
+ // node-steps instead of spending hundreds of ticks on every large expansion.
+ const ticks=Math.max(12,Math.min(260,Math.floor(150000/ordered.length)))
+ simulation.tick(ticks);simulation.stop()
  for(const n of ordered){n.hubChildren=children.get(n.id).length;delete n.fx;delete n.fy;delete n.fz;delete n.vx;delete n.vy;delete n.vz;delete n.index;if(dimensions===2)n.z=0}
  // Reserve label priority for branch junctions before their leaf nodes.
  return nodes.sort((a,b)=>(a.id===root.id?-1:b.id===root.id?1:children.get(b.id).length-children.get(a.id).length||a.id.localeCompare(b.id)))
