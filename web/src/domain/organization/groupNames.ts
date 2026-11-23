@@ -20,6 +20,7 @@ export function abbreviateBoardLabel(name: string): string {
   return name.replace(/\bBoard\s+of\s+Directors\b/gi, 'BD')
     .replace(/\bBoard\s+of\s+Trustees\b/gi, 'BT')
     .replace(/\bUniversity\s+of\s+Maryland\b/gi, 'UMD')
+    .replace(/\bDepartment\s+of\b/gi, 'Dept')
     .replace(/\bMaryland\b/gi, 'MD')
 }
 
