@@ -31,7 +31,7 @@ export function OrganizationEcoMap({organization}:{organization:{id:string;name:
   const abort=new AbortController();setError('');setProgress('Loading direct connections…')
   const cached=neighborhoods.get(cacheKey)
   if(cached&&Date.now()-cached.at<60000){setResult({slug:organization.slug,key:cacheKey,fy,data:cached.data});setProgress('');return()=>abort.abort()}
-  void loadOrganizationMap(async(offset,version)=>{const response=await fetch(ecosystemUrl('organization-map',{org:handle,members,fy,offset,limit:250,version}),{signal:abort.signal,credentials:'omit'});return readEvidenceResponse<MapPage>(response)},(loaded,total)=>{if(!abort.signal.aborted)setProgress(`Loading connections: ${loaded} of ${total}`)}).then(data=>{if(!abort.signal.aborted){if(!data.anchor)data={...data,anchor:organization.id,organizations:[{...organization,category:'general'}]};cacheNeighborhood(cacheKey,data);setResult({slug:organization.slug,key:cacheKey,fy,data});setProgress('')}}).catch(error=>{if(!abort.signal.aborted){setError(error.message);setProgress('')}})
+  void loadOrganizationMap(async(offset,version)=>{const response=await fetch(ecosystemUrl('organization-map',{org:handle,members,fy,offset,limit:250,version}),{signal:abort.signal,credentials:'omit'});return readEvidenceResponse<MapPage>(response)},(loaded,total)=>{if(!abort.signal.aborted)setProgress(`Loading connections: ${loaded} of ${total}`)},data=>{if(!abort.signal.aborted)setResult({slug:organization.slug,key:cacheKey,fy,data})}).then(data=>{if(!abort.signal.aborted){if(!data.anchor)data={...data,anchor:organization.id,organizations:[{...organization,category:'general'}]};cacheNeighborhood(cacheKey,data);setResult({slug:organization.slug,key:cacheKey,fy,data});setProgress('')}}).catch(error=>{if(!abort.signal.aborted){setError(error.message);setProgress('')}})
   return()=>abort.abort()
  },[organization.id,organization.name,organization.slug,revision,grouping.ready,handle,members,cacheKey,fy])
  // Keep the renderer and display preferences alive while another year loads.
@@ -39,6 +39,7 @@ export function OrganizationEcoMap({organization}:{organization:{id:string;name:
  const data=result?.data||null
  const years=[...new Set([2025,...(result?.data.fiscalYears||[]),...(/^\d{4}$/.test(fy)?[Number(fy)]:[])])].sort((a,b)=>b-a)
  const updating=Boolean(data&&(result?.slug!==organization.slug||result?.key!==cacheKey||result?.fy!==fy))
+ const partial=Boolean(data&&data.nextOffset!==null)
  const anchor=data?.organizations.find(node=>node.id===data.anchor)
  const name=anchor?.name||organization.name
  const mapPath=mode==='3d'?'/ecosystem/network/3d':'/ecosystem/network'
@@ -50,7 +51,7 @@ export function OrganizationEcoMap({organization}:{organization:{id:string;name:
   {error&&<p role="alert">{error} <button onClick={event=>{neighborhoods.delete(cacheKey);setRevision(n=>n+1);event.currentTarget.closest('.organization-ecomap')?.querySelector('canvas')?.focus({preventScroll:true})}}>Retry map</button></p>}
   {!data&&progress&&<p role="status">{progress}</p>}
   {data&&<>
-   <div className="organization-ecomap-summary"><p role="status" aria-live="polite">{updating?(error?'Showing previous connections; update failed.':`Updating connections… ${progress}`):data.total?`All ${data.total.toLocaleString()} adjacent nodes · ${data.incoming.toLocaleString()} upstream · ${data.outgoing.toLocaleString()} downstream`:fy==='all'?'No documented adjacent nodes in this snapshot.':fy==='unassigned'?'No connections among records without an assigned year.':`No documented connections for FY${fy}.`}</p><div className="organization-ecomap-legend"><span className="incoming">● Incoming</span><span className="outgoing">● Outgoing</span><span>Dashed: affiliation</span></div></div>
+   <div className="organization-ecomap-summary"><p role="status" aria-live="polite">{updating?(error?'Showing previous connections; update failed.':`Updating connections… ${progress}`):partial?`${error?'Loading stopped.':progress} Showing ${Math.max(0,data.organizations.length-1).toLocaleString()} of ${data.total.toLocaleString()} adjacent nodes.`:data.total?`All ${data.total.toLocaleString()} adjacent nodes · ${data.incoming.toLocaleString()} upstream · ${data.outgoing.toLocaleString()} downstream`:fy==='all'?'No documented adjacent nodes in this snapshot.':fy==='unassigned'?'No connections among records without an assigned year.':`No documented connections for FY${fy}.`}</p><div className="organization-ecomap-legend"><span className="incoming">● Incoming</span><span className="outgoing">● Outgoing</span><span>Dashed: affiliation</span></div></div>
    {!updating&&data.hiddenParent&&<p>Click the selected node to return to {data.hiddenParent.name}. Its incoming link is outside this year filter; navigation keeps your selected year.</p>}
    <OrganizationMapCanvas yearControl={yearControl} data={data} mode={mode} initialView={initialView} onModeChange={setMode} onSelect={(node:MapNode,view)=>{
     rememberMapView(location.key,view)

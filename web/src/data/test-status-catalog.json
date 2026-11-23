@@ -3335,6 +3335,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-map-loading-py",
+      "label": "web/scripts/test-local-organization-map-loading.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-map-loading.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-map-loading.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-map-navigation-py",
       "label": "web/scripts/test-local-organization-map-navigation.py",
       "category": "Organizations and membership",

@@ -1,7 +1,7 @@
 export type MapNode={id:string;name:string;slug:string|null;category:string;type?:string;financialAmount?:number|null}
 export type MapEdge={id:string;source:string;target:string;recordCount:number;kinds:string[];hierarchy?:boolean}
 export type MapPage={version:string;generatedAt:string;fy?:string;fiscalYears?:number[];financialTotals?:{currencies:{currency:string;received:number;disbursed:number}[];missingAmounts:number};anchor:string|null;hiddenParent?:MapNode|null;organizations:MapNode[];relationships:MapEdge[];total:number;incoming:number;outgoing:number;offset:number;nextOffset:number|null}
-export async function loadOrganizationMap(fetchPage:(offset:number,version?:string)=>Promise<MapPage>,progress:(loaded:number,total:number)=>void=()=>{}) {
+export async function loadOrganizationMap(fetchPage:(offset:number,version?:string)=>Promise<MapPage>,progress:(loaded:number,total:number)=>void=()=>{},preview:(data:MapPage)=>void=()=>{}) {
  const nodes=new Map<string,MapNode>(),edges=new Map<string,MapEdge>();let first:MapPage|undefined,offset=0
  for(;;){
   const page=await fetchPage(offset,first?.version)
@@ -10,9 +10,13 @@ export async function loadOrganizationMap(fetchPage:(offset:number,version?:stri
   if(page.version!==first.version||page.anchor!==first.anchor||page.total!==first.total)throw Error('The map changed while loading. Retry to load one consistent snapshot.')
   for(const node of page.organizations)nodes.set(node.id,node)
   for(const edge of page.relationships)edges.set(edge.id,edge)
+  if(page.anchor&&!nodes.has(page.anchor)||[...edges.values()].some(edge=>!nodes.has(edge.source)||!nodes.has(edge.target)||edge.source!==page.anchor&&edge.target!==page.anchor))throw Error('Invalid direct organization relationship')
   progress(Math.max(0,nodes.size-(page.anchor?1:0)),page.total)
   if(page.nextOffset===null)break
   if(!Number.isSafeInteger(page.nextOffset)||page.nextOffset<=offset)throw Error('The organization map did not finish loading. Retry.')
+  // Render one validated preview while subsequent pages arrive. Updating only
+  // once more at completion avoids restarting layout for every page.
+  if(offset===0)preview({...page,organizations:[...nodes.values()],relationships:[...edges.values()]})
   offset=page.nextOffset
  }
  if(first.anchor&&(!nodes.has(first.anchor)||nodes.size!==first.total+1))throw Error('Some adjacent organizations are missing. Retry.')

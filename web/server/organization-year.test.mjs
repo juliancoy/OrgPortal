@@ -14,7 +14,7 @@ function fixture(legacy=false){
   {id:'internal',source:'center',target:'alias',kind:'transfer',fiscalYear:2025,amount:30,currency:'USD'},
   {id:'program',source:'center',target:'undated',kind:'terms',fiscalYear:2024}]
  const profiles=organizationEvidenceProfiles({organizations,relationships})
- if(legacy)for(const profile of profiles.entries)delete profile.recordFiscalYears
+ if(legacy)for(const profile of profiles.entries){delete profile.recordFiscalYears;delete profile.financialTotalsByYear}
  const edges=relationships.filter(row=>row.kind!=='terms').map(row=>[row.source,row.target,row.kind,'',row.fiscalYear||null]),edgesByOrg={}
  edges.forEach(([a,b],i)=>{for(const id of new Set([a,b]))(edgesByOrg[id]??=[]).push(i)})
  const read=async path=>{
@@ -90,4 +90,19 @@ for(const legacy of [false,true])test(`map bubbles match complete evidence total
   assert.deepEqual(map.financialTotals,evidence.financialTotals)
   if(map.nextOffset!==null)assert.deepEqual((await query('organization-map',{...params,offset:String(map.nextOffset),limit:'1'})).financialTotals,evidence.financialTotals)
  }
+})
+
+test('single organizations use precomputed yearly totals without scanning payment shards on each map page',async()=>{
+ const {read}=fixture(),reads=[]
+ // A fresh reader models each production request, without an in-process cache.
+ for(const offset of ['0','1']){
+  const result=await queryEcosystem(async key=>{reads.push(key);return read(key)},'organization-map',new URLSearchParams({org:'center',fy:'2025',limit:'1',offset}))
+  assert.deepEqual(result.body.financialTotals.currencies,[{currency:'USD',received:275,disbursed:30}])
+ }
+ // The off-year program term is the sole evidence shard needed for map topology.
+ assert.deepEqual(reads.filter(key=>key.includes('/relationships/')),['fixture/relationships/1.json','fixture/relationships/1.json'])
+ const evidenceReads=[]
+ const evidence=await queryEcosystem(async key=>{evidenceReads.push(key);return read(key)},'organization-evidence',new URLSearchParams({org:'center',fy:'2025',limit:'1'}))
+ assert.equal(evidence.body.total,31)
+ assert.deepEqual(evidenceReads.filter(key=>key.includes('/relationships/')),['fixture/relationships/0.json'])
 })

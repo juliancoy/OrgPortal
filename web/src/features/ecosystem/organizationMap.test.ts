@@ -114,3 +114,20 @@ for(const mode of ['2d','3d'] as const)it(`${mode} attracts peers in each direct
  for(let i=0;i<peers.length;i++)for(let j=i+1;j<peers.length;j++)expect(Math.hypot(peers[i].x-peers[j].x,peers[i].y-peers[j].y,peers[i].z-peers[j].z)).toBeGreaterThan(14)
  expect(organizationMapLayout({...data,organizations:[...data.organizations].reverse(),relationships:[...data.relationships].reverse()},mode)).toEqual(clustered)
 })
+
+it('publishes one validated preview before later pages finish, without calling it complete',async()=>{
+ const previews:MapPage[]=[]
+ const result=await loadOrganizationMap(async offset=>{
+  if(offset){expect(previews).toHaveLength(1);expect(previews[0].nextOffset).toBe(1);expect(previews[0].organizations).toHaveLength(2)}
+  return page(offset)
+ },()=>{},data=>previews.push(data))
+ expect(result.nextOffset).toBeNull();expect(result.organizations).toHaveLength(3)
+ expect(previews[0].organizations).toHaveLength(2)
+})
+it('never publishes an invalid preview or hides a subsequent page failure',async()=>{
+ const previews:MapPage[]=[]
+ await expect(loadOrganizationMap(async()=>({...page(),relationships:[{...page().relationships[0],target:'missing'}]}),()=>{},data=>previews.push(data))).rejects.toThrow(/Invalid direct/)
+ expect(previews).toHaveLength(0)
+ await expect(loadOrganizationMap(async offset=>{if(offset)throw Error('unavailable');return page()},()=>{},data=>previews.push(data))).rejects.toThrow('unavailable')
+ expect(previews).toHaveLength(1);expect(previews[0].nextOffset).not.toBeNull()
+})

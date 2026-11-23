@@ -58,7 +58,9 @@ export function organizationEvidenceProfiles(data) {
   }
   const transfers=(entry.recordKinds.transfer||[]).map(index=>data.relationships[index])
   entry.financialTotals=summarizeOrganizationTransfers(transfers,members)
-  if(members.length>1){
+  // Every organization needs indexed yearly totals. Otherwise each map page
+  // scans the complete year's payment evidence again in request-scoped runtimes.
+  {
    const years=new Map()
    for(const row of transfers){const year=row.fiscalYear||'unassigned';if(!years.has(year))years.set(year,[]);years.get(year).push(row)}
    entry.financialTotalsByYear=Object.fromEntries([...years].map(([year,rows])=>[year,summarizeOrganizationTransfers(rows,members)]))
