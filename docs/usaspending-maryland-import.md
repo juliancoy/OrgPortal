@@ -143,3 +143,9 @@ transactions (565,053 edges, 43,338 nodes) passed concurrent cold loads and fisc
 filtering: 24 asset reads total, about 240 ms for the local cold topology, 193 ms
 for its first year projection, and 9 ms for a repeated projection. These are local
 index measurements, not production page-load promises.
+
+A separate capacity build combined the local public graph replica with all new
+transactions: 565,053 graph records, 74,161 assets, and a largest asset of
+12,435,851 bytes. It completed with about 3.3 GB resident memory. Its artifacts
+are private test output, not a current production snapshot; release still requires
+a fresh remote export after the complete import reconciles.
