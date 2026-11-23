@@ -2229,6 +2229,20 @@
       ]
     },
     {
+      "id": "suite-org-worker-test-usaspending-test-ts",
+      "label": "org-worker/test/usaspending.test.ts",
+      "category": "User interface and integrations",
+      "source": "org-worker/test/usaspending.test.ts",
+      "kind": "node",
+      "cwd": "org-worker",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "usaspending.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-org-worker-test-userTasks-test-ts",
       "label": "org-worker/test/userTasks.test.ts",
       "category": "User interface and integrations",
@@ -2421,6 +2435,20 @@
         {
           "id": "suite",
           "label": "test-status.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-scripts-test-usaspending-py",
+      "label": "scripts/test-usaspending.py",
+      "category": "User interface and integrations",
+      "source": "scripts/test-usaspending.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-usaspending.py"
         }
       ]
     },
@@ -3989,6 +4017,20 @@
         {
           "id": "suite",
           "label": "organization-year.test.mjs"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-server-topology-test-mjs",
+      "label": "web/server/topology.test.mjs",
+      "category": "User interface and integrations",
+      "source": "web/server/topology.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "topology.test.mjs"
         }
       ]
     },
