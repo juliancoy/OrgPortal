@@ -5,7 +5,11 @@ export function transactionTime(row){
  let host='';try{host=new URL(row.sourceUrl||row.source_url).hostname}catch{}
  if(/^md-(view|bpw):/.test(id)||host.endsWith('.marylandtaxes.gov')||host==='marylandtaxes.gov'||host==='maryland.gov'||host.endsWith('.maryland.gov')||host==='marylandcomptroller.gov'||host.endsWith('.marylandcomptroller.gov'))calendar='maryland'
  if(/^(usaspending:|usgov:)/.test(id)||host==='usaspending.gov'||host.endsWith('.usaspending.gov'))calendar='federal'
- const explicit=Number(String(row.fiscalYear||row.fiscal_year||row.reportingFiscalYear||row.reporting_fiscal_year||row.provenance?.fiscalYear||row.provenance?.fiscal_year||'').replace(/^FY\s*/i,'')),hasPeriod=day(start)&&day(end)&&start<=end
+ // A literal fiscal-year source date is already a year assertion, not an
+ // unknown calendar date. Do not invent a day or infer a year from prose.
+ const fiscalDate=/^FY\s*(\d{4})$/i.exec(String(date).trim())?.[1]
+ const explicit=Number(String(row.fiscalYear||row.fiscal_year||row.reportingFiscalYear||row.reporting_fiscal_year||row.provenance?.fiscalYear||row.provenance?.fiscal_year||fiscalDate||'').replace(/^FY\s*/i,'')),hasPeriod=day(start)&&day(end)&&start<=end
+ if(fiscalDate&&calendar==='unknown')calendar='reported'
  let year=Number.isInteger(explicit)&&explicit>=1900&&explicit<=2200?explicit:null
  if(!year&&hasPeriod&&['maryland','federal'].includes(calendar)){const boundary=calendar==='maryland'?7:10,fy=value=>Number(value.slice(0,4))+(Number(value.slice(5,7))>=boundary?1:0);if(fy(start)===fy(end))year=fy(end)}
  if(!year&&hasPeriod&&Date.parse(end)-Date.parse(start)<=366*86400000&&calendar==='unknown'){year=Number(end.slice(0,4));calendar='reported'}

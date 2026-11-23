@@ -2,8 +2,28 @@ import {z} from 'zod';
 import {defaultEvidenceGroups,evidenceGroupSource,type EvidenceGrouping} from '../../shared/organizationEvidenceGroups';
 import {authorizeOrganization,type OrganizationActor} from './organizationIam';
 import {EventIntegrationError} from './eventPlatforms';
+import {prepareEventOperation,claimEventOperation,finishEventOperation,previewFingerprint,enforceEventRateLimit} from './eventOperationStore';
 type Organization={id:string;slug:string;name:string};
 const schema=z.object({action:z.enum(['add','remove']),member:z.object({id:z.string().min(1).max(300),name:z.string().min(1).max(500)}).strict()}).strict();
+export const evidenceGroupOperationSchema=schema.extend({organizationId:z.string().min(1).max(200),confirm:z.boolean().optional(),previewId:z.string().uuid().optional()}).strict();
+/** MCP edits use the same authorization and exact-source validation as the UI. */
+export async function runEvidenceGroupOperation(db:D1Database,actor:OrganizationActor,input:unknown){
+ const parsed=evidenceGroupOperationSchema.safeParse(input);if(!parsed.success)throw new EventIntegrationError(400,'Invalid grouping change');
+ const {organizationId,confirm,previewId,...change}=parsed.data;
+ const org=await organization(db,organizationId);if(!org)throw new EventIntegrationError(404,'Organization not found');
+ await authorizeOrganization(db,actor,'manage',org.id);
+ await enforceEventRateLimit(db,actor.id);
+ const before=await organizationEvidenceGrouping(db,org.id);
+ if(change.member.id===org.id)throw new EventIntegrationError(400,'The organization is the fixed center of its grouping');
+ if(change.action==='add'&&await publicMember(db,change.member))throw new EventIntegrationError(400,'Choose a source node; directory organizations keep their own groupings');
+ const preview={organizationId:org.id,change,before,effect:'Changes shared display grouping only; original records, legal identities, balances and memberships remain unchanged.'};
+ const owner={userId:actor.id,organizationId:org.id,eventId:'organization:evidence-group'},fingerprint=await previewFingerprint(preview);
+ if(!confirm)return {...preview,...await prepareEventOperation(db,owner,fingerprint)};
+ if(!previewId)throw new EventIntegrationError(409,'Request a preview first and supply its previewId');
+ await claimEventOperation(db,owner,previewId,fingerprint);
+ try{const group=await changeOrganizationEvidenceGrouping(db,actor,org.id,change);await finishEventOperation(db,previewId,true,['organization.evidence_group']);return {previewId,group};}
+ catch(error){await finishEventOperation(db,previewId,false,[]);throw error;}
+}
 async function organization(db:D1Database,handle:string){return db.prepare('SELECT id,slug,name FROM organizations WHERE id=? OR slug=?').bind(handle,handle).first<Organization>();}
 async function stored(db:D1Database,id:string){return (await db.prepare('SELECT external_id FROM organization_source_identities WHERE source=? AND organization_id=? ORDER BY external_id').bind(evidenceGroupSource,id).all<{external_id:string}>()).results.map(r=>r.external_id);}
 export async function organizationEvidenceGrouping(db:D1Database,handle:string):Promise<EvidenceGrouping|null>{

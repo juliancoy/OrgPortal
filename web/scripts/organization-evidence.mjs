@@ -75,7 +75,7 @@ export function organizationEvidenceProfiles(data) {
 // Use the same consolidated external transfer totals for cards, node size and
 // node color. Currencies are never added together; the map's metric is USD.
 export function consolidatedFinancialMetrics(profile,fy='all'){
- if(!profile?.financialMembers)return null
+ if(!profile?.financialMembers&&!profile?.financialTotals?.awards?.length)return null
  const totals=fy==='all'?profile.financialTotals:profile.financialTotalsByYear?.[fy]
  const usd=totals?.currencies.find(total=>total.currency==='USD')
  const incoming=usd?.received||0,outgoing=usd?.disbursed||0

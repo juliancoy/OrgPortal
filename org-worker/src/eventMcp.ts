@@ -1,4 +1,5 @@
 import {registerEcosystemDatasetTools} from './ecosystemPublicMcp';
+import {evidenceGroupOperationSchema,runEvidenceGroupOperation} from './organizationEvidenceGroups';
 import {registerMarylandComptrollerTools} from './marylandComptrollerMcp';
 import { emailWorkspaceSchema, emailSubscriberSchema, emailDraftSchema, emailDraftTargetSchema, readEmailWorkspace, addEmailSubscriber, saveEmailDraft, readEmailDraft } from './emailWorkspaceMcp';
 import { recordMcpStatistics } from './mcpLiveStatistics';
@@ -838,6 +839,24 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
       description:'Import an already-sent campaign report with source evidence, Gmail receipts and failures. Never queues or sends messages. Apply requires confirm=true and the matching one-use previewId. Missing historical engagement is unavailable, never invented.',
       inputSchema:emailHistorySchema,annotations:{readOnlyHint:operation==='preview',destructiveHint:false},_meta:metadata([portalReadScope,portalWriteScope]),
     },async args=>{try{const data=await importEmailHistory(env,identity,scopedArgs({...args,confirm:operation==='apply'&&args.confirm===true}));return {content:[{type:'text' as const,text:JSON.stringify(data)}],structuredContent:data}}catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}});
+    for(const phase of ['preview','apply'] as const)server.registerTool(`${phase}_organization_evidence_group`,{
+      description:`${phase==='preview'?'Preview':'Apply'} a shared display grouping of exact public source IDs. Requires live organization management permission; operators may manage public groups across tenants. Original source records and identities are preserved. Apply requires confirm=true and the matching one-use previewId.`,
+      inputSchema:evidenceGroupOperationSchema,annotations:{readOnlyHint:phase==='preview',destructiveHint:false},_meta:metadata([portalReadScope,portalWriteScope]),
+    },async args=>{try{
+      if(!identity.scopes.includes(portalReadScope)||!identity.scopes.includes(portalWriteScope))throw new EventIntegrationError(403,'Missing portal scope');
+      if(phase==='apply'&&args.confirm!==true)throw new EventIntegrationError(409,'Apply requires confirm=true');
+      const data=await runEvidenceGroupOperation(env.DB,{id:identity.userId,name:identity.userId,email:null,isOperator:identity.isOperator},scopedArgs({...args,confirm:phase==='apply'},true));
+      return {content:[{type:'text' as const,text:JSON.stringify(data)}],structuredContent:data};
+    }catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}});
+    server.registerTool('get_organization_evidence_group_operation',{
+      description:'Inspect the saved receipt for a shared evidence grouping edit before retrying. Requires current management access.',
+      inputSchema:evidenceGroupOperationSchema.pick({organizationId:true,previewId:true}).required(),annotations:{readOnlyHint:true},_meta:metadata([portalReadScope]),
+    },async args=>{try{
+      if(!identity.scopes.includes(portalReadScope))throw new EventIntegrationError(403,'Missing portal scope');
+      scopedArgs(args,true);await authorizeOrganization(env.DB,{id:identity.userId,name:identity.userId,email:null,isOperator:identity.isOperator},'manage',args.organizationId);
+      const data=await eventOperationStatus(env.DB,identity.userId,args.organizationId,args.previewId);
+      return {content:[{type:'text' as const,text:JSON.stringify(data)}],structuredContent:data};
+    }catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}});
     const supportResult = async (operation: 'list' | 'record' | 'void', args: unknown) => {
       try {
         const data = await runSupportMcp(env.DB, identity, operation, scopedArgs(args));

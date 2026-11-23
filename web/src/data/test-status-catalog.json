@@ -3209,6 +3209,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-awards-py",
+      "label": "web/scripts/test-local-organization-awards.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-awards.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-awards.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-board-py",
       "label": "web/scripts/test-local-organization-board.py",
       "category": "Organizations and membership",

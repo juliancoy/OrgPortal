@@ -24,3 +24,13 @@ it('map bubbles preserve signed amounts, currencies and the period without treat
  expect(render(undefined,'unassigned')).toContain('Year unavailable')
  expect(render(undefined,'all')).toContain('All years')
 })
+
+it('shows reported awards separately from cash in cards and fullscreen bubbles',()=>{
+ const totals={currencies:[{currency:'USD',received:350000,disbursed:0}],missingAmounts:0,awards:[{currency:'USD',received:975600,disbursed:0}]}
+ for(const component of [OrganizationFinancialTotals,OrganizationFinancialBubbles]){
+  const html=renderToStaticMarkup(createElement(component,{totals,fy:'2025'}))
+  expect(html).toContain('350,000.00');expect(html).toContain('975,600.00')
+  expect(html).toContain('Reported awards to this group');expect(html).toContain('payment is not established by an award')
+  expect(html).not.toContain('1,325,600')
+ }
+})

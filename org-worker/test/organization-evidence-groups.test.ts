@@ -68,3 +68,48 @@ test('removing all initial BGE members persists an empty group and never restore
   assert.equal((await db.prepare('SELECT count(*) n FROM organization_source_identities WHERE source=?').bind(evidenceGroupSource).first()).n,1);
  }finally{db.close()}
 });
+
+test('MCP grouping edits require exact one-use previews and current permission',async()=>{
+ const {runEvidenceGroupOperation}=await import('../src/organizationEvidenceGroups');
+ const db=setup(),d1=db as unknown as D1Database,input={organizationId:'org-one',action:'add',member:node};
+ try{
+  await assert.rejects(runEvidenceGroupOperation(d1,actor,{...input,confirm:true}),/preview first/);
+  const preview=await runEvidenceGroupOperation(d1,actor,input);
+  assert.deepEqual((await organizationEvidenceGrouping(d1,'one'))?.members,[]);
+  const apply={...input,confirm:true,previewId:preview.previewId};
+  await assert.rejects(runEvidenceGroupOperation(d1,actor,{...apply,member:{id:'source-two',name:'Source Two'}}),/changed/);
+  await assert.rejects(runEvidenceGroupOperation(d1,{...actor,id:'other'},apply),/management access/);
+  await db.prepare("UPDATE organization_memberships SET status='inactive'").run();
+  await assert.rejects(runEvidenceGroupOperation(d1,actor,apply),/management access/);
+  await db.prepare("UPDATE organization_memberships SET status='active'").run();
+  await runEvidenceGroupOperation(d1,actor,apply);
+  assert.deepEqual((await organizationEvidenceGrouping(d1,'one'))?.members,['source-one']);
+  await assert.rejects(runEvidenceGroupOperation(d1,actor,apply),/changed|used/);
+  assert.equal((await db.prepare('SELECT count(*) n FROM ecosystem_public_records').first()).n,2);
+ }finally{db.close()}
+});
+
+test('MCP transport enforces portal scopes and tenant boundaries for shared group edits',async t=>{
+ const {generateKeyPair,exportJWK,SignJWT}=await import('jose');
+ const {handleEventMcp}=await import('../src/eventMcp');
+ const db=setup();t.after(()=>db.close());
+ const resource='https://group.transport.test/api/org/mcp',issuer='https://group.identity.test';
+ const {privateKey,publicKey}=await generateKeyPair('ES256'),jwk=await exportJWK(publicKey);
+ t.mock.method(globalThis,'fetch',async()=>Response.json({keys:[jwk]}));
+ const env={DB:db,MCP_PUBLIC_URL:resource,MCP_OAUTH_ISSUER:issuer,MCP_OAUTH_JWKS_URL:issuer+'/keys',MCP_SUBJECT_MAP_JSON:JSON.stringify({subject:actor.id}),MCP_RESOURCE_CONFIG_JSON:JSON.stringify({[resource]:{name:'One',organizationId:'org-one'}})} as unknown as Env;
+ const call=async(name:string,args:Record<string,unknown>,scope='org:portal.read org:portal.write')=>{
+  const token=await new SignJWT({scope}).setProtectedHeader({alg:'ES256'}).setSubject('subject').setIssuer(issuer).setAudience(resource).setIssuedAt().setExpirationTime('5m').sign(privateKey);
+  const response=await handleEventMcp(new Request(resource,{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json',accept:'application/json, text/event-stream'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}})}),env);
+  assert.equal(response.status,200);return (await response.json() as any).result;
+ };
+ const input={organizationId:'org-one',action:'add',member:node};
+ assert.equal((await call('preview_organization_evidence_group',input,'org:portal.read')).isError,true);
+ await db.prepare("INSERT INTO organizations(id,name,slug) VALUES('org-two','Two','two')").run();
+ await db.prepare("INSERT INTO organization_memberships VALUES('org-two','pidp-user','owner','active')").run();
+ assert.equal((await call('preview_organization_evidence_group',{...input,organizationId:'org-two'})).isError,true);
+ const preview=await call('preview_organization_evidence_group',input);assert.ok(!preview.isError,JSON.stringify(preview));
+ assert.equal((await call('apply_organization_evidence_group',{...input,previewId:preview.structuredContent.previewId})).isError,true);
+ const applied=await call('apply_organization_evidence_group',{...input,previewId:preview.structuredContent.previewId,confirm:true});assert.ok(!applied.isError,JSON.stringify(applied));
+ assert.deepEqual(applied.structuredContent.group.members,['source-one']);
+ const status=await call('get_organization_evidence_group_operation',{organizationId:'org-one',previewId:preview.structuredContent.previewId},'org:portal.read');assert.equal(status.structuredContent.status,'completed');
+});

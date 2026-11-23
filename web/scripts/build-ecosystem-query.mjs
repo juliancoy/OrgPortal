@@ -1,6 +1,7 @@
 import {organizationEvidenceProfiles,consolidatedFinancialMetrics} from './organization-evidence.mjs'
 import {replaceDirectory} from './release-cache.mjs'
 import {transactionTime,dateCoverage} from '../src/features/ecosystem/transaction-time.js'
+import {financialEvidence} from '../src/features/ecosystem/financial-evidence.js'
 import {fiscalMetrics} from './fiscal-metrics.mjs'
 import {budgetAppropriations} from '../src/features/ecosystem/budget-appropriations.js'
 import {isNotApplicableNode} from '../src/features/ecosystem/node-classes.js'
@@ -33,7 +34,7 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
  try{const previous=JSON.parse(await readFile(new URL('manifest.json',folder),'utf8'));if(previous.version===version&&process.env.ORGPORTAL_REBUILD_ECOSYSTEM!=='1')return previous}catch{}
  const {performance,positions}=snapshot
  const data=applyFundHierarchy(snapshot.data)
- data.relationships=data.relationships.map(row=>({...row,...transactionTime(row)}))
+ data.relationships=data.relationships.map(row=>({...row,...transactionTime(row),financialFactType:financialEvidence(row)}))
  const overview=ecosystemOverview(data),folded=foldFundNodes(data),edges=graphRelationships(folded,{includeCapitalization:true})
  const analysis=createNetworkAnalysis(folded.organizations,edges),groups={},membership={}
  for(const mode of ['community','category','county','municipality']){

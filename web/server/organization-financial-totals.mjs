@@ -1,21 +1,25 @@
-// Totals describe recorded transfers, not balances or a complete cash-flow statement.
+import {financialEvidence} from '../src/features/ecosystem/financial-evidence.js'
+// Awards and payments are separate observations, never additive cash flow.
 export function summarizeOrganizationTransfers(records, memberIds, seen=new Set()) {
- const members=new Set(memberIds),currencies=new Map()
- let missingAmounts=0
+ const members=new Set(memberIds),currencies=new Map(),awards=new Map()
+ let missingAmounts=0,missingAwardAmounts=0
  for(const row of records){
-  if(row.kind!=='transfer'||row.status==='voided'||row.financialMeasure==='cumulative_obligations'||row.financialFactType==='obligation')continue
+  const fact=financialEvidence(row),award=fact==='reported_award'
+  if(row.kind!=='transfer'||row.status==='voided'||['obligation','appropriation','program_ceiling','balance','rescission','administration'].includes(fact))continue
   const incoming=members.has(row.target),outgoing=members.has(row.source)
   if(incoming===outgoing)continue // Exclude transfers within a displayed grouping.
   const key=row.transactionRecordId||row.id
   if(key&&seen.has(key))continue
   if(key)seen.add(key)
   const currency=row.currency||(/^\$/.test(row.amountLabel||'')?'USD':null)
-  if(!currency||!Number.isFinite(row.amount)){missingAmounts++;continue}
-  const total=currencies.get(currency)||{currency,received:0,disbursed:0}
+  if(!currency||!Number.isFinite(row.amount)){if(award)missingAwardAmounts++;else missingAmounts++;continue}
+  const bucket=award?awards:currencies
+  const total=bucket.get(currency)||{currency,received:0,disbursed:0}
   total[incoming?'received':'disbursed']+=row.amount
-  currencies.set(currency,total)
+  bucket.set(currency,total)
  }
- return {currencies:[...currencies.values()].sort((a,b)=>a.currency.localeCompare(b.currency)),missingAmounts}
+ return {currencies:[...currencies.values()].sort((a,b)=>a.currency.localeCompare(b.currency)),missingAmounts,
+  ...(awards.size||missingAwardAmounts?{awards:[...awards.values()].sort((a,b)=>a.currency.localeCompare(b.currency)),missingAwardAmounts}:{})}
 }
 
 // Older snapshots lack precomputed totals. Read their complete transfer evidence
@@ -34,12 +38,15 @@ export async function organizationFinancialTotals(read,readRows,manifest,profile
    const rows=await readRows(read,manifest.version,'relationships',ids.slice(offset,offset+100))
    summaries.push(summarizeOrganizationTransfers(rows,members,seen))
   }
-  const currencies=new Map();let missingAmounts=0
+  const currencies=new Map(),awards=new Map();let missingAmounts=0,missingAwardAmounts=0
   for(const summary of summaries){
    missingAmounts+=summary.missingAmounts
+   missingAwardAmounts+=summary.missingAwardAmounts||0
+   for(const total of summary.awards||[]){const sum=awards.get(total.currency)||{currency:total.currency,received:0,disbursed:0};sum.received+=total.received;sum.disbursed+=total.disbursed;awards.set(total.currency,sum)}
    for(const total of summary.currencies){const sum=currencies.get(total.currency)||{currency:total.currency,received:0,disbursed:0};sum.received+=total.received;sum.disbursed+=total.disbursed;currencies.set(total.currency,sum)}
   }
-  return {currencies:[...currencies.values()].sort((a,b)=>a.currency.localeCompare(b.currency)),missingAmounts}
+  return {currencies:[...currencies.values()].sort((a,b)=>a.currency.localeCompare(b.currency)),missingAmounts,
+   ...(awards.size||missingAwardAmounts?{awards:[...awards.values()].sort((a,b)=>a.currency.localeCompare(b.currency)),missingAwardAmounts}:{})}
  })()
  cache.entries.set(key,pending)
  if(cache.entries.size>256)cache.entries.delete(cache.entries.keys().next().value)

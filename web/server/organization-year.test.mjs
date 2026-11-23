@@ -106,3 +106,12 @@ test('single organizations use precomputed yearly totals without scanning paymen
  assert.equal(evidence.body.total,31)
  assert.deepEqual(evidenceReads.filter(key=>key.includes('/relationships/')),['fixture/relationships/0.json'])
 })
+
+test('explicit source fiscal-year labels are parsed without inventing a calendar date',async()=>{
+ const {transactionTime}=await import('../src/features/ecosystem/transaction-time.js')
+ for(const date of ['FY2025','fy 2025',' FY2025 ']){
+  const time=transactionTime({date});assert.equal(time.fiscalYear,2025);assert.equal(time.datePrecision,'fiscal-year');assert.equal(time.dateBasis,'source fiscal year');assert.equal(time.fiscalCalendar,'reported')
+ }
+ assert.equal(transactionTime({date:'FY2025',fiscalYear:2024}).fiscalYear,2024)
+ for(const date of ['2025','around FY2025','FY2025/2026','FY0000'])assert.equal(transactionTime({date}).fiscalYear,null)
+})

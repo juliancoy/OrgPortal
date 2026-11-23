@@ -52,6 +52,8 @@ export async function organizationMap(read, readRows, manifest, params, meta) {
   const amount=fy&&fy!=='all'?metrics.get(Math.floor(selected[i]/100))?.[selected[i]%100]?.amount:org.networkMetrics?.amount
   return projectOrganization(org,amount)
  })
+ // A displayed group has one cash volume, including its attached source nodes.
+ if(params.has('members')&&map.financialTotals){const anchor=organizations.find(org=>org.id===map.anchor?.id),usd=map.financialTotals.currencies.find(total=>total.currency==='USD');if(anchor)anchor.financialAmount=usd?Math.max(0,usd.received+usd.disbursed):0}
  // Navigation may escape an empty year without putting off-year relationships
  // or money into the year-filtered map itself.
  const hiddenParent=map.anchor&&fy&&fy!=='all'&&!map.incoming?await hiddenYearParent(read,readRows,manifest,params):null
