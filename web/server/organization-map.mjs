@@ -1,3 +1,4 @@
+import {readTopology} from './topology.mjs'
 import {organizationGroup} from './organization-group.mjs'
 import {organizationEvidenceYear} from './organization-evidence-year.mjs'
 import {organizationFinancialTotals} from './organization-financial-totals.mjs'
@@ -67,7 +68,7 @@ async function buildNeighborhood(read,readRows,manifest,params){
  const version=manifest.version
  const profile=await organizationGroup(read,readRows,manifest,params)
  if(!profile)return {anchor:null,positions:[],relationships:[],incoming:0,outgoing:0}
- const selected=profile.organization.id,topology=await read(`${version}/topology.json`),index=await read(`${version}/organizations/index.json`)
+ const selected=profile.organization.id,topology=await readTopology(read,version),index=await read(`${version}/organizations/index.json`)
  const members=new Set(profile.members.map(member=>member.id))
  const nodeId=value=>typeof value==='number'?topology.nodeIds[value]:value
  const {parentDepth,childDepth}=depth(params)

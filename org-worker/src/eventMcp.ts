@@ -1,3 +1,4 @@
+import {registerUsaspendingTools} from './usaspendingMcp';
 import {registerEcosystemDatasetTools} from './ecosystemPublicMcp';
 import {evidenceGroupOperationSchema,runEvidenceGroupOperation} from './organizationEvidenceGroups';
 import {registerMarylandComptrollerTools} from './marylandComptrollerMcp';
@@ -749,7 +750,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
       const envelope=parsedBody as {method?:unknown;params?:{name?:unknown}};
       const name=envelope?.method==='tools/call'?envelope.params?.name:undefined;
       const imageTool=['preview_organization_image_upload','apply_organization_image_upload','preview_organization_profile','apply_organization_profile'].includes(String(name));
-      const evidenceTool=['preview_email_history_import','apply_email_history_import','preview_maryland_comptroller_import','apply_maryland_comptroller_import','preview_ecosystem_dataset','apply_ecosystem_dataset'].includes(String(name));
+      const evidenceTool=['preview_email_history_import','apply_email_history_import','preview_maryland_comptroller_import','apply_maryland_comptroller_import','preview_ecosystem_dataset','apply_ecosystem_dataset','preview_usaspending_import','apply_usaspending_import'].includes(String(name));
       if(!imageTool&&!(evidenceTool&&size<=1024*1024))return new Response(null,{status:413});
     }
     const method = parsedBody && typeof parsedBody === 'object' && 'method' in parsedBody ? parsedBody.method : undefined;
@@ -757,6 +758,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: product.version, ...(config.name === "OrgPortal" ? { icons: [{ src: "https://orgportal.cc/orgportal.svg", mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) }, { instructions: "Search the public organization directory before adding an organization. Use directory_registration for researched third-party listings; it grants no access. Owned creation assigns owner access to the signed-in account and requires explicit ownership intent. Never substitute owned creation when directory registration is unavailable or denied. A claimed record is not verified legal representation. Inspect write receipts after uncertain outcomes before retrying." });
     registerAccountTools(server, env.DB, identity, config);
     registerMarylandComptrollerTools(server,env.DB,identity,config.organizationId);
+    registerUsaspendingTools(server,env.DB,identity,config.organizationId);
     registerEcosystemDatasetTools(server,env.DB,identity,config.organizationId);
     const scopedArgs = (args: unknown, operatorAccess = false) => {
       if (!(operatorAccess && identity.isOperator === true) && config.organizationId && (!args || typeof args !== 'object' || !('organizationId' in args)

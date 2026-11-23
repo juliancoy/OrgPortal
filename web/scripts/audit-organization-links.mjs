@@ -1,3 +1,4 @@
+import {readTopology} from '../server/topology.mjs'
 // Read-only audit of the exact generated snapshot used by organization EcoMaps.
 import {readFile,readdir,mkdir,writeFile} from 'node:fs/promises'
 import {createHash} from 'node:crypto'
@@ -10,7 +11,7 @@ async function* rows(name){for(const file of (await readdir(new URL(`${version}/
 const nodes=new Map(),profiles=new Map()
 for await(const o of rows('organizations'))nodes.set(o.id,{id:o.id,name:o.name,slug:o.portalSlug||'',category:o.category||'',entityType:o.entityType||'',identityStatus:o.identityStatus||'',sourceCategory:o.sourceCategory||'',governmentParentId:o.governmentParentId||'',classification:o.governmentClassification||'',budgetAgencyCode:o.budgetAgencyCode||'',incoming:new Set(),outgoing:new Set(),neighbors:new Set(),graphRecords:0,evidenceRecords:0,kinds:{},externalRecords:0})
 for await(const p of rows('organization-evidence'))profiles.set(p.organization.id,p)
-const topology=await read(`${version}/topology.json`),endpoint=v=>typeof v==='number'?topology.nodeIds[v]:v
+const topology=await readTopology(read,version),endpoint=v=>typeof v==='number'?topology.nodeIds[v]:v
 const directedPairs=new Set(),graphKinds={},danglingGraph=[],selfLinks=[]
 for(const [a,b,kind] of topology.edges){const source=endpoint(a),target=endpoint(b);graphKinds[kind]=(graphKinds[kind]||0)+1
  if(!nodes.has(source)||!nodes.has(target)){danglingGraph.push({source,target});continue}

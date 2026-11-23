@@ -68,3 +68,17 @@ test('verified exports retry transient HTTP/network failures with a strict bound
  attempts=0;await assert.rejects(()=>fetchPublicEvidenceJson('https://example.invalid/public',{wait:async()=>{},fetcher:async()=>{attempts++;return new Response('{}',{status:409})}}),/409/);assert.equal(attempts,1)
  attempts=0;await assert.rejects(()=>fetchPublicEvidenceJson('https://example.invalid/public',{wait:async()=>{},fetcher:async()=>{attempts++;return new Response('{')}}));assert.equal(attempts,1)
 })
+
+
+test('federal prime obligations preserve source identities and signed adjustments without inflating cash volume',async()=>{
+ const {graphRelationships,financialNodeAmounts}=await import('../src/features/ecosystem/portal-ecosystem.js');
+ const base={record_type:'external_financial_observation',evidence:'usaspending',from_label:'Federal agency',to_label:'Known',transaction_type:'obligation',financial_fact_type:'obligation',financial_measurement:'delta',occurred_at:'2024-10-01',currency:'USD',status:'reported',provenance_json:JSON.stringify({fiscal_year:'2025',recipient_uei:'SAMPLEUEI001',award_key:'same-award'})};
+ const result=projectNativeEvidence({organizations:[{id:'known',name:'Known'}],relationships:[],financing:[]},[{...base,id:'federal:1',amount:100},{...base,id:'federal:2',amount:-25}]);
+ assert.equal(result.transactionalCoverage.federalRecords,2);assert.equal(result.transactionalCoverage.comptrollerRecords,0);
+ assert.equal(graphRelationships(result).length,2);assert.equal(financialNodeAmounts(result).size,0);
+ const {financialEvidence:direction}=await import('../src/features/ecosystem/network-analysis.js');assert.equal(direction(result.relationships[0]).directed,true);assert.equal(direction(result.relationships[0]).amount,null);
+ assert.deepEqual(result.relationships.map(e=>e.amount),[100,-25]);assert.notEqual(result.relationships[0].target,'known');
+ assert.equal(result.relationships[0].target,result.relationships[1].target);
+ assert.equal(result.relationships[0].sourceDataset,'prime_transactions');assert.equal(result.relationships[0].financialFactType,'obligation');
+ assert.equal(result.relationships[0].provenance.fiscal_year,'2025');assert.equal(result.relationships[0].awardKey,undefined);
+});

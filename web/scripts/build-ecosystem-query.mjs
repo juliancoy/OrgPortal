@@ -1,3 +1,4 @@
+import {writePackedTopology} from '../server/topology.mjs'
 import {organizationEvidenceProfiles,consolidatedFinancialMetrics} from './organization-evidence.mjs'
 import {replaceDirectory} from './release-cache.mjs'
 import {transactionTime,dateCoverage} from '../src/features/ecosystem/transaction-time.js'
@@ -23,12 +24,15 @@ import {normalize,grams,gramBucket,PAGE_SIZE} from '../server/ecosystem-query.mj
 const root=new URL('../',import.meta.url)
 export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTEM_BUILD_SNAPSHOT?async()=>JSON.parse(await readFile(process.env.ORGPORTAL_ECOSYSTEM_BUILD_SNAPSHOT,'utf8')):exportUnifiedEcosystem}={}){
  const snapshot=await source(),hash=createHash('sha256');
- const raw=[JSON.stringify({datasetId:snapshot.datasetId,data:snapshot.data,performance:snapshot.performance,positions:snapshot.positions})]
- for(const value of raw)hash.update(value)
+ // Hash large collections incrementally instead of allocating one giant string.
+ for(const [name,value] of Object.entries({datasetId:snapshot.datasetId,data:snapshot.data,performance:snapshot.performance,positions:snapshot.positions})){
+  hash.update(name);if(value&&typeof value==='object')for(const [key,rows] of Object.entries(value)){hash.update(key);if(Array.isArray(rows)){for(const row of rows)hash.update(JSON.stringify(row)+'\n')}else hash.update(JSON.stringify(rows)??'undefined')}else hash.update(JSON.stringify(value)??'undefined')
+ }
  const sourceFolder=new URL('src/features/ecosystem/',root)
  for(const name of (await readdir(sourceFolder)).filter(n=>/\.(?:js|ts|json)$/.test(n)).sort())hash.update(await readFile(new URL(name,sourceFolder)))
  for(const name of ['organization-evidence.mjs','source-agency-references.mjs','maryland-agency-references.mjs','unified-ecosystem.mjs'])hash.update(await readFile(new URL(name,import.meta.url)));
  hash.update(await readFile(new URL('server/organization-financial-totals.mjs',root)))
+ hash.update(await readFile(new URL('server/topology.mjs',root)))
  hash.update(await readFile(new URL(import.meta.url)));hash.update(await readFile(new URL('server/ecosystem-query.mjs',root)))
  const version=hash.digest('hex').slice(0,24),folder=new URL('public/ecosystem-data/query/',root)
  try{const previous=JSON.parse(await readFile(new URL('manifest.json',folder),'utf8'));if(previous.version===version&&process.env.ORGPORTAL_REBUILD_ECOSYSTEM!=='1')return previous}catch{}
@@ -141,7 +145,7 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
   topology.edges=topology.edges.map(([a,b,...rest])=>[ids.get(a),ids.get(b),...rest])
   topology.adjacency=Object.fromEntries(Object.entries(topology.adjacency).map(([id,neighbors])=>[id,neighbors.map(n=>ids.get(n))]))
  }
- await write('topology.json',topology)
+ await writePackedTopology(topology,write)
  const manifest={version,organizationEvidenceIndexVersion:1,temporalIndexVersion:1,fiscalYears,dateCoverage:dateCoverage(data.relationships),generatedAt:new Date().toISOString(),governmentCoverage:data.governmentCoverage,marylandBudgetCoverage:data.marylandBudgetCoverage,nonprofitCoverage:data.nonprofitCoverage,transactionalCoverage:{datasetId:snapshot.datasetId,exportedAt:snapshot.exportedAt,...data.transactionalCoverage},totals:{organizations:organizations.length,relationships:edges.length},metricMax:{connections:Math.max(1,...Object.values(topology.degree)),incoming:Math.max(1,...analysis.incoming.values()),outgoing:Math.max(1,...analysis.outgoing.values())},groups,performance:performanceMeta}
  await mkdir(folder,{recursive:true});try{if(process.env.ORGPORTAL_REBUILD_ECOSYSTEM==='1')await replaceDirectory(fileURLToPath(temp),fileURLToPath(target));else await rename(temp,target)}catch(error){if(!['EEXIST','ENOTEMPTY'].includes(error.code))throw error;await rm(temp,{recursive:true,force:true})}
  const manifestTemp=new URL(`manifest-${version}-${randomUUID()}.tmp`,folder);await writeFile(manifestTemp,JSON.stringify(manifest));await rename(manifestTemp,new URL('manifest.json',folder))
