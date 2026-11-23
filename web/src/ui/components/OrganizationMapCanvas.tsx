@@ -17,11 +17,11 @@ const colors:Record<string,number>={ecosystem:0x16847d,company:0x357db7,health:0
 type Controls={zoom:(factor:number)=>void;fit:()=>void;focus:(id:string)=>void;stopFocus:()=>void}
 export type OrganizationMapMode='2d'|'3d'
 function savedTitlePlacement(){try{return localStorage.getItem('organization-map-title-placement')==='surface'?'surface':'floating'}catch{return 'floating'}}
-function savedReceivedAmounts(){try{return localStorage.getItem('organization-map-show-received')==='true'}catch{return false}}
+function savedReceivedAmounts(){try{const value=localStorage.getItem('organization-map-show-received');return value===null?undefined:value==='true'}catch{return undefined}}
 export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialView,yearControl}:{yearControl?:ReactNode;initialView:OrganizationMapView;data:MapPage;mode:OrganizationMapMode;onModeChange:(mode:OrganizationMapMode)=>void;onSelect:(node:MapNode,view:OrganizationMapView)=>void}){
  const [titlePlacement,setTitlePlacement]=useState<'floating'|'surface'>(initialView.titlePlacement||savedTitlePlacement),titlePlacementRef=useRef(titlePlacement)
  titlePlacementRef.current=titlePlacement
- const [showReceived,setShowReceived]=useState(initialView.showReceived??savedReceivedAmounts),showReceivedRef=useRef(showReceived)
+ const [showReceived,setShowReceived]=useState(()=>savedReceivedAmounts()??initialView.showReceived??false),showReceivedRef=useRef(showReceived)
  showReceivedRef.current=showReceived
  const [colorScheme,setColorScheme]=useState<OrganizationMapColorScheme>(initialView.colorScheme||'category'),colorSchemeRef=useRef(colorScheme),recolor=useRef<(()=>void)|null>(null)
  colorSchemeRef.current=colorScheme

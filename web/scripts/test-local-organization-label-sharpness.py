@@ -142,6 +142,11 @@ with sync_playwright() as p:
   page.reload(wait_until='domcontentloaded')
   panel.locator('canvas[data-ready="true"]').wait_for(timeout=20000)
   expect(page.get_by_label('Received amounts',exact=True)).to_have_value('show')
+  # A new preference must beat an older value stored in this navigation entry.
+  page.get_by_label('Received amounts',exact=True).select_option('hide')
+  page.reload(wait_until='domcontentloaded')
+  panel.locator('canvas[data-ready="true"]').wait_for(timeout=20000)
+  expect(page.get_by_label('Received amounts',exact=True)).to_have_value('hide')
  assert not errors,errors
  browser.close()
 print('Captured distant and close surface titles in 2D/3D, desktop/mobile, light/dark:',out)
