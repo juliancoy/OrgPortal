@@ -93,3 +93,23 @@ test('explicit federal cumulative obligations normalize to master fact and measu
  assert.equal(row.financial_fact_type,'obligation');assert.equal(row.financial_measurement,'cumulative');assert.equal(row.financial_scope,'award');assert.equal(row.amount,-12);
  }finally{db.sqlite.close();}
 });
+
+
+test('bounded native export preserves every public master field and cursor across external/native page boundaries',async()=>{
+ const db=setup();try{
+ const insert=db.sqlite.prepare(`INSERT INTO external_financial_observations
+ (id,source_system,dataset,external_id,agency_label,recipient_label,occurred_at,amount_cents,currency,measurement,fact_type,description,source_url,metadata_json,retrieved_at,source_sha256)
+ VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+ for(let i=0;i<1201;i++)insert.run(`${i%2?'z':'a'}:export:${String(i).padStart(5,'0')}`,i%3?'usaspending':'maryland_comptroller',i%3?'prime_transactions':'bpw',String(i),'Agency','Recipient','2025-03-01',i%5?-i*100:0,i%7?'USD':'EUR','delta',i%3?'obligation':'reported_award','Source evidence','https://example.test/source',JSON.stringify({fiscal_year:'2025',index:i}),'2026-11-23','a'.repeat(64));
+ const expected=db.sqlite.prepare(`SELECT id,record_id,record_type,occurred_at,transaction_type,amount,currency,amount_label,
+ quantity,unit,description,from_label,to_label,from_organization_id,to_organization_id,status,source_url,evidence,notes,provenance_json,
+ financial_fact_type,financial_measurement,period_start,period_end,award_id,award_identifier
+ FROM master_transaction_records_before_ecosystem
+ WHERE record_type IN ('organization_support','company_financing','nonprofit_grant','external_financial_observation') ORDER BY id`).all();
+ const actual:Record<string,unknown>[]=[];let after='';
+ do{const page=await publicEcosystemNativeRecords(db.asD1(),after);assert.ok(page.records.length<=500);actual.push(...page.records);if(page.next===null)break;assert.ok(String(page.next)>after);after=String(page.next);}while(true);
+ assert.equal(actual.length,expected.length);assert.ok(actual.some(r=>r.record_type==='organization_support'));
+ assert.deepEqual(JSON.parse(JSON.stringify(actual)),JSON.parse(JSON.stringify(expected)));
+ assert.deepEqual(await publicEcosystemNativeRecords(db.asD1(),'zzzzzz'),{records:[],next:null});
+ }finally{db.sqlite.close();}
+});

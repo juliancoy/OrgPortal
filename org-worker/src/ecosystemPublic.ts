@@ -81,13 +81,22 @@ export async function publicEcosystemRecords(db:D1Database,collection:string,aft
 }
 
 export async function publicEcosystemNativeRecords(db:D1Database,after=''){
- // Source type allowlist is mandatory: no private account IDs/ledger entries.
- const rows=await db.prepare(`SELECT id,record_id,record_type,occurred_at,transaction_type,amount,currency,amount_label,
+ // Keep the master view's public projection, but bound the large external
+ // branch by indexed IDs before projecting/sorting it. Sorting the entire
+ // remaining view on every page made bulk exports quadratic in source rows.
+ const columns=`id,record_id,record_type,occurred_at,transaction_type,amount,currency,amount_label,
  quantity,unit,description,from_label,to_label,from_organization_id,to_organization_id,status,source_url,evidence,notes,provenance_json,
- financial_fact_type,financial_measurement,period_start,period_end,award_id,award_identifier
- FROM master_transaction_records_before_ecosystem
- WHERE record_type IN ('organization_support','company_financing','nonprofit_grant','external_financial_observation') AND id>?
- ORDER BY id LIMIT 501`).bind(after).all<Record<string,unknown>>();
+ financial_fact_type,financial_measurement,period_start,period_end,award_id,award_identifier`;
+ // Both branches retain explicit public record types. Private ledger/account
+ // columns and records never enter the export, even if IDs overlap.
+ const rows=await db.prepare(`SELECT * FROM (
+ SELECT ${columns} FROM master_transaction_records_before_external_observations
+ WHERE record_type IN ('organization_support','company_financing','nonprofit_grant') AND id>?
+ ORDER BY id LIMIT 501)
+ UNION ALL SELECT ${columns} FROM master_transaction_records_before_ecosystem
+ WHERE record_type='external_financial_observation' AND id IN (
+ SELECT id FROM external_financial_observations WHERE id>? ORDER BY id LIMIT 501)
+ ORDER BY id LIMIT 501`).bind(after,after).all<Record<string,unknown>>();
  const page=rows.results.slice(0,500);
  return {records:page,next:rows.results.length>500?page.at(-1)!.id:null};
 }
