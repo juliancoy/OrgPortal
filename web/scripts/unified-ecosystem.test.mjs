@@ -82,3 +82,15 @@ test('federal prime obligations preserve source identities and signed adjustment
  assert.equal(result.relationships[0].sourceDataset,'prime_transactions');assert.equal(result.relationships[0].financialFactType,'obligation');
  assert.equal(result.relationships[0].provenance.fiscal_year,'2025');assert.equal(result.relationships[0].awardKey,undefined);
 });
+
+
+test('federal transactions reuse official agency codes and UEIs across names, preserving reviewed directory links',()=>{
+ const agency='usgov:agency:075',recipient='usgov:recipient:SAMPLEUEI001';
+ const input={organizations:[{id:agency,name:'Official federal agency',identifiers:{usaspendingAgencyCode:'075'}},{id:recipient,name:'Current recipient name',identifiers:{uei:'SAMPLEUEI001'}},{id:'same-name',name:'Historical recipient name'}],relationships:[],financing:[]};
+ const base={record_type:'external_financial_observation',evidence:'usaspending',from_label:'Agency reported label',to_label:'Historical recipient name',transaction_type:'obligation',amount:1,provenance_json:JSON.stringify({awarding_agency_code:'075',recipient_uei:'SAMPLEUEI001'})};
+ const result=projectNativeEvidence(input,[{...base,id:'one'},{...base,id:'two',to_label:'Changed reported name'},{...base,id:'reviewed',to_organization_id:'reviewed-org'},{...base,id:'unknown',provenance_json:JSON.stringify({awarding_agency_code:'999',recipient_uei:''})}]);
+ assert.equal(result.relationships[0].source,agency);assert.equal(result.relationships[0].target,recipient);assert.equal(result.relationships[1].target,recipient);assert.equal(result.relationships[2].target,'reviewed-org');
+ assert.equal(result.organizations.find(o=>o.id===recipient).name,'Current recipient name');assert.equal(result.relationships[0].targetLabel,'Historical recipient name');
+ assert.match(result.relationships[3].source,/^source-label:/);assert.match(result.relationships[3].target,/^source-label:/);
+ assert.equal(result.organizations.filter(o=>o.identifiers?.uei==='SAMPLEUEI001').length,1);
+});

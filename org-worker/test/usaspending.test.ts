@@ -26,6 +26,9 @@ test('federal transactions enter the master record as signed obligations; replay
  const db=setup();try{
  const ledger=db.sqlite.prepare('SELECT count(*) n FROM ledger_transactions').get()!.n;
  const p=await importUsaspending(db.asD1(),actor,input);
+ assert.ok('review' in p);assert.equal('changes' in p,false);
+ assert.deepEqual(p.review.totals,[{fiscal_year:'2025',records:1,amount_cents:-12345}]);
+ assert.deepEqual(p.review.sourceHashes,['b'.repeat(64)]);assert.equal(p.review.firstId,row.id);
  assert.equal(db.sqlite.prepare('SELECT count(*) n FROM external_financial_observations').get()!.n,0);
  await importUsaspending(db.asD1(),actor,{...input,confirm:true,previewId:p.previewId});
  const entry=db.sqlite.prepare('SELECT * FROM master_transaction_records WHERE id=?').get(row.id)!;
@@ -73,6 +76,7 @@ test('MCP applies only within live scopes, tenant and operator grant, with an ex
   const identity={userId:actor.id,scopes:['org:portal.read','org:portal.write'],isOperator:true},c=await connect(identity);
   try{
    const preview=await c.client.callTool({name:'preview_usaspending_import',arguments:input});assert.ok(!preview.isError);
+   assert.ok(JSON.stringify(preview).length<4000,'MCP preview stays compact instead of echoing submitted source rows');
    const payload={...input,previewId:preview.structuredContent!.previewId,confirm:true};
    identity.isOperator=false;assert.equal((await c.client.callTool({name:'apply_usaspending_import',arguments:payload})).isError,true);
    identity.isOperator=true;assert.ok(!(await c.client.callTool({name:'apply_usaspending_import',arguments:payload})).isError);

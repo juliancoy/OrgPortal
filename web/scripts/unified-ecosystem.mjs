@@ -45,9 +45,14 @@ export function projectNativeEvidence(input,records,directory=[]){
   const external=r.record_type==='external_financial_observation',comptroller=external&&(r.evidence==='maryland_comptroller'||/^md-(bpw|view):/.test(r.id)),bpw=comptroller&&r.id.startsWith('md-bpw:');
   const scope=comptroller?'maryland_comptroller':external?r.evidence||r.record_type:r.record_type;
   const kind=bpw?'approval':comptroller?'transfer':r.transaction_type;
-  const source=endpoint(r.from_organization_id,r.from_label,scope,'agency',previous?.source),target=endpoint(r.to_organization_id,r.to_label,scope,'recipient',previous?.target);
+  let provenance={};try{provenance=JSON.parse(r.provenance_json||'{}')}catch{/* Retain source labels when identifiers are unavailable. */}
+  // Reuse the existing official USAspending identity namespace, never names.
+  // Directory identity links still take precedence. Code 999 is unspecified.
+  const federalAgency=scope==='usaspending'&&/^\d{3}$/.test(provenance.awarding_agency_code||'')&&provenance.awarding_agency_code!=='999'?`usgov:agency:${provenance.awarding_agency_code}`:null;
+  const federalRecipient=scope==='usaspending'&&/^[A-Z0-9]{12}$/.test(provenance.recipient_uei||'')?`usgov:recipient:${provenance.recipient_uei}`:null;
+  const source=endpoint(r.from_organization_id||federalAgency,r.from_label,scope,'agency',previous?.source),target=endpoint(r.to_organization_id||federalRecipient,r.to_label,scope,'recipient',previous?.target);
+  for(const [id,canonicalId,identifiers] of [[source,federalAgency,{usaspendingAgencyCode:provenance.awarding_agency_code}],[target,federalRecipient,{uei:provenance.recipient_uei}]])if(canonicalId&&id===canonicalId){const org=orgs.get(id);org.identifiers={...org.identifiers,...identifiers};}
   const financialMeasure=bpw?'reported_approval':comptroller?'reported_disbursement':r.record_type==='nonprofit_grant'?'reported_nonprofit_grant':r.financial_measurement;
-  let provenance={};try{provenance=JSON.parse(r.provenance_json||'{}')}catch{/* Retain the unparsed original record below. */}
   const edge={...previous,sourceSystem:external?scope:undefined,sourceDataset:comptroller?(bpw?'bpw':'mdview'):external&&scope==='usaspending'?'prime_transactions':undefined,sourceIdentityId:r.from_organization_id||undefined,id:previous?.id||r.id,source,target,sourceLabel:r.from_label||'',targetLabel:r.to_label||'',kind,
    relationship:['transfer','grant','contract','donation','approval','equity','debt','agency','obligation'].includes(kind)?'funding':kind,
    amount:r.amount,currency:r.currency,amountLabel:r.amount_label||'',date:r.occurred_at||'',type:r.description||kind,description:r.description||'',

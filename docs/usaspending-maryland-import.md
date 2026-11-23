@@ -43,9 +43,10 @@ it does not request street addresses, contact data or tax identifiers.
 Records enter the existing `external_financial_observations` table and therefore
 `master_transaction_records` without a database migration or internal ledger
 mutation. EcoMap displays obligation relationships and evidence; cash received,
-disbursed, and cash-volume labels remain separate. Counterparties initially use
-source-label groups. Matching display names never establish a legal identity,
-organization ownership or membership. A reviewed identity link is required to
+disbursed, and cash-volume labels remain separate. Counterparties reuse the
+existing official USAspending agency-code and recipient UEI namespaces; changing names do not create duplicate UEI nodes. Missing UEIs
+and unspecified agency code 999 remain source-label groups. Matching display
+names never establish a legal identity, organization ownership or membership. A reviewed identity link is required to
 attach a source group to an existing directory organization.
 
 ## Collection and verification
@@ -80,6 +81,9 @@ also bounded by the existing 1 MiB MCP request limit; the client targets 800 KB.
 The existing 60 requests/minute limit remains in force. Inserts and minimal audit
 metadata are atomic. Identical transactions are idempotent; a changed source
 transaction stops for explicit correction review.
+Previews return counts, source hashes, fiscal-year signed-cent totals and endpoint
+IDs instead of echoing large source rows. The receipt still fingerprints every
+submitted field and the complete import plan; apply must send that exact payload.
 
 After deploying the validated API commit, review the complete manifest and file
 SHA256, then use the saved operator connection:
@@ -135,7 +139,7 @@ Production uses a stable public-asset reader per asset binding, so simultaneous
 requests share one topology load and later pages reuse the decoded version. The
 manifest is still fetched afresh; a new snapshot invalidates the cached version.
 A local Cloudflare runtime probe with the existing graph plus all 434,193 new
-transactions (565,053 edges, 44,010 nodes) passed concurrent cold loads and fiscal
-filtering: 24 asset reads total, about 250 ms for the local cold topology, 185 ms
+transactions (565,053 edges, 43,338 nodes) passed concurrent cold loads and fiscal
+filtering: 24 asset reads total, about 240 ms for the local cold topology, 193 ms
 for its first year projection, and 9 ms for a repeated projection. These are local
 index measurements, not production page-load promises.

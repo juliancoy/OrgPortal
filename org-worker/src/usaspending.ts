@@ -62,9 +62,21 @@ export async function importUsaspending(db:D1Database, actor:OrganizationActor, 
   }
   const owner={userId:actor.id,organizationId:changes.organizationId,eventId:'organization:usaspending-import'};
   const fingerprint=await previewFingerprint({changes,plan});
-  if (!confirm) return {operation:'import_usaspending',records:changes.rows.length,newRecords:plan.filter(p=>!p.previous).length,
+  if (!confirm) {
+    const totals=new Map<string,{records:number;amount_cents:number}>();
+    for(const row of changes.rows){
+      const value=totals.get(row.metadata.fiscal_year)||{records:0,amount_cents:0};
+      value.records++;value.amount_cents+=row.amount_cents;
+      if(!Number.isSafeInteger(value.amount_cents))throw new EventIntegrationError(400,'Batch obligation total exceeds safe integer range');
+      totals.set(row.metadata.fiscal_year,value);
+    }
+    return {operation:'import_usaspending',records:changes.rows.length,newRecords:plan.filter(p=>!p.previous).length,
     effect:'Stores public source observations in the master transaction view. No balances, permissions or organization identity links change.',
-    changes,...await prepareEventOperation(db,owner,fingerprint)};
+    review:{organizationId:changes.organizationId,firstId:changes.rows[0].id,lastId:changes.rows.at(-1)!.id,
+      sourceHashes:[...new Set(changes.rows.map(row=>row.source_sha256))].sort(),
+      totals:[...totals].sort(([a],[b])=>a.localeCompare(b)).map(([fiscal_year,total])=>({fiscal_year,...total}))},
+    ...await prepareEventOperation(db,owner,fingerprint)};
+  }
   if (!previewId) throw new EventIntegrationError(409,'Request a preview first');
   await claimEventOperation(db,owner,previewId,fingerprint);
   try {
