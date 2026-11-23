@@ -153,3 +153,8 @@ round trips. The public API retains its 500-record default for existing clients,
 validates limits from 1 to 2,000, and bounds each indexed SQL branch before the
 final merge. Exporters follow the returned cursor even when an older API returns
 smaller pages. Retries, public-field allowlists and dataset checks remain in place.
+
+A production read check on 2026-11-23 retrieved the same 2,000 rows in 0.451 s
+with one larger page versus 1.566 s with four 500-row requests, with exact row
+and field equality. This is a single network sample, not a whole-build timing
+promise. The 554,922-row snapshot needs 278 native requests instead of 1,110.
