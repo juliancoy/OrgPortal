@@ -1,4 +1,4 @@
-"""Read-only synthetic rendering check: curved titles, gravity and navigation."""
+"""Read-only synthetic check: exclusive surface/floating labels at every zoom."""
 import json, math, os, pathlib
 from urllib.parse import urlparse, parse_qs
 from playwright.sync_api import sync_playwright, expect
@@ -46,7 +46,11 @@ with sync_playwright() as p:
      panel.locator('.organization-ecomap-canvas').screenshot(path=str(out/f'{name}-{mode}-{zoom}-{theme}.png'))
      if mode=='2d' and zoom=='overview':panel.screenshot(path=str(out/f'{name}-2d-panel-{theme}.png'))
     if os.environ.get('CAPTURE_STAGE')!='before':
-     if zoom=='overview':
+     if mode=='3d':
+      assert panel.locator('.organization-ecomap-labels button:visible').count()==0
+     else:
+      assert panel.locator('.organization-ecomap-labels button:visible:not(.on-circle)').count()==0
+     if zoom=='overview' and mode=='2d':
       assert panel.locator('.organization-ecomap-labels button:visible').count()>0
       assert panel.locator('.organization-ecomap-labels button:visible').count()<=45
       assert panel.locator('.organization-ecomap-labels button:visible').first.evaluate('e=>parseFloat(getComputedStyle(e).fontSize)')>=12
@@ -60,15 +64,26 @@ with sync_playwright() as p:
        assert panel.locator('.organization-ecomap-labels button.on-circle:visible').count()==0
        page.get_by_label('Title placement',exact=True).select_option('surface');frames()
 
-     else:
+     if zoom=='near':
       assert int(canvas.get_attribute('data-sphere-titles'))>0
       if mode=='2d':expect(panel.locator('.organization-ecomap-labels button[data-node-id="title-state"]')).not_to_be_visible()
+     # Reusing pooled buttons must not leave either representation behind.
+     page.get_by_label('Title placement',exact=True).select_option('floating');frames()
+     assert canvas.get_attribute('data-sphere-titles')=='0'
+     assert panel.locator('.organization-ecomap-labels button:visible').count()>0
+     assert panel.locator('.organization-ecomap-labels button.on-circle:visible').count()==0
+     page.get_by_label('Title placement',exact=True).select_option('surface');frames()
+     if mode=='3d':assert panel.locator('.organization-ecomap-labels button:visible').count()==0
+     else:assert panel.locator('.organization-ecomap-labels button:visible:not(.on-circle)').count()==0
  if os.environ.get('CAPTURE_STAGE')!='before':
   page.get_by_role('button',name='Fit all connections',exact=True).click();frames()
-  target=panel.locator('.organization-ecomap-labels button:visible:not([data-node-id="title-state"])').first
-  target_id=target.get_attribute('data-node-id');target.click()
+  page.get_by_label('Find a node',exact=True).fill('Maryland Department of Health')
+  page.locator('.organization-ecomap-search').get_by_role('button',name='Maryland Department of Health',exact=True).click()
+  target_id='title-health'
   panel.locator(f'canvas[data-ready="true"][data-mode="3d"][data-anchor="{target_id}"]').wait_for(timeout=20000)
   expect(panel.get_by_label('Title placement',exact=True)).to_have_value('surface')
+  frames()
+  assert panel.locator('.organization-ecomap-labels button:visible').count()==0
  assert not errors,errors
  browser.close()
 print('Captured distant and close surface titles in 2D/3D, desktop/mobile, light/dark:',out)

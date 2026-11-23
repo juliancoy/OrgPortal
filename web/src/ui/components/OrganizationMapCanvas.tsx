@@ -66,8 +66,9 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    // Layout order already puts the selected anchor first. Reuse a bounded pool
    // of buttons; camera movement changes styles without rebuilding React trees.
    for(const node of nodes){
-    // Native text stays sharp when distant surface decals would be subpixel.
-    if(titlePlacementRef.current==='surface'&&(gpu||planar)?.hasSurfaceTitle(node.id))continue
+    // Surface mode never adds floating labels in 3D. In 2D, small circles
+    // retain centered native text only when the canvas cannot paint it legibly.
+    if(titlePlacementRef.current==='surface'&&(spatial||planar?.hasSurfaceTitle(node.id)))continue
     if(gpu&&!gpu.project(node,projected).visible)continue
     const onCircle=!gpu&&titlePlacementRef.current==='surface'
     const x=gpu?projected.x:(node.x-view.x)*scale,y=gpu?projected.y+12:(node.y-view.y)*height/view.h+(onCircle?0:node.renderRadius*scale+6),focus=node.id===data.anchor||node.id===selected
