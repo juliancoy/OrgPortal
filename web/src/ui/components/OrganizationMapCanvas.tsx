@@ -3,6 +3,7 @@ import {abbreviateBoardLabel} from '../../domain/organization/groupNames'
 import {organizationNodeRadius,type MapNode,type MapPage,type PositionedNode} from '../../features/ecosystem/organizationMap'
 import {loadOrganizationMapLayout} from '../../features/ecosystem/organizationMapLayoutClient'
 import {volumeColor,volumeColorStops,volumeLabel} from '../../features/ecosystem/volume-color'
+import {shortReceivedAmount} from '../../features/ecosystem/received-amount.js'
 import {createLabelGrid} from '../../features/ecosystem/label-layout.js'
 import {createNetworkCanvas,type CanvasView,type CanvasEdge} from '../../features/ecosystem/canvas-renderer.js'
 import {bindPlanarNavigation} from '../../features/ecosystem/planar-navigation.js'
@@ -16,9 +17,12 @@ const colors:Record<string,number>={ecosystem:0x16847d,company:0x357db7,health:0
 type Controls={zoom:(factor:number)=>void;fit:()=>void;focus:(id:string)=>void;stopFocus:()=>void}
 export type OrganizationMapMode='2d'|'3d'
 function savedTitlePlacement(){try{return localStorage.getItem('organization-map-title-placement')==='surface'?'surface':'floating'}catch{return 'floating'}}
+function savedReceivedAmounts(){try{return localStorage.getItem('organization-map-show-received')==='true'}catch{return false}}
 export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialView,yearControl}:{yearControl?:ReactNode;initialView:OrganizationMapView;data:MapPage;mode:OrganizationMapMode;onModeChange:(mode:OrganizationMapMode)=>void;onSelect:(node:MapNode,view:OrganizationMapView)=>void}){
  const [titlePlacement,setTitlePlacement]=useState<'floating'|'surface'>(initialView.titlePlacement||savedTitlePlacement),titlePlacementRef=useRef(titlePlacement)
  titlePlacementRef.current=titlePlacement
+ const [showReceived,setShowReceived]=useState(initialView.showReceived??savedReceivedAmounts),showReceivedRef=useRef(showReceived)
+ showReceivedRef.current=showReceived
  const [colorScheme,setColorScheme]=useState<OrganizationMapColorScheme>(initialView.colorScheme||'category'),colorSchemeRef=useRef(colorScheme),recolor=useRef<(()=>void)|null>(null)
  colorSchemeRef.current=colorScheme
  const latestData=useRef(data),replaceData=useRef<((next:MapPage)=>void)|null>(null)
@@ -62,7 +66,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    if(gpu){if(!gpu.render())return}else planar?.render(view)
    if(!layoutPending)surface.dataset.ready='true'
    if(!presented){presented=true;setReady(true)}
-   const grid=createLabelGrid();let placed=0
+   const grid=createLabelGrid(showReceivedRef.current?48:28);let placed=0
    // Layout order already puts the selected anchor first. Reuse a bounded pool
    // of buttons; camera movement changes styles without rebuilding React trees.
    for(const node of nodes){
@@ -72,14 +76,20 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
     if(gpu&&!gpu.project(node,projected).visible)continue
     const onCircle=!gpu&&titlePlacementRef.current==='surface'
     const x=gpu?projected.x:(node.x-view.x)*scale,y=gpu?projected.y+12:(node.y-view.y)*height/view.h+(onCircle?0:node.renderRadius*scale+6),focus=node.id===data.anchor||node.id===selected
-    if(x<30||x>width-30||y<0||y>height-25)continue
+    if(x<30||x>width-30||y<0||y>height-(showReceivedRef.current?48:25))continue
     const labelWidth=onCircle?Math.max(80,Math.min(125,node.renderRadius*scale*1.65)):117
     if(!focus&&grid.overlaps(x,y,labelWidth))continue
     grid.add(x,y,labelWidth)
     let button=buttons[placed]
     if(!button){button=document.createElement('button');button.type='button';button.addEventListener('click',()=>controls.current?.focus(button.dataset.nodeId!),{signal:abort.signal});buttons.push(button);layer.append(button)}
     const volume=String(node.financialAmount??'')
-    if(button.dataset.nodeId!==node.id||button.dataset.volume!==volume||button.dataset.colorScheme!==colorSchemeRef.current){button.dataset.nodeId=node.id;button.dataset.volume=volume;button.dataset.colorScheme=colorSchemeRef.current;button.textContent=abbreviateBoardLabel(node.name);button.title=colorSchemeRef.current==='volume'?`${node.name} · ${volumeLabel(node.financialAmount)}`:node.name;button.setAttribute('aria-label',node.name)}
+    const received=showReceivedRef.current?shortReceivedAmount(node.receivedUsd):''
+    if(button.dataset.nodeId!==node.id||button.dataset.volume!==volume||button.dataset.colorScheme!==colorSchemeRef.current||button.dataset.received!==String(showReceivedRef.current?node.receivedUsd??'unknown':'hidden')){
+     button.dataset.nodeId=node.id;button.dataset.volume=volume;button.dataset.colorScheme=colorSchemeRef.current;button.dataset.received=String(showReceivedRef.current?node.receivedUsd??'unknown':'hidden')
+     const name=document.createElement('span');name.className='organization-ecomap-label-name';name.textContent=abbreviateBoardLabel(node.name);button.replaceChildren(name)
+     if(received){const amount=document.createElement('span');amount.className='organization-ecomap-label-amount';amount.textContent=received;button.append(amount)}
+     button.title=(colorSchemeRef.current==='volume'?`${node.name} · ${volumeLabel(node.financialAmount)}`:node.name)+(received?` · Received USD: ${Number.isFinite(node.receivedUsd)?node.receivedUsd!.toLocaleString('en-US',{maximumFractionDigits:2}):'unavailable'}`:'');button.setAttribute('aria-label',node.name)
+    }
     button.hidden=false;button.classList.toggle('focus',focus);button.classList.toggle('on-circle',onCircle);button.style.width=onCircle?`${labelWidth}px`:'';button.style.left=`${Math.round(x)}px`;button.style.top=`${Math.round(y)}px`
     if(++placed>=45)break
    }
@@ -93,7 +103,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
   }
   const applyColors=(targets:PositionedNode[])=>{
    const maximum=targets.reduce((max,node)=>Number.isFinite(node.financialAmount)?Math.max(max,node.financialAmount!):max,0)
-   for(const node of targets){node.volumeColor=colorSchemeRef.current==='volume'?volumeColor(node.financialAmount,maximum):(colors[node.category]??colors.general);node.sphereTitle=titlePlacementRef.current==='surface'?abbreviateBoardLabel(node.name):undefined}
+   for(const node of targets){node.volumeColor=colorSchemeRef.current==='volume'?volumeColor(node.financialAmount,maximum):(colors[node.category]??colors.general);node.sphereTitle=titlePlacementRef.current==='surface'?abbreviateBoardLabel(node.name):undefined;node.sphereSubtitle=titlePlacementRef.current==='surface'&&showReceivedRef.current?shortReceivedAmount(node.receivedUsd):undefined}
   }
   recolor.current=()=>{applyColors(nodes);if(transition)applyColors(transition.to);dirty=true;schedule()}
   const applyLayout=(next:MapPage,targets:PositionedNode[])=>{
@@ -136,7 +146,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
   const focus=(id:string)=>{
    surface.focus({preventScroll:true})
    const node=id===data.anchor?largestOrganizationParent(data):byId.get(id);if(!node)return
-   select.current(node,{viewportTop:element.getBoundingClientRect().top,mode,titlePlacement:titlePlacementRef.current,colorScheme:colorSchemeRef.current,navigation:navigationRef.current,speed:speedRef.current,...(gpu?{camera:gpu.cameraView()}:{planarWidth:view.w})})
+   select.current(node,{viewportTop:element.getBoundingClientRect().top,mode,titlePlacement:titlePlacementRef.current,showReceived:showReceivedRef.current,colorScheme:colorSchemeRef.current,navigation:navigationRef.current,speed:speedRef.current,...(gpu?{camera:gpu.cameraView()}:{planarWidth:view.w})})
   }
   const pointers=new Set<number>()
   let drag:{id:number;x:number;y:number;slop:number;moved:boolean;view:CanvasView}|null=null
@@ -185,7 +195,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
   return()=>{replaceData.current=null;recolor.current=null;layoutAbort?.abort();abort.abort();observer?.disconnect();cancelAnimationFrame(frame);gpu?.dispose();planar?.dispose();layer.replaceChildren();controls.current=null}
  },[mode,attempt])
  useEffect(()=>{replaceData.current?.(data)},[data])
- useEffect(()=>{recolor.current?.()},[colorScheme,titlePlacement])
+ useEffect(()=>{recolor.current?.()},[colorScheme,titlePlacement,showReceived])
  const run=(action:()=>void)=>{action();canvas.current?.focus({preventScroll:true})}
  return <>
   <div className="organization-ecomap-controls">
@@ -194,12 +204,13 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    <label>Map mode<select aria-label="Map mode" ref={modeSelect} value={mode} onChange={event=>onModeChange(event.target.value as OrganizationMapMode)}><option value="2d">2D</option><option value="3d">3D</option></select></label>
    <label>Color by<select aria-label="Color by" value={colorScheme} onChange={event=>setColorScheme(event.target.value as OrganizationMapColorScheme)}><option value="category">Category</option><option value="volume">Dollar volume</option></select></label>
    <label>Titles<select aria-label="Title placement" value={titlePlacement} onChange={event=>{const value=event.target.value as 'floating'|'surface';setTitlePlacement(value);try{localStorage.setItem('organization-map-title-placement',value)}catch{/* Storage may be disabled. */}}}><option value="floating">Floating labels</option><option value="surface">{mode==='2d'?'On circles':'On spheres'}</option></select></label>
+   <label>Received USD<select aria-label="Received amounts" value={showReceived?'show':'hide'} onChange={event=>{const value=event.target.value==='show';setShowReceived(value);try{localStorage.setItem('organization-map-show-received',String(value))}catch{/* Storage may be disabled. */}}}><option value="hide">Hidden</option><option value="show">Show amounts</option></select></label>
    {mode==='3d'&&<label>Navigation<select aria-label="Navigation" value={navigation} onChange={event=>{setNavigation(event.target.value as 'orbit'|'fly');controls.current?.stopFocus();canvas.current?.focus({preventScroll:true})}}><option value="orbit">Orbit selection</option><option value="fly">Free fly</option></select></label>}
-   <label>Speed<select aria-label="Navigation speed" value={speed} onChange={event=>setSpeed(Number(event.target.value))}><option value={.25}>0.25×</option><option value={1}>1×</option><option value={3}>3×</option></select></label>
    </div>
    <div className="organization-ecomap-actions">
    <label className="organization-ecomap-find">Find a node<input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Organization name"/></label>
    <div className="organization-ecomap-zoom" role="group" aria-label="Map zoom"><button disabled={!ready} onClick={()=>run(()=>controls.current?.zoom(1/1.5))} aria-label="Zoom in on organization map">+</button><button disabled={!ready} onClick={()=>run(()=>controls.current?.zoom(1.5))} aria-label="Zoom out on organization map">−</button><button disabled={!ready} onClick={()=>run(()=>controls.current?.fit())} aria-label="Fit all connections">Fit</button></div>
+   <label className="organization-ecomap-speed">Speed<select aria-label="Navigation speed" value={speed} onChange={event=>setSpeed(Number(event.target.value))}><option value={.25}>0.25×</option><option value={1}>1×</option><option value={3}>3×</option></select></label>
    </div>
   </div>
   {search&&<div className="organization-ecomap-search"><p role="status">{matches.length} matching nodes{matches.length>20?' · Showing the first 20; refine your search.':''}</p>{matches.slice(0,20).map(node=><button disabled={!ready} key={node.id} title={node.name} aria-label={node.name} onClick={()=>controls.current?.focus(node.id)}>{abbreviateBoardLabel(node.name)}</button>)}</div>}
@@ -211,7 +222,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
   <details className="organization-ecomap-help"><summary>Map help<span>{keyboardActive?'Keyboard active · Esc to release':'Navigation & reading the map'}</span></summary>
    <p>Click a node to open its page. Click the selected node to open its largest incoming parent by recorded USD volume. Parent and child levels follow upstream and downstream arrows, up to three connections away.</p>
   <p id={helpId} className="organization-ecomap-keyboard-help">{keyboardActive?'Keyboard navigation active. ':'Click or Tab into the map to navigate. '}{mode==='2d'?'W/S zoom · A/D pan left/right · E/Q pan up/down. Drag to pan.':navigation==='orbit'?'W/S zoom · A/D orbit left/right · E/Q orbit up/down. Drag to orbit.':'W/S forward/back · A/D left/right · E/Q up/down. Drag to look.'} Scroll to zoom. Shift: faster · Ctrl: slower · Esc: release keyboard.</p>
-  <p className="organization-ecomap-note">Node size: recorded USD volume · logarithmic scale. Larger volumes are pulled closer to the center. Zero or undisclosed amounts use the smallest marker. Blue outline: selected organization.{titlePlacement==='surface'&&' Titles follow the sphere surface when readable; distant nodes use fixed-size labels. Find a node searches every connection.'}</p>
+  <p className="organization-ecomap-note">Node size: recorded USD volume · logarithmic scale. Larger volumes are pulled closer to the center. Zero or undisclosed amounts use the smallest marker. Blue outline: selected organization.{titlePlacement==='surface'&&' Titles stay on the sphere surface. Find a node searches every connection.'} Gold amounts show recorded USD received for the selected fiscal year (K: thousand, M: million, B: billion, T: trillion). A dash means unavailable. Awards are excluded.</p>
   </details>
   <div className="organization-ecomap-stage"><div ref={host} className="organization-ecomap-canvas"><canvas key={`${mode}-${attempt}`} ref={canvas} tabIndex={0} data-mode={mode} data-anchor={data.anchor||''} aria-describedby={helpId} onFocus={()=>setKeyboardActive(true)} onBlur={()=>setKeyboardActive(false)} aria-label={`${data.organizations.find(n=>n.id===data.anchor)?.name} and all ${data.total} adjacent nodes`} role="img"/><div ref={labelLayer} className="organization-ecomap-labels"/></div><OrganizationFinancialBubbles totals={data.financialTotals} fy={data.fy}/></div>
  </>

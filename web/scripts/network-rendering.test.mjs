@@ -23,3 +23,8 @@ test('spatial label placement matches exhaustive collision checks across cell bo
   if(!expected){grid.add(x,y,width);placed.push({x,y,width})}
  }
 })
+test('labels with a received amount reserve the extra line across grid boundaries',()=>{
+ const grid=createLabelGrid(48);grid.add(160,47,125)
+ assert.equal(grid.overlaps(165,90,125),true)
+ assert.equal(grid.overlaps(165,96,125),false)
+})

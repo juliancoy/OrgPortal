@@ -55,9 +55,9 @@ export function createNetworkCanvas(canvas) {
    for (const [color, path] of disks) { context.fillStyle=color; context.fill(path) }
    surfaceTitles.clear()
    for(const node of titles){
-    if(node.x+node.renderRadius<view.x||node.x-node.renderRadius>view.x+view.w||node.y+node.renderRadius<view.y||node.y-node.renderRadius>view.y+view.h||!sphereTitleReadable(node.sphereTitle,node.renderRadius*cssWidth/view.w,false,backingRatio))continue
+    if(node.x+node.renderRadius<view.x||node.x-node.renderRadius>view.x+view.w||node.y+node.renderRadius<view.y||node.y-node.renderRadius>view.y+view.h||!sphereTitleReadable(node.sphereTitle,node.renderRadius*cssWidth/view.w,false,backingRatio,node.sphereSubtitle))continue
     context.save();context.globalAlpha=node.opacity??1;context.beginPath();context.arc(node.x,node.y,node.renderRadius,0,Math.PI*2);context.clip()
-    paintSphereTitle(context,node.sphereTitle,node.x,node.y,node.renderRadius*1.65,node.renderRadius*1.3);context.restore();surfaceTitles.add(node.id)
+    paintSphereTitle(context,node.sphereTitle,node.x,node.y,node.renderRadius*1.65,node.renderRadius*1.3,node.sphereSubtitle);context.restore();surfaceTitles.add(node.id)
    }
    canvas.dataset.sphereTitles=String(surfaceTitles.size)
   },

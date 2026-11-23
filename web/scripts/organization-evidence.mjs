@@ -1,5 +1,6 @@
 // Public evidence profiles: no directory writes, inferred owners, or name matching.
 import {summarizeOrganizationTransfers} from '../server/organization-financial-totals.mjs'
+import {receivedUsdFromTotals} from '../src/features/ecosystem/received-amount.js'
 export function organizationEvidenceProfiles(data) {
  const nodes = new Map(data.organizations.map(org => [org.id, org])), children = new Map(), parents = new Map()
  function connect(parent, child, classification, sourceUrl) {
@@ -75,9 +76,11 @@ export function organizationEvidenceProfiles(data) {
 // Use the same consolidated external transfer totals for cards, node size and
 // node color. Currencies are never added together; the map's metric is USD.
 export function consolidatedFinancialMetrics(profile,fy='all'){
- if(!profile?.financialMembers&&!profile?.financialTotals?.awards?.length)return null
- const totals=fy==='all'?profile.financialTotals:profile.financialTotalsByYear?.[fy]
+ if(!profile)return null
+ const totals=fy==='all'?profile.financialTotals:profile.financialTotalsByYear?.[fy]||(profile.financialTotals?{currencies:[],missingAmounts:0}:undefined)
+ const receivedUsd=receivedUsdFromTotals(totals)
+ if(!profile.financialMembers&&!profile.financialTotals?.awards?.length)return {receivedUsd}
  const usd=totals?.currencies.find(total=>total.currency==='USD')
  const incoming=usd?.received||0,outgoing=usd?.disbursed||0
- return {incoming,outgoing,amount:Math.max(0,incoming+outgoing)}
+ return {incoming,outgoing,amount:Math.max(0,incoming+outgoing),receivedUsd}
 }

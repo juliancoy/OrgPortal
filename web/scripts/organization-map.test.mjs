@@ -42,6 +42,26 @@ test('node volume uses the master financial metric, preserving missing and zero 
  assert.equal(body.organizations.find(n=>n.id==='d').financialAmount,null)
  assert.equal(body.organizations.find(n=>n.id==='g0').financialAmount,null)
 })
+test('received amounts use indexed cash receipts for the selected year and the grouped focus total',async()=>{
+ const f=fixture(),calls=[]
+ f.organizations.forEach(org=>{org.networkMetrics.amount=999999})
+ f.organizations.find(org=>org.id==='a').networkMetrics.receivedUsd=123
+ f.organizations.find(org=>org.id==='d').networkMetrics.receivedUsd=-5
+ f.topology.edges=f.topology.edges.map(e=>[...e,null,2025])
+ const read=async path=>{
+  calls.push(path)
+  if(path==='manifest.json')return {...await f.read(path),temporalIndexVersion:1,fiscalYears:[2025]}
+  if(path.endsWith('/organization-evidence/0.json'))return [{organization:{id:'b',name:'Beta',slug:'beta'},recordKinds:{},recordIndices:[],recordFiscalYears:{},financialTotals:{currencies:[{currency:'USD',received:37,disbursed:999}],missingAmounts:0},financialTotalsByYear:{2025:{currencies:[{currency:'USD',received:12,disbursed:900}],missingAmounts:0}}}]
+  if(path.endsWith('/fiscal/2025/metrics/0.json'))return f.organizations.map(org=>({amount:99999,receivedUsd:org.id==='a'?8:org.id==='d'?-2:null}))
+  return f.read(path)
+ }
+ const all=(await query(read)).body.organizations,year=(await query(read,{fy:'2025'})).body.organizations
+ assert.equal(all.find(n=>n.id==='a').receivedUsd,123);assert.equal(year.find(n=>n.id==='a').receivedUsd,8)
+ assert.equal(all.find(n=>n.id==='b').receivedUsd,37);assert.equal(year.find(n=>n.id==='b').receivedUsd,12)
+ assert.equal(all.find(n=>n.id==='d').receivedUsd,-5);assert.equal(year.find(n=>n.id==='d').receivedUsd,-2)
+ assert.equal(all.find(n=>n.id==='g0').receivedUsd,null)
+ assert(!calls.some(path=>/\/relationships\/\d+/.test(path)),'labels do not fetch transaction details per node')
+})
 test('reciprocal links and repeated records retain separate directions, with compressed endpoint IDs',async()=>{
  const f=fixture();f.topology.nodeIds=f.organizations.map(o=>o.id)
  f.topology.edges.push(['b','a','transfer'],['a','b','approval'],['b','b','transfer']);f.topology.edgesByOrg.b.push(4,5,6)

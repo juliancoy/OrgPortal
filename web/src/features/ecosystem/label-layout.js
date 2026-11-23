@@ -1,7 +1,7 @@
 // Labels are at most 155px wide. Adjacent cells cover every possible overlap,
 // preserving priority order and the original 8px horizontal / 28px vertical gaps.
-export function createLabelGrid(){
- const rows=new Map(),cellWidth=163,cellHeight=28
+export function createLabelGrid(verticalGap=28){
+ const rows=new Map(),cellWidth=163,cellHeight=verticalGap
  return {
   overlaps(x,y,width){
    const cx=Math.floor(x/cellWidth),cy=Math.floor(y/cellHeight)
@@ -11,7 +11,7 @@ export function createLabelGrid(){
     for(let column=cx-1;column<=cx+1;column++){
      const bucket=row.get(column)
      if(!bucket)continue
-     for(const r of bucket)if(Math.abs(x-r.x)<(width+r.width)/2+8&&Math.abs(y-r.y)<28)return true
+     for(const r of bucket)if(Math.abs(x-r.x)<(width+r.width)/2+8&&Math.abs(y-r.y)<verticalGap)return true
     }
    }
    return false

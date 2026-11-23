@@ -9,6 +9,7 @@ out.mkdir(parents=True,exist_ok=True)
 nodes=[{'id':id,'name':name,'slug':None,'category':category,'financialAmount':amount} for id,name,category,amount in [
  ('title-state','State of Maryland','state-government',1e10),('title-health','Maryland Department of Health','health',4e9),
  ('title-umd','University of Maryland','university',2e9),('title-small','Small recipient','company',1e5),('title-unknown','Undisclosed recipient','general',None)]]
+for node,received in zip(nodes,[5e9,1.25e6,0,-2500,None]):node['receivedUsd']=received
 edges=[{'id':n['id'],'source':'title-state','target':n['id'],'recordCount':1,'kinds':['transfer']} for n in nodes[1:]]
 with sync_playwright() as p:
  browser=p.chromium.launch(executable_path='/usr/bin/google-chrome',headless=True,args=['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
@@ -20,11 +21,15 @@ with sync_playwright() as p:
   route.fulfill(json={'version':'titles-fixture','generatedAt':'2026-11-22','organization':{**org,'recordCount':0},'parents':[],'children':[],'groups':[],'records':[],'total':0,'offset':0,'nextOffset':None})
  ctx.route('**/api/ecosystem/organization-evidence?*',profile);ctx.route('**/api/ecosystem/organization-group?*',profile)
  def neighborhood(route):
-  anchor=parse_qs(urlparse(route.request.url).query)['org'][0];links=[e for e in edges if anchor in [e['source'],e['target']]]
+  params=parse_qs(urlparse(route.request.url).query);fy=params.get('fy',['2025'])[0]
+  anchor=params['org'][0];links=[e for e in edges if anchor in [e['source'],e['target']]]
   ids={anchor}|{e[k] for e in links for k in ['source','target']}
-  route.fulfill(json={'version':'titles-fixture','generatedAt':'2026-11-22','anchor':anchor,'organizations':[n for n in nodes if n['id'] in ids],
+  visible=[{**n,'receivedUsd':n['receivedUsd']/2 if fy=='2024' and n['receivedUsd'] is not None else n['receivedUsd']} for n in nodes if n['id'] in ids]
+  route.fulfill(json={'version':'titles-fixture','generatedAt':'2026-11-22','fy':fy,'fiscalYears':[2024,2025],'anchor':anchor,'organizations':visible,
    'relationships':links,'total':len(ids)-1,'incoming':sum(e['target']==anchor for e in links),'outgoing':sum(e['source']==anchor for e in links),'offset':0,'nextOffset':None})
  ctx.route('**/api/ecosystem/organization-map?*',neighborhood)
+ ctx.add_init_script("""window.paintedTitles=[];const fill=CanvasRenderingContext2D.prototype.fillText;
+ CanvasRenderingContext2D.prototype.fillText=function(text,x,y,...args){window.paintedTitles.push({text,color:this.fillStyle});if(window.paintedTitles.length>1000)window.paintedTitles.shift();return fill.call(this,text,x,y,...args)};""")
  page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  page.goto(base+'/ecosystem/organizations/title-state',wait_until='domcontentloaded')
  panel=page.locator('.organization-ecomap');canvas=panel.locator('canvas')
@@ -87,6 +92,56 @@ with sync_playwright() as p:
   expect(panel.get_by_label('Title placement',exact=True)).to_have_value('surface')
   frames()
   assert panel.locator('.organization-ecomap-labels button:visible').count()==0
+  # The optional second line uses receipts, not the combined-volume fixture.
+  page.goto(base+'/ecosystem/organizations/title-state?fy=2025',wait_until='domcontentloaded')
+  panel.locator('canvas[data-ready="true"]').wait_for(timeout=20000)
+  expect(page.get_by_label('Received amounts',exact=True)).to_have_value('hide')
+  page.get_by_label('Received amounts',exact=True).select_option('show');frames()
+  for width,name in [(1400,'desktop'),(390,'mobile')]:
+   page.set_viewport_size({'width':width,'height':1100})
+   for mode in ['2d','3d']:
+    page.get_by_label('Map mode',exact=True).select_option(mode)
+    panel.locator(f'canvas[data-ready="true"][data-mode="{mode}"]').wait_for(timeout=20000)
+    page.get_by_role('button',name='Fit all connections',exact=True).click();frames()
+    page.get_by_label('Title placement',exact=True).select_option('floating');frames()
+    root=panel.locator('.organization-ecomap-labels button[data-node-id="title-state"]')
+    expect(root.locator('.organization-ecomap-label-amount')).to_have_text('5B')
+    geometry=root.evaluate("""e=>{const n=e.querySelector('.organization-ecomap-label-name'),a=e.querySelector('.organization-ecomap-label-amount');return {below:a.getBoundingClientRect().top>=n.getBoundingClientRect().bottom,name:getComputedStyle(n).color,amount:getComputedStyle(a).color}}""")
+    assert geometry['below'] and geometry['name']!=geometry['amount'],geometry
+    for theme in ['light','dark']:
+     page.evaluate('(theme)=>document.documentElement.dataset.theme=theme',theme);frames()
+     panel.screenshot(path=str(out/f'{name}-{mode}-received-floating-{theme}.png'))
+    page.evaluate('window.paintedTitles=[]')
+    page.get_by_label('Title placement',exact=True).select_option('surface');frames()
+    for _ in range(5):page.get_by_role('button',name='Zoom in on organization map',exact=True).click();frames()
+    page.wait_for_function('paintedTitles.some(row=>row.text==="5B"&&row.color==="#ffd166")')
+    assert int(canvas.get_attribute('data-sphere-titles'))>0
+    if mode=='3d':assert panel.locator('.organization-ecomap-labels button:visible').count()==0
+    for theme in ['light','dark']:
+     page.evaluate('(theme)=>document.documentElement.dataset.theme=theme',theme);frames()
+     panel.locator('.organization-ecomap-canvas').screenshot(path=str(out/f'{name}-{mode}-received-surface-{theme}.png'))
+    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+  # New amounts repaint the same sphere texture while preferences stay selected.
+  page.get_by_label('Color by',exact=True).select_option('volume')
+  page.evaluate('window.paintedTitles=[]')
+  page.get_by_label('Fiscal year',exact=True).select_option('2024')
+  page.wait_for_function('paintedTitles.some(row=>row.text==="2.5B"&&row.color==="#ffd166")')
+  expect(page.get_by_label('Received amounts',exact=True)).to_have_value('show')
+  expect(page.get_by_label('Color by',exact=True)).to_have_value('volume')
+  page.get_by_role('button',name='Fullscreen',exact=True).click()
+  expect(page.get_by_label('Received amounts',exact=True)).to_be_visible()
+  page.get_by_label('Received amounts',exact=True).select_option('hide');frames()
+  page.get_by_role('button',name='Exit fullscreen',exact=True).click()
+  page.get_by_label('Title placement',exact=True).select_option('floating');frames()
+  assert panel.locator('.organization-ecomap-label-amount').count()==0
+  page.get_by_label('Received amounts',exact=True).select_option('show');frames()
+  page.get_by_label('Find a node',exact=True).fill('Maryland Department of Health')
+  page.locator('.organization-ecomap-search').get_by_role('button',name='Maryland Department of Health',exact=True).click()
+  panel.locator('canvas[data-ready="true"][data-anchor="title-health"]').wait_for(timeout=20000)
+  expect(page.get_by_label('Received amounts',exact=True)).to_have_value('show')
+  page.reload(wait_until='domcontentloaded')
+  panel.locator('canvas[data-ready="true"]').wait_for(timeout=20000)
+  expect(page.get_by_label('Received amounts',exact=True)).to_have_value('show')
  assert not errors,errors
  browser.close()
 print('Captured distant and close surface titles in 2D/3D, desktop/mobile, light/dark:',out)

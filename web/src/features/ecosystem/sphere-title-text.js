@@ -1,3 +1,4 @@
+import {receivedAmountColor} from './received-amount.js'
 // Shared wrapping keeps the flat and curved surface titles consistent.
 export function sphereTitleLines(title,columns=18,maxLines=5){
  const words=String(title||'').trim().split(/\s+/).filter(Boolean).flatMap(word=>{
@@ -12,14 +13,16 @@ export function sphereTitleLines(title,columns=18,maxLines=5){
 // Use projected CSS pixels and account for adaptive downsampling. Curved titles
 // remain on the sphere farther away; flat titles can use centered native text.
 const titleMetrics=new Map()
-export function sphereTitleReadable(title,radius,curved=false,pixelRatio=1){
+export function sphereTitleReadable(title,radius,curved=false,pixelRatio=1,subtitle=''){
  if(!title||!Number.isFinite(radius)||radius<(curved?8:12))return false
- let metrics=titleMetrics.get(title)
+ const key=JSON.stringify([title,subtitle])
+ let metrics=titleMetrics.get(key)
  if(!metrics){
   const lines=sphereTitleLines(title)
   if(!lines.length)return false
+  if(subtitle)lines.push(subtitle)
   metrics={lines:lines.length,columns:Math.max(...lines.map(line=>Array.from(line).length))}
-  titleMetrics.set(title,metrics)
+  titleMetrics.set(key,metrics)
   if(titleMetrics.size>512)titleMetrics.delete(titleMetrics.keys().next().value)
  }
  const size=curved
@@ -27,12 +30,13 @@ export function sphereTitleReadable(title,radius,curved=false,pixelRatio=1){
   :Math.min(1.3*radius/(metrics.lines*1.18),1.65*radius/(metrics.columns*.64))
  return size*Math.min(1,pixelRatio)>=(curved?6:12)
 }
-export function paintSphereTitle(context,title,x,y,width,height){
+export function paintSphereTitle(context,title,x,y,width,height,subtitle=''){
  const lines=sphereTitleLines(title)
  if(!lines.length)return
+ if(subtitle)lines.push(subtitle)
  const size=Math.min(height/(lines.length*1.18),width/(Math.max(...lines.map(line=>Array.from(line).length))*.64))
  context.save();context.font=`600 ${size}px sans-serif`;context.textAlign='center';context.textBaseline='middle';context.lineJoin='round'
  context.strokeStyle='rgba(0,0,0,.85)';context.fillStyle='#fff';context.lineWidth=size*.16
- lines.forEach((line,i)=>{const top=y+(i-(lines.length-1)/2)*size*1.18;context.strokeText(line,x,top);context.fillText(line,x,top)})
+ lines.forEach((line,i)=>{context.fillStyle=subtitle&&i===lines.length-1?receivedAmountColor:'#fff';const top=y+(i-(lines.length-1)/2)*size*1.18;context.strokeText(line,x,top);context.fillText(line,x,top)})
  context.restore()
 }

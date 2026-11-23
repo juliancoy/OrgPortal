@@ -16,7 +16,7 @@ export function createSphereTitles(scene){
     if(point.z>=-camera.near)continue
     const pixels=node.renderRadius*height*(camera.isOrthographicCamera?camera.zoom/(camera.top-camera.bottom):1/(-2*point.z*Math.tan(camera.fov*Math.PI/360)))
     point.set(node.x,node.y,node.z||0).project(camera)
-    if(!sphereTitleReadable(node.sphereTitle,pixels,true,pixelRatio)||Math.abs(point.x)>1.1||Math.abs(point.y)>1.1||point.z>1)continue
+    if(!sphereTitleReadable(node.sphereTitle,pixels,true,pixelRatio,node.sphereSubtitle)||Math.abs(point.x)>1.1||Math.abs(point.y)>1.1||point.z>1)continue
     candidates.push({node,pixels})
    }
    // Bound texture memory and draw calls in very large neighborhoods. Zooming
@@ -26,14 +26,14 @@ export function createSphereTitles(scene){
    for(const id of labels.keys())if(!ids.has(id)){remove(id);changed=true}
    for(const {node} of visible){
     let label=labels.get(node.id)
-    if(label&&label.title!==node.sphereTitle){remove(node.id);label=null}
+    if(label&&(label.title!==node.sphereTitle||label.subtitle!==node.sphereSubtitle)){remove(node.id);label=null}
     if(!label){
      const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256
-     paintSphereTitle(canvas.getContext('2d'),node.sphereTitle,256,128,480,224)
+     paintSphereTitle(canvas.getContext('2d'),node.sphereTitle,256,128,480,224,node.sphereSubtitle)
      const texture=new CanvasTexture(canvas);texture.colorSpace=SRGBColorSpace
      const material=new MeshBasicNodeMaterial({map:texture,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1})
      const mesh=new Mesh(geometry,material);mesh.renderOrder=2;scene.add(mesh)
-     label={mesh,texture,title:node.sphereTitle};labels.set(node.id,label);changed=true
+     label={mesh,texture,title:node.sphereTitle,subtitle:node.sphereSubtitle};labels.set(node.id,label);changed=true
     }
     label.mesh.position.set(node.x,node.y,node.z||0);label.mesh.scale.setScalar(node.renderRadius*1.008)
     label.mesh.up.set(0,1,0).applyQuaternion(camera.quaternion)

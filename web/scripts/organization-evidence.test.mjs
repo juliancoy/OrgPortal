@@ -1,11 +1,29 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {organizationEvidenceProfiles} from './organization-evidence.mjs'
+import {organizationEvidenceProfiles,consolidatedFinancialMetrics} from './organization-evidence.mjs'
 import {attachSourceAgencies} from './source-agency-references.mjs'
 import {marylandAgencyReferences} from './maryland-agency-references.mjs'
 import {projectNativeEvidence} from './unified-ecosystem.mjs'
 import {queryEcosystem} from '../server/ecosystem-query.mjs'
 const fixture=()=>({organizations:[{id:'state',name:'Example state',portalSlug:'example-state'},{id:'department',name:'Department',governmentParentId:'state',governmentClassification:'department',governmentSourceUrl:'https://example.gov/agencies'},{id:'recipient',name:'Recipient'},{id:'heading',name:'Budget heading',governmentParentId:'state',governmentClassification:'budget_heading',entityType:'budget_heading'}],relationships:[{id:'appropriation',source:'state',target:'department',kind:'appropriation',amount:100},{id:'payment',source:'department',target:'recipient',kind:'transfer',amount:20,sourceSystem:'source',sourceDataset:'payments'},{id:'approval',source:'department',target:'recipient',kind:'approval',amount:-10},{id:'grant',source:'state',target:'recipient',kind:'grant',amount:30}],financing:[]})
+test('every node indexes received USD from signed cash evidence, separately from volume and awards',()=>{
+ const data=fixture()
+ data.relationships=data.relationships.map(row=>({...row,currency:'USD',fiscalYear:2025}))
+ data.relationships.push(
+  {id:'adjustment',source:'department',target:'recipient',kind:'transfer',amount:-5,currency:'USD',fiscalYear:2025},
+  {id:'award',source:'department',target:'recipient',kind:'transfer',amount:1e9,currency:'USD',financialFactType:'reported_award',fiscalYear:2025},
+  {id:'euro',source:'department',target:'recipient',kind:'transfer',amount:1e6,currency:'EUR',fiscalYear:2025},
+  {id:'internal',source:'state',target:'department',kind:'transfer',amount:900,currency:'USD',fiscalYear:2025})
+ const profiles=organizationEvidenceProfiles(data),get=id=>profiles.entries[profiles.aliases[id]]
+ assert.equal(consolidatedFinancialMetrics(get('recipient')).receivedUsd,15)
+ assert.equal(consolidatedFinancialMetrics(get('recipient'),'2025').receivedUsd,15)
+ assert.equal(consolidatedFinancialMetrics(get('recipient'),'2024').receivedUsd,0)
+ assert.equal(consolidatedFinancialMetrics(get('state')).receivedUsd,0,'internal transfers are excluded from the hierarchy')
+ assert.equal(consolidatedFinancialMetrics(get('department')).receivedUsd,900)
+ assert.equal(consolidatedFinancialMetrics(get('heading')).receivedUsd,0)
+ assert.equal(consolidatedFinancialMetrics({financialTotals:{currencies:[],missingAmounts:1}}).receivedUsd,null)
+ assert.equal(consolidatedFinancialMetrics({}).receivedUsd,null,'older data is not silently reported as zero')
+})
 test('generic hierarchy rolls up documented children, not funding recipients; original agencies retain their records',()=>{
  const data=fixture(),profiles=organizationEvidenceProfiles(data),state=profiles.entries[profiles.aliases['example-state']],department=profiles.entries[profiles.aliases.department]
  assert.deepEqual(state.children.map(x=>x.id),['heading','department'])

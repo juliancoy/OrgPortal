@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {sphereTitleLines,paintSphereTitle,sphereTitleReadable} from '../src/features/ecosystem/sphere-title-text.js'
+import {shortReceivedAmount,receivedAmountColor} from '../src/features/ecosystem/received-amount.js'
 test('surface titles wrap words and long tokens, preserving text until the bounded overflow',()=>{
  const title='University of Maryland Department of Health'
  assert.equal(sphereTitleLines(title).join(' '),title)
@@ -37,4 +38,15 @@ test('curved titles stay visible at half the projected radius without changing f
  assert.equal(sphereTitleReadable(name,40,true,.4),false,'respect actual render resolution')
  assert.equal(sphereTitleReadable('UMD',8,true),true)
  assert.equal(sphereTitleReadable('UMD',7,true),false)
+})
+test('received labels abbreviate money without confusing missing, zero or signed adjustments',()=>{
+ for(const [amount,label] of [[5e9,'5B'],[1.25e6,'1.3M'],[12500,'12.5K'],[999950,'1M'],[1e12,'1T'],[0,'0'],[-2500,'-2.5K'],[null,'—'],[undefined,'—'],[NaN,'—']])assert.equal(shortReceivedAmount(amount),label)
+})
+test('received subtitle paints below the name in a distinct color',()=>{
+ const rows=[],context={save(){},restore(){},strokeText(){},fillText(text,x,y){rows.push({text,x,y,color:this.fillStyle})}}
+ paintSphereTitle(context,'State of MD',100,50,180,90,'5B')
+ assert.deepEqual(rows.map(r=>r.text),['State of MD','5B'])
+ assert(rows[1].y>rows[0].y);assert.equal(rows[0].color,'#fff');assert.equal(rows[1].color,receivedAmountColor)
+ assert.equal(sphereTitleReadable('UMD',10,true,1),true)
+ assert.equal(sphereTitleReadable('UMD',10,true,1,'5B'),false,'subtitle participates in the available surface space')
 })
