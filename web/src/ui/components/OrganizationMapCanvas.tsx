@@ -69,15 +69,17 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
     // Native text stays sharp when distant surface decals would be subpixel.
     if(titlePlacementRef.current==='surface'&&(gpu||planar)?.hasSurfaceTitle(node.id))continue
     if(gpu&&!gpu.project(node,projected).visible)continue
-    const x=gpu?projected.x:(node.x-view.x)*scale,y=gpu?projected.y+12:(node.y-view.y)*height/view.h+node.renderRadius*scale+6,focus=node.id===data.anchor||node.id===selected
+    const onCircle=!gpu&&titlePlacementRef.current==='surface'
+    const x=gpu?projected.x:(node.x-view.x)*scale,y=gpu?projected.y+12:(node.y-view.y)*height/view.h+(onCircle?0:node.renderRadius*scale+6),focus=node.id===data.anchor||node.id===selected
     if(x<30||x>width-30||y<0||y>height-25)continue
-    if(!focus&&grid.overlaps(x,y,117))continue
-    grid.add(x,y,117)
+    const labelWidth=onCircle?Math.max(80,Math.min(125,node.renderRadius*scale*1.65)):117
+    if(!focus&&grid.overlaps(x,y,labelWidth))continue
+    grid.add(x,y,labelWidth)
     let button=buttons[placed]
     if(!button){button=document.createElement('button');button.type='button';button.addEventListener('click',()=>controls.current?.focus(button.dataset.nodeId!),{signal:abort.signal});buttons.push(button);layer.append(button)}
     const volume=String(node.financialAmount??'')
     if(button.dataset.nodeId!==node.id||button.dataset.volume!==volume||button.dataset.colorScheme!==colorSchemeRef.current){button.dataset.nodeId=node.id;button.dataset.volume=volume;button.dataset.colorScheme=colorSchemeRef.current;button.textContent=abbreviateBoardLabel(node.name);button.title=colorSchemeRef.current==='volume'?`${node.name} · ${volumeLabel(node.financialAmount)}`:node.name;button.setAttribute('aria-label',node.name)}
-    button.hidden=false;button.classList.toggle('focus',focus);button.style.left=`${Math.round(x)}px`;button.style.top=`${Math.round(y)}px`
+    button.hidden=false;button.classList.toggle('focus',focus);button.classList.toggle('on-circle',onCircle);button.style.width=onCircle?`${labelWidth}px`:'';button.style.left=`${Math.round(x)}px`;button.style.top=`${Math.round(y)}px`
     if(++placed>=45)break
    }
    for(let i=placed;i<buttons.length;i++)buttons[i].hidden=true
@@ -190,7 +192,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    {yearControl}
    <label>Map mode<select aria-label="Map mode" ref={modeSelect} value={mode} onChange={event=>onModeChange(event.target.value as OrganizationMapMode)}><option value="2d">2D</option><option value="3d">3D</option></select></label>
    <label>Color by<select aria-label="Color by" value={colorScheme} onChange={event=>setColorScheme(event.target.value as OrganizationMapColorScheme)}><option value="category">Category</option><option value="volume">Dollar volume</option></select></label>
-   <label>Titles<select aria-label="Title placement" value={titlePlacement} onChange={event=>{const value=event.target.value as 'floating'|'surface';setTitlePlacement(value);try{localStorage.setItem('organization-map-title-placement',value)}catch{/* Storage may be disabled. */}}}><option value="floating">Floating labels</option><option value="surface">On spheres</option></select></label>
+   <label>Titles<select aria-label="Title placement" value={titlePlacement} onChange={event=>{const value=event.target.value as 'floating'|'surface';setTitlePlacement(value);try{localStorage.setItem('organization-map-title-placement',value)}catch{/* Storage may be disabled. */}}}><option value="floating">Floating labels</option><option value="surface">{mode==='2d'?'On circles':'On spheres'}</option></select></label>
    {mode==='3d'&&<label>Navigation<select aria-label="Navigation" value={navigation} onChange={event=>{setNavigation(event.target.value as 'orbit'|'fly');controls.current?.stopFocus();canvas.current?.focus({preventScroll:true})}}><option value="orbit">Orbit selection</option><option value="fly">Free fly</option></select></label>}
    <label>Speed<select aria-label="Navigation speed" value={speed} onChange={event=>setSpeed(Number(event.target.value))}><option value={.25}>0.25×</option><option value={1}>1×</option><option value={3}>3×</option></select></label>
    </div>

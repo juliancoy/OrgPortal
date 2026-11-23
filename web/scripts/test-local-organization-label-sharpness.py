@@ -37,18 +37,32 @@ with sync_playwright() as p:
    page.get_by_label('Map mode',exact=True).select_option(mode)
    panel.locator(f'canvas[data-ready="true"][data-mode="{mode}"]').wait_for(timeout=20000)
    page.get_by_role('button',name='Fit all connections',exact=True).click();frames()
+   expect(page.get_by_label('Title placement',exact=True).locator('option:checked')).to_have_text('On circles' if mode=='2d' else 'On spheres')
    for zoom in ['overview','near']:
     if zoom=='near':
      for _ in range(5):page.get_by_role('button',name='Zoom in on organization map',exact=True).click();frames()
     for theme in ['light','dark']:
      page.evaluate('(theme)=>document.documentElement.dataset.theme=theme',theme);frames()
      panel.locator('.organization-ecomap-canvas').screenshot(path=str(out/f'{name}-{mode}-{zoom}-{theme}.png'))
+     if mode=='2d' and zoom=='overview':panel.screenshot(path=str(out/f'{name}-2d-panel-{theme}.png'))
     if os.environ.get('CAPTURE_STAGE')!='before':
      if zoom=='overview':
       assert panel.locator('.organization-ecomap-labels button:visible').count()>0
       assert panel.locator('.organization-ecomap-labels button:visible').count()<=45
       assert panel.locator('.organization-ecomap-labels button:visible').first.evaluate('e=>parseFloat(getComputedStyle(e).fontSize)')>=12
-     else:assert int(canvas.get_attribute('data-sphere-titles'))>0
+      if mode=='2d':
+       centered=panel.locator('.organization-ecomap-labels button.on-circle[data-node-id="title-state"]')
+       expect(centered).to_be_visible()
+       metrics=centered.evaluate("""e=>{const b=e.getBoundingClientRect(),c=document.querySelector('.organization-ecomap canvas'),r=c.getBoundingClientRect(),t=c.getContext('2d').getTransform(),s=getComputedStyle(e);return {dx:b.x+b.width/2-r.x-t.e/(c.width/r.width),dy:b.y+b.height/2-r.y-t.f/(c.height/r.height),background:s.backgroundColor}}""")
+       assert abs(metrics['dx'])<2 and abs(metrics['dy'])<2,metrics
+       assert metrics['background']=='rgba(0, 0, 0, 0)',metrics
+       page.get_by_label('Title placement',exact=True).select_option('floating');frames()
+       assert panel.locator('.organization-ecomap-labels button.on-circle:visible').count()==0
+       page.get_by_label('Title placement',exact=True).select_option('surface');frames()
+
+     else:
+      assert int(canvas.get_attribute('data-sphere-titles'))>0
+      if mode=='2d':expect(panel.locator('.organization-ecomap-labels button[data-node-id="title-state"]')).not_to_be_visible()
  if os.environ.get('CAPTURE_STAGE')!='before':
   page.get_by_role('button',name='Fit all connections',exact=True).click();frames()
   target=panel.locator('.organization-ecomap-labels button:visible:not([data-node-id="title-state"])').first

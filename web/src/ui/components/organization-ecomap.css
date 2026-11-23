@@ -33,6 +33,9 @@
 .organization-ecomap-labels { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
 .organization-ecomap-labels button { position:absolute; transform:translateX(-50%); max-width:125px; min-height:0; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:0; padding:2px 4px; border-radius:4px; font-size:12px; background:var(--panel); color:var(--text-primary); pointer-events:auto; }
 .organization-ecomap-labels button.focus { font-weight:700; border:1px solid var(--border); max-width:210px; }
+/* Small 2D circles keep crisp screen text centered on the marker, without a floating box. */
+.organization-ecomap-labels button.on-circle { transform:translate(-50%,-50%); background:transparent; border:0; padding:0; color:#fff; text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000; white-space:normal; overflow-wrap:anywhere; line-height:1.15; -webkit-box-orient:vertical; -webkit-line-clamp:2; max-height:2.3em; }
+.organization-ecomap-labels button.on-circle:not([hidden]) { display:-webkit-box; }
 .organization-ecomap-selected { margin:.75rem 0; padding:.75rem; background:var(--surface); border-radius:8px; }
 .organization-ecomap-note { font-size:.8rem; }
 .organization-ecomap-category-legend,.organization-ecomap-volume-legend { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .75rem; font-size:.8rem; color:var(--text-secondary); margin:.5rem 0; }
