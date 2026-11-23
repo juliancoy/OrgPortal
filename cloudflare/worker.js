@@ -1,3 +1,4 @@
+import {publicEvidenceReader} from '../web/server/public-artifacts.mjs';
 import { ecosystemResponse } from '../web/server/ecosystem-query.mjs';
 import { identityRequest, isResearchPage, researchAccess } from './identity.js';
 import { withEventSourcePreview } from '../web/eventSourcePreview.mjs';
@@ -965,12 +966,7 @@ const productionWorker = {
     const url = new URL(request.url);
     const path = url.pathname;
     if (path.startsWith('/api/ecosystem/')) {
-      return ecosystemResponse(request, async key => {
-        const assetUrl = new URL(`/__portal_root/ecosystem-data/query/${key}`, url.origin);
-        const response = await env.ASSETS.fetch(new Request(assetUrl));
-        if (!response.ok || !response.headers.get('content-type')?.includes('json')) throw new Error('Missing query index');
-        return response.json();
-      });
+      return ecosystemResponse(request, publicEvidenceReader(env.ASSETS));
     }
     const tenantHost = isOrgGroupSiteHost(url.hostname, env);
     if (/^\/(?:p\/)?portals(?:\/|$)/.test(path)) return notFoundResponse(request);

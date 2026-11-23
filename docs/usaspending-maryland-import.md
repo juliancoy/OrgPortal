@@ -130,3 +130,12 @@ IDs instead of repeating long source-label IDs. This reduces the memory needed
 by the expanded dataset without combining transactions or changing evidence IDs.
 Old topology snapshots remain readable during deployment. Focused tests cover
 500,000 rows, fiscal filtering, directed traversal and legacy compatibility.
+
+Production uses a stable public-asset reader per asset binding, so simultaneous
+requests share one topology load and later pages reuse the decoded version. The
+manifest is still fetched afresh; a new snapshot invalidates the cached version.
+A local Cloudflare runtime probe with the existing graph plus all 434,193 new
+transactions (565,053 edges, 44,010 nodes) passed concurrent cold loads and fiscal
+filtering: 24 asset reads total, about 250 ms for the local cold topology, 185 ms
+for its first year projection, and 9 ms for a repeated projection. These are local
+index measurements, not production page-load promises.

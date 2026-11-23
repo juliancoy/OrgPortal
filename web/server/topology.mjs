@@ -2,11 +2,13 @@
 // allocated edge objects. Old snapshots remain readable during deployment.
 const loaded=new WeakMap()
 export async function readTopology(read,version){
- const header=await read(`${version}/topology.json`)
- if(!header.packedTopologyVersion)return header
- let cached=loaded.get(read)
+ const cached=loaded.get(read)
  if(cached?.version===version)return cached.promise
- const promise=decodeTopology(read,version,header)
+ const promise=(async()=>{
+  const header=await read(`${version}/topology.json`)
+  if(!header.packedTopologyVersion){if(loaded.get(read)?.promise===promise)loaded.delete(read);return header}
+  return decodeTopology(read,version,header)
+ })()
  loaded.set(read,{version,promise})
  try{return await promise}catch(error){if(loaded.get(read)?.promise===promise)loaded.delete(read);throw error}
 }
