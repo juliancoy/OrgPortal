@@ -74,11 +74,14 @@ export function projectNativeEvidence(input,records,directory=[]){
 export async function fetchPublicEvidenceJson(url,{fetcher=fetch,wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
  for(let attempt=0;attempt<4;attempt++){
   let response
-  try{response=await fetcher(url,{redirect:'error',signal:AbortSignal.timeout(60000)})}
-  catch(error){if(attempt===3)throw error;await wait(500*2**attempt);continue}
+  try{
+   response=await fetcher(url,{redirect:'error',signal:AbortSignal.timeout(60000)})
+   // Headers can arrive before the body times out or the connection resets.
+   // Await decoding inside the retry boundary; never retry malformed JSON.
+   if(response.ok)return await response.json()
+  }catch(error){if(attempt===3||error instanceof SyntaxError)throw Error(`Unified database export read failed (${new URL(url).pathname})`,{cause:error});await wait(500*2**attempt);continue}
   if((response.status===429||response.status>=500)&&attempt<3){await response.body?.cancel();await wait(500*2**attempt);continue}
   if(!response.ok)throw Error(`Unified database export failed (${response.status})`)
-  return response.json()
  }
 }
 export async function exportUnifiedEcosystem({fetcher=fetch,base='https://lifetech.fyi/api/org/api/network/ecosystem/public'}={}){
@@ -98,7 +101,7 @@ export async function exportUnifiedEcosystem({fetcher=fetch,base='https://lifete
  }while(after!==null);}
  all.sort((a,b)=>(a.collection+'\t'+a.key)<(b.collection+'\t'+b.key)?-1:1);
  if(hash(all.map(r=>`${r.collection}\t${r.key}\t${r.sha256}\n`).join(''))!==datasetId)throw Error('Database dataset digest mismatch');
- const native=[];let after='';do{const url=new URL(base+'/native');if(after)url.searchParams.set('after',after);const page=await get(url);if(!Array.isArray(page.records)||page.next!==null&&(typeof page.next!=='string'||page.next<=after))throw Error('Invalid native evidence page');native.push(...page.records);after=page.next;}while(after!==null);
+ const native=[];let after='';do{const url=new URL(base+'/native');if(after)url.searchParams.set('after',after);const page=await get(url);if(!Array.isArray(page.records)||page.next!==null&&(typeof page.next!=='string'||page.next<=after))throw Error('Invalid native evidence page');native.push(...page.records);after=page.next;if(native.length%10000===0||after===null)console.info(`[export] Native evidence: ${native.length.toLocaleString()} records`);}while(after!==null);
  const directory=[]
  for(let offset=0;;offset+=500){const page=await get(new URL(base.replace(/\/ecosystem\/public$/,'')+'/orgs/public?limit=500&offset='+offset));if(!Array.isArray(page))throw Error('Incomplete public organization directory');directory.push(...page);if(page.length<500)break;}
  return {datasetId,exportedAt:new Date().toISOString(),data:projectNativeEvidence(data,native,directory),performance,positions};

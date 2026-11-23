@@ -94,3 +94,17 @@ test('federal transactions reuse official agency codes and UEIs across names, pr
  assert.match(result.relationships[3].source,/^source-label:/);assert.match(result.relationships[3].target,/^source-label:/);
  assert.equal(result.organizations.filter(o=>o.identifiers?.uei==='SAMPLEUEI001').length,1);
 });
+
+
+test('public export retries interrupted bodies without appending partial records or retrying malformed JSON',async()=>{
+ let attempts=0;
+ const page=await fetchPublicEvidenceJson('https://example.invalid/public/native',{wait:async()=>{},fetcher:async()=>{
+  attempts++;
+  if(attempts===1)return new Response(new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode('{"records":['));controller.error(new DOMException('Body stalled','TimeoutError'))}}));
+  return Response.json({records:[{id:'complete'}],next:null});
+ }});
+ assert.equal(attempts,2);assert.deepEqual(page,{records:[{id:'complete'}],next:null});
+ attempts=0;await assert.rejects(fetchPublicEvidenceJson('https://example.invalid/public/native',{wait:async()=>{},fetcher:async()=>{
+  attempts++;return new Response(new ReadableStream({start(controller){controller.error(new TypeError('Body connection reset'))}}));
+ }}),/public\/native/);assert.equal(attempts,4);
+});
