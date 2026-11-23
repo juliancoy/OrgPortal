@@ -23,9 +23,18 @@ test('surface titles require readable screen pixels, even with adaptive low reso
   assert.equal(sphereTitleReadable(name,16,curved),false)
   assert.equal(sphereTitleReadable(name,160,curved),true)
   assert.equal(sphereTitleReadable(name,80,curved,1),true)
-  assert.equal(sphereTitleReadable(name,80,curved,.4),false)
+  assert.equal(sphereTitleReadable(name,80,curved,.4),curved)
   assert.equal(sphereTitleReadable(name,16,curved,3),false,'high DPI cannot rescue subpixel CSS text')
   assert.equal(sphereTitleReadable('UMD',32,curved),true)
   assert.equal(sphereTitleReadable('',100,curved),false)
  }
+})
+test('curved titles stay visible at half the projected radius without changing flat labels',()=>{
+ const name='MD Department of Health'
+ assert.equal(sphereTitleReadable(name,40,true),true)
+ assert.equal(sphereTitleReadable(name,40,false),false)
+ assert.equal(sphereTitleReadable(name,20,true),false,'still cull unreadably small text')
+ assert.equal(sphereTitleReadable(name,40,true,.4),false,'respect actual render resolution')
+ assert.equal(sphereTitleReadable('UMD',8,true),true)
+ assert.equal(sphereTitleReadable('UMD',7,true),false)
 })

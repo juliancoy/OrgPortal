@@ -38,13 +38,16 @@ with sync_playwright() as p:
    panel.locator(f'canvas[data-ready="true"][data-mode="{mode}"]').wait_for(timeout=20000)
    page.get_by_role('button',name='Fit all connections',exact=True).click();frames()
    expect(page.get_by_label('Title placement',exact=True).locator('option:checked')).to_have_text('On circles' if mode=='2d' else 'On spheres')
-   for zoom in ['overview','near']:
-    if zoom=='near':
-     for _ in range(5):page.get_by_role('button',name='Zoom in on organization map',exact=True).click();frames()
+   for zoom in ['overview','far','near']:
+    for _ in range({'overview':0,'far':2,'near':3}[zoom]):
+     page.get_by_role('button',name='Zoom in on organization map',exact=True).click();frames()
     for theme in ['light','dark']:
      page.evaluate('(theme)=>document.documentElement.dataset.theme=theme',theme);frames()
      panel.locator('.organization-ecomap-canvas').screenshot(path=str(out/f'{name}-{mode}-{zoom}-{theme}.png'))
      if mode=='2d' and zoom=='overview':panel.screenshot(path=str(out/f'{name}-2d-panel-{theme}.png'))
+    if mode=='3d' and zoom=='far':
+     print(name,'far sphere titles:',canvas.get_attribute('data-sphere-titles'),flush=True)
+     if os.environ.get('CAPTURE_STAGE')!='before':assert int(canvas.get_attribute('data-sphere-titles'))>=2
     if os.environ.get('CAPTURE_STAGE')!='before':
      if mode=='3d':
       assert panel.locator('.organization-ecomap-labels button:visible').count()==0
