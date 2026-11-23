@@ -3559,6 +3559,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-quality-py",
+      "label": "web/scripts/test-local-organization-quality.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-quality.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-quality.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-rollup-py",
       "label": "web/scripts/test-local-organization-rollup.py",
       "category": "Organizations and membership",

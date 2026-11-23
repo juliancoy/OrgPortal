@@ -64,8 +64,8 @@ export function createNetworkCanvas(canvas) {
   hasSurfaceTitle(id){return surfaceTitles.has(id)},
   resize(width, height, pixelRatio = 1) {
    cssWidth=Math.max(1,width)
-   // Bound backing-store pixels even on tall/high-DPI viewports.
-   const ratio = Math.min(pixelRatio, 1.5, Math.sqrt(2_000_000 / Math.max(1, width*height)))
+   // Keep text and edges at native screen resolution at every viewport size.
+   const ratio = Number.isFinite(pixelRatio) ? Math.max(1,pixelRatio) : 1
    backingRatio=ratio
    const w = Math.max(1, Math.round(width*ratio)), h = Math.max(1, Math.round(height*ratio))
    if (canvas.width !== w) canvas.width=w

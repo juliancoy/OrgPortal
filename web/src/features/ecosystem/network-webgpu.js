@@ -476,7 +476,7 @@ function render(time=0) {
  }
  labelsRemaining=Math.max(0,labelsRemaining-labelCount)
  const frameMs=Math.max(performance.now()-started,interval&&interval<1000?interval:0,paintInterval)
- frameBudget.observe(frameMs,nodes.length,minimumFPS());renderer.adapt?.(frameMs,minimumFPS())
+ frameBudget.observe(frameMs,nodes.length,minimumFPS())
  if((!analysisLayout&&(physicsEnabled()||simulation?.pending()))||labelsRemaining>0)scheduleRender()
  else previousFrame=0
 }

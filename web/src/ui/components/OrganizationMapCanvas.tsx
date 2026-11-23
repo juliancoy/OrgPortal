@@ -47,7 +47,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
   let data=latestData.current
   let nodes:PositionedNode[]=[],byId=new Map<string,PositionedNode>()
   let visible=new Set<string>(),visibleEdges=new Set<string>(),edgeKeys=new Set<string>(),edges:CanvasEdge[]=[]
-  let requested:MapPage|null=null,requestedStyle='',layoutAbort:AbortController|undefined,starting:Promise<void>|undefined,layoutPending=false,presented=false,lastDraw=0
+  let requested:MapPage|null=null,requestedStyle='',layoutAbort:AbortController|undefined,starting:Promise<void>|undefined,layoutPending=false,presented=false
   const buttons:HTMLButtonElement[]=[],layer=labelLayer.current!,projected={x:0,y:0,visible:false,depth:0}
   let width=1,height=1,view:CanvasView={x:-300,y:-200,w:600,h:400},selected=data.anchor!,frame=0,initialized=false,dirty=true
   let transition:{started:number;from:{x:number;y:number;z:number;opacity:number}[];to:typeof nodes;viewFrom:CanvasView;viewTo:CanvasView|null}|null=null
@@ -55,7 +55,6 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
   const failed=(message:string)=>{if(abort.signal.aborted)return;initialized=false;setError(message);setStatus('');setReady(false);layoutAbort?.abort();abort.abort();observer?.disconnect();cancelAnimationFrame(frame);layer.replaceChildren();delete surface.dataset.ready;surface.blur();controls.current=null;gpu?.dispose();gpu=undefined;planar?.dispose();planar=undefined}
   const draw=()=>{
    frame=0;if(abort.signal.aborted||!initialized)return
-   const started=performance.now(),interval=started-lastDraw;lastDraw=started
    if(transition){
     const t=Math.min(1,(performance.now()-transition.started)/420),ease=t*t*(3-2*t)
     nodes.forEach((node,i)=>{const from=transition!.from[i],to=transition!.to[i];node.x=from.x+(to.x-from.x)*ease;node.y=from.y+(to.y-from.y)*ease;node.z=from.z+(to.z-from.z)*ease;node.opacity=from.opacity+(1-from.opacity)*ease})
@@ -104,7 +103,6 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
     if(++placed>=45)break
    }
    for(let i=placed;i<buttons.length;i++)buttons[i].hidden=true
-   gpu?.adapt(Math.max(performance.now()-started,interval<100?interval:0),30)
   }
   const schedule=()=>{if(!abort.signal.aborted&&!frame)frame=requestAnimationFrame(draw)}
   const finishTransition=()=>{
@@ -235,6 +233,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
   {layout==='hubs'&&<p className="organization-ecomap-note">Hub particles clusters each branch around its connecting hub. Choose 2 or 3 parent or child levels to see secondary hubs. Shared connections keep their arrows; clusters are layout guides, not ownership groups.</p>}
   {status&&<p role="status">{status}</p>}
   {error&&<p role="alert">{error} <button onClick={()=>setAttempt(n=>n+1)}>Retry layout</button> {mode==='3d'&&<button onClick={()=>onModeChange('2d')}>Use 2D map</button>}</p>}
+  {showReceived&&<p className="organization-ecomap-note">Label amounts: recorded USD received. 0 means no net receipts in this snapshot; — means unavailable. Spending, budgets and awards are separate.</p>}
   <details className="organization-ecomap-help"><summary>Map help<span>{keyboardActive?'Keyboard active · Esc to release':'Navigation & reading the map'}</span></summary>
    <p>Click a node to open its page. Click the selected node to open its largest incoming parent by recorded USD volume. Parent and child levels follow upstream and downstream arrows, up to three connections away.</p>
   <p id={helpId} className="organization-ecomap-keyboard-help">{keyboardActive?'Keyboard navigation active. ':'Click or Tab into the map to navigate. '}{mode==='2d'?'W/S zoom · A/D pan left/right · E/Q pan up/down. Drag to pan.':navigation==='orbit'?'W/S zoom · A/D orbit left/right · E/Q orbit up/down. Drag to orbit.':'W/S forward/back · A/D left/right · E/Q up/down. Drag to look.'} Scroll to zoom. Shift: faster · Ctrl: slower · Esc: release keyboard.</p>

@@ -1,7 +1,6 @@
 import {edgeArrowGeometry} from './edge-arrows.js'
-import {frameTargetMs} from './frame-budget.js'
 import {transactionEdgePath} from './transaction-edge-path.js'
-import {SPHERE_DETAIL,sphereDetailLevel,edgeSegmentCount} from './spatial-detail.js'
+import {SPHERE_DETAIL,edgeSegmentCount} from './spatial-detail.js'
 import {WebGPURenderer,Scene,PerspectiveCamera,OrthographicCamera,AmbientLight,DirectionalLight,InstancedMesh,SphereGeometry,CylinderGeometry,ConeGeometry,MeshStandardNodeMaterial,MeshLambertNodeMaterial,MeshBasicNodeMaterial,MeshBasicMaterial,DataTexture,InstancedBufferAttribute,SRGBColorSpace,NearestFilter,BackSide,Object3D,Vector3,Vector2,Euler,Quaternion,Color,Raycaster,Box3,Spherical,WebGLCoordinateSystem} from 'three/webgpu'
 import {attribute,texture,uv,vec2} from 'three/tsl'
 import {spherePieAtlas} from './sphere-pies.js'
@@ -11,7 +10,6 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
  // Three.js falls back to WebGL 2 when WebGPU has no usable adapter.
  const renderer=new WebGPURenderer({canvas,antialias:true,alpha:true,forceWebGL})
  try{await renderer.init()}catch(error){renderer.dispose();throw new Error(dimension+' graphics could not start. Use the Graph tab instead.',{cause:error})}
- let quality=0,slowFrames=0,fastFrames=0
  let pendingUpdate=null,compilePromise=null
  let disposed=false,width=1,height=1,compiled=false,compiling=false,referenceDistance=1
  const device=renderer.backend.device
@@ -85,7 +83,9 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
  },{signal:input.signal})
  for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(type,event=>{touchPointers.delete(event.pointerId);if(event.pointerId===look?.id)look=null},{signal:input.signal})
 
- let sphereQuality=adaptiveDetail?3:0,pixelQuality=sphereQuality
+ // Preserve full geometry and native resolution regardless of frame rate.
+ const sphereQuality=0
+ canvas.dataset.sphereDetail=String(sphereQuality)
  const geometries=[new SphereGeometry(1,...SPHERE_DETAIL[sphereQuality]),new CylinderGeometry(1,1,1,5),new ConeGeometry(1,1,6),new SphereGeometry(1,...SPHERE_DETAIL[sphereQuality])]
  const pieTexture=new DataTexture(new Uint8Array([255,255,255,255]),1,1)
  pieTexture.colorSpace=SRGBColorSpace;pieTexture.minFilter=pieTexture.magFilter=NearestFilter;pieTexture.generateMipmaps=false;pieTexture.needsUpdate=true
@@ -111,26 +111,6 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
  }
  function place(m,index,position,scale,rotation,tint){object.position.copy(position);object.scale.copy(scale);object.quaternion.copy(rotation);object.updateMatrix();m.setMatrixAt(index,object.matrix);m.setColorAt(index,color.set(tint))}
  const scale=new Vector3(),identity=object.quaternion.clone()
- function setSphereQuality(next){
-  if(next===sphereQuality)return
-  sphereQuality=next
-  for(const index of [0,3]){
-   const old=geometries[index],geometry=new SphereGeometry(1,...SPHERE_DETAIL[next]),previous=meshes[index]
-   if(index===0&&old.getAttribute('pieAtlas'))geometry.setAttribute('pieAtlas',old.getAttribute('pieAtlas').clone())
-   // r186 geometry disposal also deletes instancing buffers. Reusing the mesh
-   // leaves cached vertex bindings pointing to deleted buffers after an LOD
-   // change. Give the new mesh independent attributes and fresh bindings.
-   if(previous){
-    const replacement=new InstancedMesh(geometry,materials[index],previous.instanceMatrix.count)
-    replacement.instanceMatrix.copy(previous.instanceMatrix)
-    if(previous.instanceColor)replacement.instanceColor=previous.instanceColor.clone()
-    replacement.count=previous.count;replacement.frustumCulled=false
-    scene.remove(previous);previous.dispose();meshes[index]=replacement;scene.add(replacement)
-   }
-   geometries[index]=geometry;old.dispose()
-  }
-  compiled=false
- }
  const api={
   backend:renderer.backend.isWebGPUBackend?'webgpu':'webgl2',
   attach(object){scene.add(object);compiled=false;changed()},
@@ -215,30 +195,13 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
     renderedNodes.forEach((n,i)=>{if(!n.financialPie?.slices.length)return;object.position.set(n.x,n.y,n.z||0);object.scale.setScalar(n.renderRadius);object.quaternion.copy(pieFacing);object.updateMatrix();meshes[0].setMatrixAt(i,object.matrix)})
     meshes[0].instanceMatrix.needsUpdate=true
    }
-   if(adaptiveDetail&&!compiling){
-    camera.updateMatrixWorld()
-    let radius=0
-    for(const node of renderedNodes){projection.set(node.x,node.y,node.z||0).applyMatrix4(camera.matrixWorldInverse);if(projection.z>=-camera.near)continue;radius=Math.max(radius,node.renderRadius*height*(camera.isOrthographicCamera?camera.zoom/(camera.top-camera.bottom):1/(-2*projection.z*Math.tan(camera.fov*Math.PI/360))))}
-    pixelQuality=sphereDetailLevel(radius,pixelQuality);setSphereQuality(Math.max(pixelQuality,quality))
-    canvas.dataset.sphereDetail=String(sphereQuality)
-   }
    if(!compiling){const titles=sphereTitles.update(renderedNodes,camera,height,renderer.getPixelRatio());canvas.dataset.sphereTitles=String(titles.count);if(titles.changed)compiled=false}
    if(!compiled){if(!compiling){compiling=true;compilePromise=renderer.compileAsync(scene,camera).then(()=>{compiling=false;compiled=true;if(!disposed){if(pendingUpdate){const args=pendingUpdate;pendingUpdate=null;api.update(...args)}changed()}}).catch(error=>{compiling=false;if(!disposed)onLost(error.message)})}return false}
    renderer.render(scene,camera)
    return true
   },
   hasSurfaceTitle(id){return sphereTitles.has(id)},
-  adapt(milliseconds,minimumFPS=10){
-   const limit=frameTargetMs(minimumFPS)
-   slowFrames=milliseconds>limit*.75?slowFrames+1:0;fastFrames=milliseconds<limit*.4?fastFrames+1:0
-   const next=slowFrames>=4?Math.min(3,quality+1):fastFrames>=300?Math.max(0,quality-1):quality
-   if(next===quality)return
-   quality=next;slowFrames=0;fastFrames=0
-   setSphereQuality(adaptiveDetail?Math.max(pixelQuality,quality):quality)
-   renderer.setPixelRatio(Math.min(devicePixelRatio,2)*[1,.8,.65,.4][quality]);renderer.setSize(width,height,false);compiled=false
-   changed()
-  },
-  resize(w,h){width=Math.max(1,w);height=Math.max(1,h);renderer.setPixelRatio(Math.min(devicePixelRatio,2)*[1,.8,.65,.4][quality]);renderer.setSize(width,height,false);if(camera.isOrthographicCamera){const half=(camera.top-camera.bottom)/2;camera.left=-half*width/height;camera.right=half*width/height}else camera.aspect=width/height;camera.updateProjectionMatrix()},
+  resize(w,h){width=Math.max(1,w);height=Math.max(1,h);renderer.setPixelRatio(Math.max(1,devicePixelRatio||1));renderer.setSize(width,height,false);if(camera.isOrthographicCamera){const half=(camera.top-camera.bottom)/2;camera.left=-half*width/height;camera.right=half*width/height}else camera.aspect=width/height;camera.updateProjectionMatrix()},
   project(n,result={}){if(n.clipped4D){result.x=0;result.y=0;result.visible=false;result.depth=Infinity;return result}const p=projection.set(n.x,n.y,n.z||0).project(camera);result.x=(p.x+1)*width/2;result.y=(1-p.y)*height/2;result.visible=p.z>=(camera.coordinateSystem===WebGLCoordinateSystem?-1:0)&&p.z<=1&&Math.abs(p.x)<=1&&Math.abs(p.y)<=1;result.depth=p.z;return result},
   fit(nodes){
    cancelFocus()

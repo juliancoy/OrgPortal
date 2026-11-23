@@ -8,7 +8,6 @@ export type Network3DRenderer={
  render():boolean
  resize(width:number,height:number):void
  project(node:SpatialNode,target?:ProjectedNode):ProjectedNode
- adapt(milliseconds:number,minimumFPS?:number):void
  fit(nodes:SpatialNode[]):void
  focus(node:SpatialNode,immediate?:boolean):void
  stopFocus():void
