@@ -1,7 +1,7 @@
-import type {MapNode,MapPage} from './organizationMap'
+import type {MapNode,MapPage,OrganizationMapLayoutStyle} from './organizationMap'
 import type {CameraView} from './webgpu-3d-renderer.js'
 export type OrganizationMapColorScheme='category'|'volume'
-export type OrganizationMapView={titlePlacement?:'floating'|'surface';showReceived?:boolean;colorScheme?:OrganizationMapColorScheme;mode:'2d'|'3d';navigation:'orbit'|'fly';speed:number;viewportTop?:number;planarWidth?:number;camera?:CameraView}
+export type OrganizationMapView={layout?:OrganizationMapLayoutStyle;hubSpacing?:number;titlePlacement?:'floating'|'surface';showReceived?:boolean;colorScheme?:OrganizationMapColorScheme;mode:'2d'|'3d';navigation:'orbit'|'fly';speed:number;viewportTop?:number;planarWidth?:number;camera?:CameraView}
 export const defaultOrganizationMapView:OrganizationMapView={mode:'2d',navigation:'orbit',speed:1}
 export function organizationNodePath(node:Pick<MapNode,'id'|'slug'>){
  return node.slug?`/orgs/${encodeURIComponent(node.slug)}`:`/ecosystem/organizations/${encodeURIComponent(node.id)}`

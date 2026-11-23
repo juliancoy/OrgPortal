@@ -3349,6 +3349,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-hubs-py",
+      "label": "web/scripts/test-local-organization-hubs.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-hubs.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-hubs.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-label-sharpness-py",
       "label": "web/scripts/test-local-organization-label-sharpness.py",
       "category": "Organizations and membership",
@@ -4661,6 +4675,20 @@
         {
           "id": "suite",
           "label": "marylandGovernment.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-organizationHubLayout-test-ts",
+      "label": "web/src/features/ecosystem/organizationHubLayout.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/organizationHubLayout.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationHubLayout.test.ts"
         }
       ]
     },

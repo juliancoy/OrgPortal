@@ -1,3 +1,6 @@
+import {settleOrganizationHubs} from './organization-hub-particles.js'
+export type OrganizationMapLayoutStyle='radial'|'hubs'
+export type OrganizationMapLayoutOptions={groupAttraction?:number;layout?:OrganizationMapLayoutStyle;hubSpacing?:number}
 export type MapNode={id:string;name:string;slug:string|null;category:string;type?:string;financialAmount?:number|null;receivedUsd?:number|null}
 export type MapEdge={id:string;source:string;target:string;recordCount:number;kinds:string[];hierarchy?:boolean}
 export type MapPage={parentDepth?:number;childDepth?:number;version:string;generatedAt:string;fy?:string;fiscalYears?:number[];financialTotals?:{currencies:{currency:string;received:number;disbursed:number}[];missingAmounts:number};anchor:string|null;hiddenParent?:MapNode|null;organizations:MapNode[];relationships:MapEdge[];total:number;incoming:number;outgoing:number;offset:number;nextOffset:number|null}
@@ -23,7 +26,7 @@ export async function loadOrganizationMap(fetchPage:(offset:number,version?:stri
  if([...edges.values()].some(edge=>!nodes.has(edge.source)||!nodes.has(edge.target)||((first.parentDepth??1)===1&&(first.childDepth??1)===1&&edge.source!==first.anchor&&edge.target!==first.anchor)))throw Error('Invalid organization relationship')
  return {...first,organizations:[...nodes.values()],relationships:[...edges.values()],nextOffset:null}
 }
-export type PositionedNode=MapNode&{x:number;y:number;z:number;renderRadius:number;opacity:number;volumeColor?:number;sphereTitle?:string;sphereSubtitle?:string;direction:'focus'|'incoming'|'outgoing'|'both'}
+export type PositionedNode=MapNode&{x:number;y:number;z:number;renderRadius:number;opacity:number;hubChildren?:number;volumeColor?:number;sphereTitle?:string;sphereSubtitle?:string;direction:'focus'|'incoming'|'outgoing'|'both'}
 // A fixed USD scale keeps the same organization the same size across neighborhoods.
 // Logarithmic radii keep small transfers visible beside billion-dollar agencies.
 // Zooming out applies one visibility multiplier to every node, preserving ratios.
@@ -32,7 +35,7 @@ export function organizationNodeRadius(amount:number|null|undefined,screenScale=
  return radius*(Number.isFinite(screenScale)&&screenScale>0?Math.max(1,.5/screenScale):1)
 }
 const financialMass=(node:MapNode)=>Number.isFinite(node.financialAmount)&&node.financialAmount!>0?Math.log10(1+node.financialAmount!/1000):0
-export function organizationMapLayout(data:MapPage,mode:'2d'|'3d'='2d',options:{groupAttraction?:number}={}):PositionedNode[] {
+export function organizationMapLayout(data:MapPage,mode:'2d'|'3d'='2d',options:OrganizationMapLayoutOptions={}):PositionedNode[] {
  const reached=(upstream:boolean,levels:number)=>{
   const adjacency=new Map<string,string[]>()
   for(const edge of data.relationships){const from=upstream?edge.target:edge.source,to=upstream?edge.source:edge.target;const list=adjacency.get(from)||[];list.push(to);adjacency.set(from,list)}
@@ -72,6 +75,7 @@ export function organizationMapLayout(data:MapPage,mode:'2d'|'3d'='2d',options:{
   }
   start+=count
  }
+ if(options.layout==='hubs')return settleOrganizationHubs(nodes,data.relationships,data.anchor,mode==='3d'?3:2,options.hubSpacing)
  const attraction=options.groupAttraction??.12
  if(Number.isFinite(attraction)&&attraction>0)attractDirectionGroups(nodes,mode,Math.min(attraction,.25))
  return nodes

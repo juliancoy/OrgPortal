@@ -49,3 +49,13 @@ it('keeps small layouts synchronous and protects cached coordinates from rendere
  layout[0].renderRadius=999;expect((await loadOrganizationMapLayout(data,'2d',signal))[0].renderRadius).not.toBe(999)
  expect(LayoutWorker.instances).toHaveLength(0)
 })
+it('keeps particle layouts off the main thread and caches each spacing separately',async()=>{
+ vi.stubGlobal('Worker',LayoutWorker)
+ const data=page(3),signal=new AbortController().signal,options={layout:'hubs' as const,hubSpacing:1}
+ const first=loadOrganizationMapLayout(data,'2d',signal,options),worker=LayoutWorker.instances[0]
+ expect(worker.postMessage).toHaveBeenCalledWith({data,mode:'2d',options})
+ worker.onmessage!({data:organizationMapLayout(data,'2d',options)});await first
+ await loadOrganizationMapLayout(data,'2d',signal,options);expect(LayoutWorker.instances).toHaveLength(1)
+ const changed=loadOrganizationMapLayout(data,'2d',signal,{...options,hubSpacing:1.5});expect(LayoutWorker.instances).toHaveLength(2)
+ LayoutWorker.instances[1].onmessage!({data:organizationMapLayout(data,'2d',{...options,hubSpacing:1.5})});await changed
+})
