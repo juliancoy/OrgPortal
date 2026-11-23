@@ -108,3 +108,27 @@ test('public export retries interrupted bodies without appending partial records
   attempts++;return new Response(new ReadableStream({start(controller){controller.error(new TypeError('Body connection reset'))}}));
  }}),/public\/native/);assert.equal(attempts,4);
 });
+
+
+test('bulk export requests 2000 records but follows cursors from both larger and legacy pages',async()=>{
+ const {createHash}=await import('node:crypto');
+ const datasetId=createHash('sha256').update('').digest('hex');
+ const rows=Array.from({length:4201},(_,i)=>({id:`bulk:${String(i).padStart(5,'0')}`,record_id:String(i),record_type:'external_financial_observation',from_label:'Agency',to_label:'Recipient',amount:i%2?-i:i,currency:'USD'}));
+ for(const pageSize of [2000,500]){
+  let requests=0;
+  const result=await exportUnifiedEcosystem({base:'https://example.invalid/ecosystem/public',fetcher:async input=>{
+   const url=new URL(input);
+   if(url.pathname.endsWith('/native')){
+    requests++;assert.equal(url.searchParams.get('limit'),'2000');
+    const after=url.searchParams.get('after')||'';
+    const remaining=rows.filter(r=>r.id>after),records=remaining.slice(0,pageSize);
+    return Response.json({records,next:remaining.length>pageSize?records.at(-1).id:null});
+   }
+   if(url.pathname.endsWith('/orgs/public'))return Response.json([]);
+   return Response.json({datasetId,records:[],next:null});
+  }});
+  assert.equal(requests,Math.ceil(rows.length/pageSize));
+  assert.equal(result.data.transactionalCoverage.nativeRecords,rows.length);
+  assert.deepEqual(result.data.relationships.map(r=>[r.id,r.amount]),rows.map(r=>[r.id,r.amount]));
+ }
+});

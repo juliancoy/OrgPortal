@@ -101,7 +101,7 @@ export async function exportUnifiedEcosystem({fetcher=fetch,base='https://lifete
  }while(after!==null);}
  all.sort((a,b)=>(a.collection+'\t'+a.key)<(b.collection+'\t'+b.key)?-1:1);
  if(hash(all.map(r=>`${r.collection}\t${r.key}\t${r.sha256}\n`).join(''))!==datasetId)throw Error('Database dataset digest mismatch');
- const native=[];let after='';do{const url=new URL(base+'/native');if(after)url.searchParams.set('after',after);const page=await get(url);if(!Array.isArray(page.records)||page.next!==null&&(typeof page.next!=='string'||page.next<=after))throw Error('Invalid native evidence page');native.push(...page.records);after=page.next;if(native.length%10000===0||after===null)console.info(`[export] Native evidence: ${native.length.toLocaleString()} records`);}while(after!==null);
+ const native=[];let after='';do{const url=new URL(base+'/native');url.searchParams.set('limit','2000');if(after)url.searchParams.set('after',after);const page=await get(url);if(!Array.isArray(page.records)||page.next!==null&&(typeof page.next!=='string'||page.next<=after))throw Error('Invalid native evidence page');native.push(...page.records);after=page.next;if(native.length%10000===0||after===null)console.info(`[export] Native evidence: ${native.length.toLocaleString()} records`);}while(after!==null);
  const directory=[]
  for(let offset=0;;offset+=500){const page=await get(new URL(base.replace(/\/ecosystem\/public$/,'')+'/orgs/public?limit=500&offset='+offset));if(!Array.isArray(page))throw Error('Incomplete public organization directory');directory.push(...page);if(page.length<500)break;}
  return {datasetId,exportedAt:new Date().toISOString(),data:projectNativeEvidence(data,native,directory),performance,positions};

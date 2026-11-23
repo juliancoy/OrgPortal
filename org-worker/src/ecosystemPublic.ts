@@ -80,7 +80,10 @@ export async function publicEcosystemRecords(db:D1Database,collection:string,aft
  return {datasetId:active.id,activatedAt:active.activated_at,records:page.map(r=>({key:r.record_key,value:JSON.parse(r.payload_json),sha256:r.sha256})),next:rows.results.length>200?page.at(-1)!.record_key:null};
 }
 
-export async function publicEcosystemNativeRecords(db:D1Database,after=''){
+export async function publicEcosystemNativeRecords(db:D1Database,after='',limit=500){
+ // Larger pages amortize network round trips; keep the legacy default and a
+ // bounded response/query size for public callers.
+ if(!Number.isInteger(limit)||limit<1||limit>2000)throw new EventIntegrationError(400,'Native page limit must be an integer from 1 to 2000');
  // Keep the master view's public projection, but bound the large external
  // branch by indexed IDs before projecting/sorting it. Sorting the entire
  // remaining view on every page made bulk exports quadratic in source rows.
@@ -92,11 +95,11 @@ export async function publicEcosystemNativeRecords(db:D1Database,after=''){
  const rows=await db.prepare(`SELECT * FROM (
  SELECT ${columns} FROM master_transaction_records_before_external_observations
  WHERE record_type IN ('organization_support','company_financing','nonprofit_grant') AND id>?
- ORDER BY id LIMIT 501)
+ ORDER BY id LIMIT ?)
  UNION ALL SELECT ${columns} FROM master_transaction_records_before_ecosystem
  WHERE record_type='external_financial_observation' AND id IN (
- SELECT id FROM external_financial_observations WHERE id>? ORDER BY id LIMIT 501)
- ORDER BY id LIMIT 501`).bind(after,after).all<Record<string,unknown>>();
- const page=rows.results.slice(0,500);
- return {records:page,next:rows.results.length>500?page.at(-1)!.id:null};
+ SELECT id FROM external_financial_observations WHERE id>? ORDER BY id LIMIT ?)
+ ORDER BY id LIMIT ?`).bind(after,limit+1,after,limit+1,limit+1).all<Record<string,unknown>>();
+ const page=rows.results.slice(0,limit);
+ return {records:page,next:rows.results.length>limit?page.at(-1)!.id:null};
 }

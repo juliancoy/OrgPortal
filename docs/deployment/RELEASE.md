@@ -147,3 +147,9 @@ ORGPORTAL_REFRESH_ECOSYSTEM=1 python3 ../run.py --release build --target web
 reviewed changes before building, then deploy the matching artifact once. Cached
 validation never relaxes clean-checkout, published-commit, artifact-identity or
 post-deployment smoke-test requirements.
+
+Native evidence exports request up to 2,000 records per page to reduce network
+round trips. The public API retains its 500-record default for existing clients,
+validates limits from 1 to 2,000, and bounds each indexed SQL branch before the
+final merge. Exporters follow the returned cursor even when an older API returns
+smaller pages. Retries, public-field allowlists and dataset checks remain in place.

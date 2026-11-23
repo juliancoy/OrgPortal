@@ -3308,7 +3308,7 @@ app.get('/api/network/ecosystem/public/:collection',async c=>{
   const after=c.req.query('after')||'';
   if(after.length>2000)return c.json({error:'Invalid public cursor'},400);
   c.header('Cache-Control','no-store');
-  return c.json(c.req.param('collection')==='native' ? await publicEcosystemNativeRecords(c.env.DB,after) :
+  return c.json(c.req.param('collection')==='native' ? await publicEcosystemNativeRecords(c.env.DB,after,c.req.query('limit')===undefined?500:Number(c.req.query('limit'))) :
    await publicEcosystemRecords(c.env.DB,c.req.param('collection'),after,c.req.query('datasetId')));
  }catch(error){return eventErrorResponse(error,c.env,c.req.raw);}
 });
