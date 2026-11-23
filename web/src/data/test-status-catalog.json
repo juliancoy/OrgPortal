@@ -3251,6 +3251,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-depth-py",
+      "label": "web/scripts/test-local-organization-depth.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-depth.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-depth.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-ecomap-py",
       "label": "web/scripts/test-local-organization-ecomap.py",
       "category": "Organizations and membership",

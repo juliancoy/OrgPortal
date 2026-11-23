@@ -59,3 +59,32 @@ test('unknown, ambiguous, invalid and changing snapshots fail safely without nam
  await assert.rejects(query(read,{offset:'-1'}),/Invalid offset/)
  assert.equal((await query(read,{version:'old'})).status,409)
 })
+test('independent directed depths, cycles and cross-page edges remain complete and cache-isolated',async()=>{
+ const f=fixture()
+ const edge=(from,to)=>{const i=f.topology.edges.push([from,to,'transfer'])-1;for(const id of new Set([from,to]))f.topology.edgesByOrg[id].push(i)}
+ // e -> a -> b -> g0 -> d -> e, including a cycle back to b through d.
+ edge('g0','d');edge('d','e')
+ const direct=(await query(f.read)).body
+ const up=(await query(f.read,{parentDepth:'2'})).body
+ assert.equal(direct.total,3);assert.equal(up.total,4);assert.equal(up.incoming,4);assert.equal(up.outgoing,1)
+ const pages=[],nodes=new Set(),edges=new Map();let offset=0
+ do{const {body}=await query(f.read,{parentDepth:'1',childDepth:'3',limit:'1',offset:String(offset)});pages.push(body);for(const node of body.organizations)nodes.add(node.id);for(const link of body.relationships){assert(nodes.has(link.source)&&nodes.has(link.target),'endpoints arrive no later than their edge');edges.set(link.id,link)}offset=body.nextOffset}while(offset!==null)
+ const all=(await query(f.read,{parentDepth:'1',childDepth:'3'})).body
+ assert.equal(all.outgoing,3);assert.equal(all.incoming,2);assert.equal(all.total,4)
+ assert.deepEqual([...edges.keys()].sort(),all.relationships.map(e=>e.id).sort())
+ assert(edges.has(JSON.stringify(['g0','d'])));assert(edges.has(JSON.stringify(['d','e'])))
+ assert.equal((await query(f.read)).body.total,3,'deeper cached result must not replace default')
+ for(const key of ['parentDepth','childDepth'])for(const value of ['0','4','-1','1.5','x'])await assert.rejects(query(f.read,{[key]:value}),new RegExp(`Invalid ${key}`))
+})
+test('deeper hierarchy remains undated; terms and transfers obey the year at every hop',async()=>{
+ const f=fixture()
+ f.topology.edges=f.topology.edges.map(e=>[e[0],e[1],'transfer',null,2024])
+ f.topology.organizationLinks=[['a','b','hierarchy'],['e','a','hierarchy'],['b','g0','terms',null,2025],['g0','d','terms',null,2024]]
+ f.topology.organizationLinksByOrg={a:[0,1],b:[0,2],e:[1],g0:[2,3],d:[3]}
+ const read=async key=>key==='manifest.json'?{...await f.read(key),temporalIndexVersion:1}:f.read(key)
+ const {body}=await query(read,{parentDepth:'3',childDepth:'3',fy:'2025'})
+ assert.deepEqual(body.organizations.map(n=>n.id).sort(),['a','b','e','g0'])
+ assert.equal(body.incoming,2);assert.equal(body.outgoing,1)
+ assert.equal(body.relationships.filter(e=>e.hierarchy).length,2)
+ assert.equal(body.relationships.find(e=>e.kinds.includes('terms')).recordCount,1)
+})

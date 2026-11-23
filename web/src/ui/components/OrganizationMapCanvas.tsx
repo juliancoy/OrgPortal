@@ -57,7 +57,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    }
    const scale=width/view.w
    if(!spatial)for(const node of nodes)node.renderRadius=organizationNodeRadius(node.financialAmount,scale)
-   if(dirty||!spatial)(gpu||planar)?.update(nodes,edges,visible,visibleEdges,selected,colors,e=>e.source.id===data.anchor?outgoingColor:incomingColor)
+   if(dirty||!spatial)(gpu||planar)?.update(nodes,edges,visible,visibleEdges,selected,colors,e=>e.source.id===data.anchor||byId.get(e.source.id)?.direction==='outgoing'?outgoingColor:incomingColor)
    dirty=false
    if(gpu){if(!gpu.render())return}else planar?.render(view)
    if(!layoutPending)surface.dataset.ready='true'
@@ -206,7 +206,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
   {status&&<p role="status">{status}</p>}
   {error&&<p role="alert">{error} <button onClick={()=>setAttempt(n=>n+1)}>Retry layout</button> {mode==='3d'&&<button onClick={()=>onModeChange('2d')}>Use 2D map</button>}</p>}
   <details className="organization-ecomap-help"><summary>Map help<span>{keyboardActive?'Keyboard active · Esc to release':'Navigation & reading the map'}</span></summary>
-   <p>Click a node to open its page. Click the selected node to open its largest incoming parent by recorded USD volume. Arrows show direct upstream and downstream relationships.</p>
+   <p>Click a node to open its page. Click the selected node to open its largest incoming parent by recorded USD volume. Parent and child levels follow upstream and downstream arrows, up to three connections away.</p>
   <p id={helpId} className="organization-ecomap-keyboard-help">{keyboardActive?'Keyboard navigation active. ':'Click or Tab into the map to navigate. '}{mode==='2d'?'W/S zoom · A/D pan left/right · E/Q pan up/down. Drag to pan.':navigation==='orbit'?'W/S zoom · A/D orbit left/right · E/Q orbit up/down. Drag to orbit.':'W/S forward/back · A/D left/right · E/Q up/down. Drag to look.'} Scroll to zoom. Shift: faster · Ctrl: slower · Esc: release keyboard.</p>
   <p className="organization-ecomap-note">Node size: recorded USD volume · logarithmic scale. Larger volumes are pulled closer to the center. Zero or undisclosed amounts use the smallest marker. Blue outline: selected organization.{titlePlacement==='surface'&&' Titles follow the sphere surface when readable; distant nodes use fixed-size labels. Find a node searches every connection.'}</p>
   </details>

@@ -113,6 +113,20 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
  for(const year of [...fiscalYears,'unassigned']){const metrics=fiscalMetrics(data,String(year),compactPie);for(let offset=0;offset<organizations.length;offset+=100)await write(`fiscal/${year}/metrics/${offset/100}.json`,organizations.slice(offset,offset+100).map(org=>({...metrics.get(org.id),...consolidatedFinancialMetrics(profilesById.get(org.id),String(year))})))}
  const topology={adjacency:Object.fromEntries([...analysis.adjacency].map(([id,neighbors])=>[id,[...neighbors].sort()])),degree:Object.fromEntries([...analysis.adjacency].map(([id,neighbors])=>[id,neighbors.size])),edges:edges.map(e=>[e.source,e.target,e.kind,e.date,e.fiscalYear||null]),edgesByOrg:{}}
  edges.forEach((e,i)=>{for(const id of new Set([e.source,e.target]))(topology.edgesByOrg[id]??=[]).push(i)})
+ // Compact nonfinancial adjacency lets deeper organization maps traverse without
+ // loading every neighbor's potentially large evidence profile.
+ topology.organizationLinks=[];topology.organizationLinksByOrg={}
+ const addOrganizationLink=(from,to,kind,fy=null)=>{
+  if(!analysis.byId.has(from)||!analysis.byId.has(to))return
+  const i=topology.organizationLinks.push([from,to,kind,null,fy])-1
+  for(const id of new Set([from,to]))(topology.organizationLinksByOrg[id]??=[]).push(i)
+ }
+ for(const profile of profiles.entries)for(const child of profile.children)addOrganizationLink(profile.organization.id,child.id,'hierarchy')
+ const seenTerms=new Set()
+ for(const row of data.relationships)if((row.kind||row.relationship)==='terms'&&row.status!=='voided'&&!seenTerms.has(row.transactionRecordId||row.id)){
+  seenTerms.add(row.transactionRecordId||row.id);addOrganizationLink(row.source,row.target,'terms',row.fiscalYear||null)
+ }
+
  const located=organizations.filter(o=>geographicPoint(o)),geoGroups=new Map()
  for(const o of located){const name=o.county||'Unknown county';if(!geoGroups.has(name))geoGroups.set(name,[]);geoGroups.get(name).push(o)}
  topology.geography={located:located.length,missing:organizations.length-located.length,clusters:[...geoGroups].map(([name,members])=>({id:'geographic-cluster:'+name,name:`${name} · ${members.length} organizations`,type:'Geographic aggregate',category:'general',serverCluster:name,latitude:members.reduce((s,o)=>s+o.latitude,0)/members.length,longitude:members.reduce((s,o)=>s+o.longitude,0)/members.length,count:members.length,bounds:[Math.min(...members.map(o=>o.longitude)),Math.min(...members.map(o=>o.latitude)),Math.max(...members.map(o=>o.longitude)),Math.max(...members.map(o=>o.latitude))],networkMetrics:{}}))}

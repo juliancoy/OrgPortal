@@ -1,16 +1,16 @@
 export type MapNode={id:string;name:string;slug:string|null;category:string;type?:string;financialAmount?:number|null}
 export type MapEdge={id:string;source:string;target:string;recordCount:number;kinds:string[];hierarchy?:boolean}
-export type MapPage={version:string;generatedAt:string;fy?:string;fiscalYears?:number[];financialTotals?:{currencies:{currency:string;received:number;disbursed:number}[];missingAmounts:number};anchor:string|null;hiddenParent?:MapNode|null;organizations:MapNode[];relationships:MapEdge[];total:number;incoming:number;outgoing:number;offset:number;nextOffset:number|null}
+export type MapPage={parentDepth?:number;childDepth?:number;version:string;generatedAt:string;fy?:string;fiscalYears?:number[];financialTotals?:{currencies:{currency:string;received:number;disbursed:number}[];missingAmounts:number};anchor:string|null;hiddenParent?:MapNode|null;organizations:MapNode[];relationships:MapEdge[];total:number;incoming:number;outgoing:number;offset:number;nextOffset:number|null}
 export async function loadOrganizationMap(fetchPage:(offset:number,version?:string)=>Promise<MapPage>,progress:(loaded:number,total:number)=>void=()=>{},preview:(data:MapPage)=>void=()=>{}) {
  const nodes=new Map<string,MapNode>(),edges=new Map<string,MapEdge>();let first:MapPage|undefined,offset=0
  for(;;){
   const page=await fetchPage(offset,first?.version)
   if(!Array.isArray(page.organizations)||!Array.isArray(page.relationships)||!Number.isSafeInteger(page.total)||page.total<0)throw Error('Incomplete organization map response')
   if(!first)first=page
-  if(page.version!==first.version||page.anchor!==first.anchor||page.total!==first.total)throw Error('The map changed while loading. Retry to load one consistent snapshot.')
+  if(page.version!==first.version||page.anchor!==first.anchor||page.total!==first.total||(page.parentDepth??1)!==(first.parentDepth??1)||(page.childDepth??1)!==(first.childDepth??1))throw Error('The map changed while loading. Retry to load one consistent snapshot.')
   for(const node of page.organizations)nodes.set(node.id,node)
   for(const edge of page.relationships)edges.set(edge.id,edge)
-  if(page.anchor&&!nodes.has(page.anchor)||[...edges.values()].some(edge=>!nodes.has(edge.source)||!nodes.has(edge.target)||edge.source!==page.anchor&&edge.target!==page.anchor))throw Error('Invalid direct organization relationship')
+  if(page.anchor&&!nodes.has(page.anchor)||[...edges.values()].some(edge=>!nodes.has(edge.source)||!nodes.has(edge.target)||((page.parentDepth??1)===1&&(page.childDepth??1)===1&&edge.source!==page.anchor&&edge.target!==page.anchor)))throw Error('Invalid organization relationship')
   progress(Math.max(0,nodes.size-(page.anchor?1:0)),page.total)
   if(page.nextOffset===null)break
   if(!Number.isSafeInteger(page.nextOffset)||page.nextOffset<=offset)throw Error('The organization map did not finish loading. Retry.')
@@ -20,7 +20,7 @@ export async function loadOrganizationMap(fetchPage:(offset:number,version?:stri
   offset=page.nextOffset
  }
  if(first.anchor&&(!nodes.has(first.anchor)||nodes.size!==first.total+1))throw Error('Some adjacent organizations are missing. Retry.')
- if([...edges.values()].some(edge=>!nodes.has(edge.source)||!nodes.has(edge.target)||edge.source!==first.anchor&&edge.target!==first.anchor))throw Error('Invalid direct organization relationship')
+ if([...edges.values()].some(edge=>!nodes.has(edge.source)||!nodes.has(edge.target)||((first.parentDepth??1)===1&&(first.childDepth??1)===1&&edge.source!==first.anchor&&edge.target!==first.anchor)))throw Error('Invalid organization relationship')
  return {...first,organizations:[...nodes.values()],relationships:[...edges.values()],nextOffset:null}
 }
 export type PositionedNode=MapNode&{x:number;y:number;z:number;renderRadius:number;opacity:number;volumeColor?:number;sphereTitle?:string;direction:'focus'|'incoming'|'outgoing'|'both'}
@@ -33,7 +33,14 @@ export function organizationNodeRadius(amount:number|null|undefined,screenScale=
 }
 const financialMass=(node:MapNode)=>Number.isFinite(node.financialAmount)&&node.financialAmount!>0?Math.log10(1+node.financialAmount!/1000):0
 export function organizationMapLayout(data:MapPage,mode:'2d'|'3d'='2d',options:{groupAttraction?:number}={}):PositionedNode[] {
- const incoming=new Set(data.relationships.filter(e=>e.target===data.anchor).map(e=>e.source)),outgoing=new Set(data.relationships.filter(e=>e.source===data.anchor).map(e=>e.target))
+ const reached=(upstream:boolean,levels:number)=>{
+  const adjacency=new Map<string,string[]>()
+  for(const edge of data.relationships){const from=upstream?edge.target:edge.source,to=upstream?edge.source:edge.target;const list=adjacency.get(from)||[];list.push(to);adjacency.set(from,list)}
+  const visited=new Set<string>(data.anchor?[data.anchor]:[]);let frontier=data.anchor?[data.anchor]:[]
+  for(let level=0;level<levels&&frontier.length;level++){const next:string[]=[];for(const id of frontier)for(const neighbor of adjacency.get(id)||[])if(!visited.has(neighbor)){visited.add(neighbor);next.push(neighbor)};frontier=next}
+  if(data.anchor)visited.delete(data.anchor);return visited
+ }
+ const incoming=reached(true,data.parentDepth??1),outgoing=reached(false,data.childDepth??1)
  const anchor=data.organizations.find(n=>n.id===data.anchor),nodes:PositionedNode[]=anchor?[{...anchor,x:0,y:0,z:0,renderRadius:organizationNodeRadius(anchor.financialAmount),opacity:1,direction:'focus'}]:[]
  const mass=financialMass
  const neighbors=data.organizations.filter(n=>n.id!==data.anchor).sort((a,b)=>mass(b)-mass(a)||a.name.localeCompare(b.name)||a.id.localeCompare(b.id))

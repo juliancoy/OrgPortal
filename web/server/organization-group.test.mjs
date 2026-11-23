@@ -60,3 +60,15 @@ test('failed neighborhood builds can retry without poisoning the cache',async()=
  await assert.rejects(request(),/temporarily/);failing=false
  assert.equal((await request()).body.anchor,'center')
 })
+test('deeper paths traverse a collapsed grouping once without exposing internal members',async()=>{
+ const reader=async key=>{
+  const value=await read(key)
+  if(key.endsWith('topology.json')){value.edges.push(['program','payer','transfer']);value.edgesByOrg.program=[2];value.edgesByOrg.payer.push(2)}
+  return value
+ }
+ const {body}=await queryEcosystem(reader,'organization-map',new URLSearchParams({org:'canonical',members:'["alias"]',parentDepth:'3',childDepth:'3'}))
+ assert.deepEqual(body.organizations.map(n=>n.id).sort(),['center','payer','program'])
+ assert.equal(body.incoming,2);assert.equal(body.outgoing,2)
+ assert(body.relationships.every(e=>e.source!==e.target&&e.source!=='alias'&&e.target!=='alias'))
+ assert.equal(body.relationships.find(e=>e.source==='payer'&&e.target==='center').recordCount,1)
+})

@@ -126,8 +126,13 @@ it('publishes one validated preview before later pages finish, without calling i
 })
 it('never publishes an invalid preview or hides a subsequent page failure',async()=>{
  const previews:MapPage[]=[]
- await expect(loadOrganizationMap(async()=>({...page(),relationships:[{...page().relationships[0],target:'missing'}]}),()=>{},data=>previews.push(data))).rejects.toThrow(/Invalid direct/)
+ await expect(loadOrganizationMap(async()=>({...page(),relationships:[{...page().relationships[0],target:'missing'}]}),()=>{},data=>previews.push(data))).rejects.toThrow(/Invalid organization/)
  expect(previews).toHaveLength(0)
  await expect(loadOrganizationMap(async offset=>{if(offset)throw Error('unavailable');return page()},()=>{},data=>previews.push(data))).rejects.toThrow('unavailable')
  expect(previews).toHaveLength(1);expect(previews[0].nextOffset).not.toBeNull()
+})
+it('loads cross-page multilevel links and assigns direction by reachability in 2D and 3D',async()=>{
+ const data=await loadOrganizationMap(async offset=>({...page(offset),parentDepth:2,childDepth:1,relationships:[offset?{id:'ancestor',source:'downstream',target:'upstream',recordCount:1,kinds:['agency']}:page().relationships[0]]}))
+ for(const mode of ['2d','3d'] as const){const nodes=organizationMapLayout(data,mode);expect(nodes.find(n=>n.id==='downstream')?.direction).toBe('incoming')}
+ await expect(loadOrganizationMap(async offset=>({...page(offset),parentDepth:offset?3:2}))).rejects.toThrow(/snapshot/)
 })
