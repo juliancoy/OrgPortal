@@ -3,6 +3,7 @@ import {organizationEvidenceProfiles,consolidatedFinancialMetrics} from './organ
 import {replaceDirectory} from './release-cache.mjs'
 import {transactionTime,dateCoverage} from '../src/features/ecosystem/transaction-time.js'
 import {financialEvidence} from '../src/features/ecosystem/financial-evidence.js'
+import {transactionAmountRanks} from '../src/features/ecosystem/transaction-amount-order.js'
 import {fiscalMetrics} from './fiscal-metrics.mjs'
 import {budgetAppropriations} from '../src/features/ecosystem/budget-appropriations.js'
 import {isNotApplicableNode} from '../src/features/ecosystem/node-classes.js'
@@ -101,11 +102,12 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
  for(let index=0;index<profiles.entries.length;index+=PAGE_SIZE)await write(`organization-evidence/${index/PAGE_SIZE}.json`,profiles.entries.slice(index,index+PAGE_SIZE))
  const relational=r=>({id:r.id,search:[r.sourceLabel,r.targetLabel,r.type,r.kind,r.date].filter(Boolean).join(' '),date:r.date,filters:{org:[r.source,r.target],kind:[r.kind||r.relationship]}})
  await collection('relationships',data.relationships,relational)
+ await write('relationships/amount-ranks.json',transactionAmountRanks(data.relationships))
  await collection('events',data.events,r=>({id:r.id,search:[r.title,r.organizationName,r.location,r.date].filter(Boolean).join(' '),date:r.date,filters:{org:[r.organizationId]}}))
- await collection('nonprofits',data.nonprofitProfiles||[],r=>({id:r.ein,search:`${r.name} ${r.ein}`,filters:{org:[r.organizationId]}}))
+ await collection('nonprofits',data.nonprofitProfiles||[],r=>({id:r.id||r.ein,search:`${r.name} ${r.ein}`,filters:{org:[r.organizationId]}}))
  await collection('organizations',organizations,r=>({id:r.id,nodeClass:isNotApplicableNode(r)?'not-applicable':undefined,latitude:geographicPoint(r)?r.latitude:null,longitude:geographicPoint(r)?r.longitude:null,search:`${r.name} ${r.type||''} ${r.city||''} ${r.county||''}`,rank:ranks.get(r.id)||0,filters:{org:[r.id],...Object.fromEntries(Object.entries(membership).map(([mode,map])=>[mode,[map.get(r.id)]]))}}))
  await collection('graph',edges.map(({summary,description,notes,evidence,sourceRecord,...edge})=>({...edge,type:String(edge.type||'').slice(0,500),notes:String(notes||'').slice(0,500),evidence:String(evidence||'').slice(0,500)})),relational)
- await collection('directory',organizations.map(({id,name,type})=>({id,name,type})),r=>({id:r.id,search:`${r.name} ${r.type||''}`,filters:{org:[r.id]}}))
+ await collection('directory',organizations.map(({id,name,type})=>({id,name,type})),r=>({id:r.id,name:r.name,type:r.type,search:`${r.name} ${r.type||''}`,filters:{org:[r.id]}}))
  const perf=performanceRows(performance,new Date().toISOString().slice(0,10))
  await collection('performance',perf,r=>({id:r.awardKey,search:`${r.recipientName} ${r.awardId} ${r.agency}`,amount:r.amount,program:r.program,assessment:Boolean(r.assessment),cohort:r.assessment?.cohort,attainment:r.assessment?.attainment,meetsTarget:r.assessment?.meetsTarget,reviewedDate:r.assessment?.reviewedDate}))
  const federal=perf.filter(r=>r.program==='Federal grants'),reviewed=perf.filter(r=>r.assessment),exposures=recipientExposure(federal)
@@ -146,7 +148,7 @@ export async function buildEcosystemQuery({source=process.env.ORGPORTAL_ECOSYSTE
   topology.adjacency=Object.fromEntries(Object.entries(topology.adjacency).map(([id,neighbors])=>[id,neighbors.map(n=>ids.get(n))]))
  }
  await writePackedTopology(topology,write)
- const manifest={version,organizationEvidenceIndexVersion:1,temporalIndexVersion:1,fiscalYears,dateCoverage:dateCoverage(data.relationships),generatedAt:new Date().toISOString(),governmentCoverage:data.governmentCoverage,marylandBudgetCoverage:data.marylandBudgetCoverage,nonprofitCoverage:data.nonprofitCoverage,transactionalCoverage:{datasetId:snapshot.datasetId,exportedAt:snapshot.exportedAt,...data.transactionalCoverage},totals:{organizations:organizations.length,relationships:edges.length},metricMax:{connections:Math.max(1,...Object.values(topology.degree)),incoming:Math.max(1,...analysis.incoming.values()),outgoing:Math.max(1,...analysis.outgoing.values())},groups,performance:performanceMeta}
+ const manifest={version,organizationEvidenceIndexVersion:1,temporalIndexVersion:1,fiscalYears,dateCoverage:dateCoverage(data.relationships),generatedAt:new Date().toISOString(),governmentCoverage:data.governmentCoverage,marylandBudgetCoverage:data.marylandBudgetCoverage,nonprofitCoverage:data.statementCoverage?{...data.nonprofitCoverage,profileCount:data.nonprofitProfiles.length,scope:[data.nonprofitCoverage?.scope,data.statementCoverage.scope].filter(Boolean).join(' '),retrievedAt:data.statementCoverage.retrievedAt}:data.nonprofitCoverage,transactionalCoverage:{datasetId:snapshot.datasetId,exportedAt:snapshot.exportedAt,...data.transactionalCoverage},totals:{organizations:organizations.length,relationships:edges.length},metricMax:{connections:Math.max(1,...Object.values(topology.degree)),incoming:Math.max(1,...analysis.incoming.values()),outgoing:Math.max(1,...analysis.outgoing.values())},groups,performance:performanceMeta}
  await mkdir(folder,{recursive:true});try{if(process.env.ORGPORTAL_REBUILD_ECOSYSTEM==='1')await replaceDirectory(fileURLToPath(temp),fileURLToPath(target));else await rename(temp,target)}catch(error){if(!['EEXIST','ENOTEMPTY'].includes(error.code))throw error;await rm(temp,{recursive:true,force:true})}
  const manifestTemp=new URL(`manifest-${version}-${randomUUID()}.tmp`,folder);await writeFile(manifestTemp,JSON.stringify(manifest));await rename(manifestTemp,new URL('manifest.json',folder))
  const versions=(await readdir(folder)).filter(name=>/^[a-f0-9]{24}$/.test(name)&&name!==version)

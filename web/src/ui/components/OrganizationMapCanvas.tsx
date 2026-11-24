@@ -3,18 +3,20 @@ import {abbreviateBoardLabel} from '../../domain/organization/groupNames'
 import {organizationNodeRadius,type MapNode,type MapPage,type PositionedNode,type OrganizationMapLayoutStyle} from '../../features/ecosystem/organizationMap'
 import {loadOrganizationMapLayout} from '../../features/ecosystem/organizationMapLayoutClient'
 import {volumeColor,volumeColorStops,volumeLabel} from '../../features/ecosystem/volume-color'
-import {shortReceivedAmount} from '../../features/ecosystem/received-amount.js'
+import {cashFlowLabel} from '../../features/ecosystem/received-amount.js'
 import {createLabelGrid} from '../../features/ecosystem/label-layout.js'
 import {createNetworkCanvas,type CanvasView,type CanvasEdge} from '../../features/ecosystem/canvas-renderer.js'
 import {bindPlanarNavigation} from '../../features/ecosystem/planar-navigation.js'
 import {OrganizationFinancialBubbles} from './OrganizationFinancialTotals'
+import {OrganizationMapInspector} from './OrganizationMapInspector'
+import {OrganizationNodeSearchResults} from './OrganizationNodeSearchResults'
 import type {Network3DRenderer} from '../../features/ecosystem/webgpu-3d-renderer.js'
 
 import {largestOrganizationParent,type OrganizationMapColorScheme,type OrganizationMapView} from '../../features/ecosystem/organizationMapNavigation'
 
 const incomingColor=0x9b59d0,outgoingColor=0xd55e00
 const colors:Record<string,number>={ecosystem:0x16847d,company:0x357db7,health:0xc76e57,university:0x8564b3,funding:0xad7b26,general:0x77878c,'state-government':0xa54161,'federal-government':0x234c8c}
-type Controls={zoom:(factor:number)=>void;fit:()=>void;focus:(id:string)=>void;stopFocus:()=>void}
+type Controls={zoom:(factor:number)=>void;fit:()=>void;focus:(id:string)=>void;open:(node:MapNode)=>void;stopFocus:()=>void}
 export type OrganizationMapMode='2d'|'3d'
 function savedTitlePlacement(){try{return localStorage.getItem('organization-map-title-placement')==='surface'?'surface':'floating'}catch{return 'floating'}}
 function savedReceivedAmounts(){try{const value=localStorage.getItem('organization-map-show-received');return value===null?undefined:value==='true'}catch{return undefined}}
@@ -37,7 +39,16 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
  navigationRef.current=navigation;speedRef.current=speed
  const [search,setSearch]=useState(''),[status,setStatus]=useState(''),[error,setError]=useState(''),[ready,setReady]=useState(false),[attempt,setAttempt]=useState(0)
  const helpId=useId(),[keyboardActive,setKeyboardActive]=useState(false)
- const matches=useMemo(()=>search.trim()?data.organizations.filter(n=>n.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())):[],[search,data])
+ const [fullscreen,setFullscreen]=useState(false),[inspectorCollapsed,setInspectorCollapsed]=useState(false),[hoveredId,setHoveredId]=useState<string|null>(null),[inspectedId,setInspectedId]=useState<string|null>(data.anchor)
+ const inspectEnabled=useRef(false);inspectEnabled.current=fullscreen&&!inspectorCollapsed
+ useEffect(()=>{setInspectedId(data.anchor);setHoveredId(null)},[data.anchor])
+ useEffect(()=>{
+  const section=host.current?.closest('.organization-ecomap');if(!section)return
+  const sync=()=>{const active=document.fullscreenElement===section||section.classList.contains('eco-fullscreen');setFullscreen(active);if(!active)setHoveredId(null)}
+  const observer=new MutationObserver(sync);observer.observe(section,{attributes:true,attributeFilter:['class']});document.addEventListener('fullscreenchange',sync);sync()
+  return()=>{observer.disconnect();document.removeEventListener('fullscreenchange',sync)}
+ },[])
+ const inspectedNode=useMemo(()=>data.organizations.find(node=>node.id===(hoveredId||inspectedId)),[data,hoveredId,inspectedId])
  const categories=useMemo(()=>[...new Set(data.organizations.map(node=>node.category))].sort(),[data])
  const maxVolume=useMemo(()=>data.organizations.reduce((max,node)=>Number.isFinite(node.financialAmount)?Math.max(max,node.financialAmount!):max,0),[data])
  useEffect(()=>{
@@ -49,12 +60,19 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
   let visible=new Set<string>(),visibleEdges=new Set<string>(),edgeKeys=new Set<string>(),edges:CanvasEdge[]=[]
   let requested:MapPage|null=null,requestedStyle='',layoutAbort:AbortController|undefined,starting:Promise<void>|undefined,layoutPending=false,presented=false
   const buttons:HTMLButtonElement[]=[],layer=labelLayer.current!,projected={x:0,y:0,visible:false,depth:0}
+  const measure=document.createElement('canvas').getContext('2d')!,labelHeights=new Map<string,number>();measure.font='700 12px sans-serif'
+  const fullLabelHeight=(name:string,labelWidth:number)=>{
+   const key=`${labelWidth}:${name}`;if(labelHeights.has(key))return labelHeights.get(key)!
+   let lines=1,line='';for(const word of name.split(/\s+/)){const next=line?`${line} ${word}`:word;if(measure.measureText(next).width>labelWidth-8){if(line)lines++;const parts=Math.max(1,Math.ceil(measure.measureText(word).width/(labelWidth-8)));lines+=parts-1;line=parts>1?'':word}else line=next}
+   const height=lines*16+6;if(labelHeights.size>2000)labelHeights.clear();labelHeights.set(key,height);return height
+  }
+  let hoverTimer:ReturnType<typeof setTimeout>|undefined
   let width=1,height=1,view:CanvasView={x:-300,y:-200,w:600,h:400},selected=data.anchor!,frame=0,initialized=false,dirty=true
   let transition:{started:number;from:{x:number;y:number;z:number;opacity:number}[];to:typeof nodes;viewFrom:CanvasView;viewTo:CanvasView|null}|null=null
   layer.replaceChildren();setError('');setReady(false);setKeyboardActive(false);setStatus('Arranging connections…')
   const failed=(message:string)=>{if(abort.signal.aborted)return;initialized=false;setError(message);setStatus('');setReady(false);layoutAbort?.abort();abort.abort();observer?.disconnect();cancelAnimationFrame(frame);layer.replaceChildren();delete surface.dataset.ready;surface.blur();controls.current=null;gpu?.dispose();gpu=undefined;planar?.dispose();planar=undefined}
   const draw=()=>{
-   frame=0;if(abort.signal.aborted||!initialized)return
+   frame=0;if(abort.signal.aborted||!initialized||width<=1||height<=1)return
    if(transition){
     const t=Math.min(1,(performance.now()-transition.started)/420),ease=t*t*(3-2*t)
     nodes.forEach((node,i)=>{const from=transition!.from[i],to=transition!.to[i];node.x=from.x+(to.x-from.x)*ease;node.y=from.y+(to.y-from.y)*ease;node.z=from.z+(to.z-from.z)*ease;node.opacity=from.opacity+(1-from.opacity)*ease})
@@ -69,37 +87,43 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    if(gpu){if(!gpu.render())return}else planar?.render(view)
    if(!layoutPending)surface.dataset.ready='true'
    if(!presented){presented=true;setReady(true)}
-   const grid=createLabelGrid(showReceivedRef.current?48:28);let placed=0
+   const grid=createLabelGrid(showReceivedRef.current?48:28),rects:{x:number;y:number;w:number;h:number}[]=[];let placed=0
    // Layout order already puts the selected anchor first. Reuse a bounded pool
    // of buttons; camera movement changes styles without rebuilding React trees.
    for(const node of nodes){
-    // Surface mode never adds floating labels in 3D. In 2D, small circles
-    // retain centered native text only when the canvas cannot paint it legibly.
+    // Surface mode never adds floating labels in 3D. In 2D, native DOM
+    // text preserves the complete name at every zoom level.
     if(titlePlacementRef.current==='surface'&&(spatial||planar?.hasSurfaceTitle(node.id)))continue
     if(gpu&&!gpu.project(node,projected).visible)continue
     const onCircle=!gpu&&titlePlacementRef.current==='surface'
-    const x=gpu?projected.x:(node.x-view.x)*scale;let y=gpu?projected.y+12:(node.y-view.y)*height/view.h+(onCircle?0:node.renderRadius*scale+6);const focus=node.id===data.anchor||node.id===selected
+    let x=gpu?projected.x:(node.x-view.x)*scale;let y=gpu?projected.y+12:(node.y-view.y)*height/view.h+(onCircle?0:node.renderRadius*scale+6);const focus=node.id===data.anchor||node.id===selected
     if(x<30||x>width-30||y<0||y>height-(showReceivedRef.current?48:25))continue
-    const labelWidth=onCircle?Math.max(80,Math.min(125,node.renderRadius*scale*1.65)):117
-    if(!focus&&grid.overlaps(x,y,labelWidth)){
+    // Centered names wrap within their neighbor spacing instead of stretching
+    // across the adjacent circle. Keep a readable minimum when zoomed far out.
+    const spacing=onCircle?nodes.reduce((gap,other)=>other===node?gap:Math.min(gap,Math.hypot(other.x-node.x,other.y-node.y)*scale),Infinity):Infinity
+    const labelWidth=spatial?117:Math.min(220,Math.max(80,spacing-12),Math.max(80,width-16),Math.max(100,Math.ceil(measure.measureText(node.name).width)+12)),labelHeight=spatial?(showReceivedRef.current?48:28):fullLabelHeight(node.name,labelWidth)+(showReceivedRef.current?16:0)
+    if(!spatial){x=Math.max(labelWidth/2+4,Math.min(width-labelWidth/2-4,x));y=Math.max(onCircle?labelHeight/2:0,Math.min(height-(onCircle?labelHeight/2:labelHeight),y))}
+    const overlaps=(top:number)=>spatial?grid.overlaps(x,top,labelWidth):rects.some(r=>Math.abs(x-r.x)<(labelWidth+r.w)/2+8&&Math.abs(top+(onCircle?0:labelHeight/2)-r.y)<(labelHeight+r.h)/2+6)
+    if(!focus&&overlaps(y)){
      // Keep branch junctions identifiable when their lower label meets the
      // anchor's label. Try above the marker before yielding to nearby leaves.
-     const above=y-(showReceivedRef.current?64:44)
-     if(!onCircle&&node.hubChildren&&above>=0&&!grid.overlaps(x,above,labelWidth))y=above
-     else continue
+     const above=spatial?y-labelHeight-20:(node.y-view.y)*height/view.h-node.renderRadius*scale-labelHeight-8
+     if(!onCircle&&(node.hubChildren||!spatial)&&above>=0&&!overlaps(above))y=above
+     else if(spatial)continue
     }
     grid.add(x,y,labelWidth)
+    rects.push({x,y:y+(onCircle?0:labelHeight/2),w:labelWidth,h:labelHeight})
     let button=buttons[placed]
-    if(!button){button=document.createElement('button');button.type='button';button.addEventListener('click',()=>controls.current?.focus(button.dataset.nodeId!),{signal:abort.signal});buttons.push(button);layer.append(button)}
+    if(!button){button=document.createElement('button');button.type='button';button.addEventListener('click',()=>controls.current?.focus(button.dataset.nodeId!),{signal:abort.signal});const inspect=()=>{clearTimeout(hoverTimer);if(inspectEnabled.current)setHoveredId(button.dataset.nodeId||null)};button.addEventListener('pointerenter',inspect,{signal:abort.signal});button.addEventListener('focus',inspect,{signal:abort.signal});buttons.push(button);layer.append(button)}
     const volume=String(node.financialAmount??'')
-    const received=showReceivedRef.current?shortReceivedAmount(node.receivedUsd):''
-    if(button.dataset.nodeId!==node.id||button.dataset.volume!==volume||button.dataset.colorScheme!==colorSchemeRef.current||button.dataset.received!==String(showReceivedRef.current?node.receivedUsd??'unknown':'hidden')){
-     button.dataset.nodeId=node.id;button.dataset.volume=volume;button.dataset.colorScheme=colorSchemeRef.current;button.dataset.received=String(showReceivedRef.current?node.receivedUsd??'unknown':'hidden')
-     const name=document.createElement('span');name.className='organization-ecomap-label-name';name.textContent=abbreviateBoardLabel(node.name);button.replaceChildren(name)
+    const received=showReceivedRef.current?cashFlowLabel(node):''
+    if(button.dataset.nodeId!==node.id||button.dataset.volume!==volume||button.dataset.colorScheme!==colorSchemeRef.current||button.dataset.received!==received){
+     button.dataset.nodeId=node.id;button.dataset.volume=volume;button.dataset.colorScheme=colorSchemeRef.current;button.dataset.received=received
+     const name=document.createElement('span');name.className='organization-ecomap-label-name';name.textContent=spatial?abbreviateBoardLabel(node.name):node.name;button.replaceChildren(name)
      if(received){const amount=document.createElement('span');amount.className='organization-ecomap-label-amount';amount.textContent=received;button.append(amount)}
-     button.title=(colorSchemeRef.current==='volume'?`${node.name} · ${volumeLabel(node.financialAmount)}`:node.name)+(received?` · Received USD: ${Number.isFinite(node.receivedUsd)?node.receivedUsd!.toLocaleString('en-US',{maximumFractionDigits:2}):'unavailable'}`:'');button.setAttribute('aria-label',node.name)
+     button.title=(colorSchemeRef.current==='volume'?`${node.name} · ${volumeLabel(node.financialAmount)}`:node.name)+(received?` · Received USD: ${node.receivedUsd?.toLocaleString('en-US',{maximumFractionDigits:2})??'unavailable'} · Disbursed USD: ${node.disbursedUsd?.toLocaleString('en-US',{maximumFractionDigits:2})??'unavailable'}`:'');button.setAttribute('aria-label',node.name)
     }
-    button.hidden=false;button.classList.toggle('focus',focus);button.classList.toggle('on-circle',onCircle);button.style.width=onCircle?`${labelWidth}px`:'';button.style.left=`${Math.round(x)}px`;button.style.top=`${Math.round(y)}px`
+    button.hidden=false;button.classList.toggle('focus',focus);button.classList.toggle('on-circle',onCircle);button.style.width=!spatial?`${labelWidth}px`:'';button.style.left=`${Math.round(x)}px`;button.style.top=`${Math.round(y)}px`
     if(++placed>=45)break
    }
    for(let i=placed;i<buttons.length;i++)buttons[i].hidden=true
@@ -111,10 +135,10 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
   }
   const applyColors=(targets:PositionedNode[])=>{
    const maximum=targets.reduce((max,node)=>Number.isFinite(node.financialAmount)?Math.max(max,node.financialAmount!):max,0)
-   for(const node of targets){node.volumeColor=colorSchemeRef.current==='volume'?volumeColor(node.financialAmount,maximum):(colors[node.category]??colors.general);node.sphereTitle=titlePlacementRef.current==='surface'?abbreviateBoardLabel(node.name):undefined;node.sphereSubtitle=titlePlacementRef.current==='surface'&&showReceivedRef.current?shortReceivedAmount(node.receivedUsd):undefined}
+   for(const node of targets){node.volumeColor=colorSchemeRef.current==='volume'?volumeColor(node.financialAmount,maximum):(colors[node.category]??colors.general);node.sphereTitle=spatial&&titlePlacementRef.current==='surface'?abbreviateBoardLabel(node.name):undefined;node.sphereSubtitle=spatial&&titlePlacementRef.current==='surface'&&showReceivedRef.current?cashFlowLabel(node):undefined}
   }
   recolor.current=()=>{applyColors(nodes);if(transition)applyColors(transition.to);dirty=true;schedule()}
-  const fitView=(targets:PositionedNode[]):CanvasView=>{const extentX=Math.max(150,...targets.map(n=>Math.abs(n.x)+n.renderRadius))+50,extentY=Math.max(150,...targets.map(n=>Math.abs(n.y)+n.renderRadius))+50,scale=Math.min(width/(extentX*2),height/(extentY*2));return {x:-width/scale/2,y:-height/scale/2,w:width/scale,h:height/scale}}
+  const fitView=(targets:PositionedNode[]):CanvasView=>{const extentX=Math.max(150,...targets.map(n=>Math.abs(n.x)+organizationNodeRadius(n.financialAmount)))+50,extentY=Math.max(150,...targets.map(n=>Math.abs(n.y)+organizationNodeRadius(n.financialAmount)))+50,scale=Math.min(width/(extentX*2),height/(extentY*2));return {x:-width/scale/2,y:-height/scale/2,w:width/scale,h:height/scale}}
   const applyLayout=(next:MapPage,targets:PositionedNode[],refit=false)=>{
    applyColors(targets)
    const recenter=next.anchor!==data.anchor,old=byId,origin=old.get(next.anchor!)||{x:0,y:0,z:0}
@@ -154,12 +178,25 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    schedule()
   }
   const zoom=(factor:number)=>{finishTransition();if(gpu)gpu.zoom(1/factor);else{const next=Math.max(50,Math.min(2e6,view.w*factor)),ratio=next/view.w;view={x:view.x+view.w*(1-ratio)/2,y:view.y+view.h*(1-ratio)/2,w:next,h:view.h*ratio}}schedule()}
-  const focus=(id:string)=>{
+  const open=(node:MapNode)=>{
+   setInspectedId(node.id);setHoveredId(null)
    surface.focus({preventScroll:true})
-   const node=id===data.anchor?largestOrganizationParent(data):byId.get(id);if(!node)return
    select.current(node,{viewportTop:element.getBoundingClientRect().top,mode,...layoutOptions.current,titlePlacement:titlePlacementRef.current,showReceived:showReceivedRef.current,colorScheme:colorSchemeRef.current,navigation:navigationRef.current,speed:speedRef.current,...(gpu?{camera:gpu.cameraView()}:{planarWidth:view.w})})
   }
+  const focus=(id:string)=>{const node=id===data.anchor?largestOrganizationParent(data):byId.get(id);if(node)open(node)}
   const pointers=new Set<number>()
+  const pick=(event:Pick<PointerEvent,'clientX'|'clientY'|'pointerType'>)=>{
+   if(gpu)return gpu.hit(event,true).node?.id||null
+   const rect=surface.getBoundingClientRect(),x=view.x+(event.clientX-rect.left)*view.w/width,y=view.y+(event.clientY-rect.top)*view.h/height
+   let id:string|null=null,distance=Infinity
+   for(const node of nodes){const d=Math.hypot(node.x-x,node.y-y);if(d<distance&&d<Math.max(node.renderRadius,12*view.w/width)){distance=d;id=node.id}}
+   return id
+  }
+  const hover=(event:PointerEvent)=>{
+   if(!inspectEnabled.current||event.buttons||event.pointerType==='touch')return
+   clearTimeout(hoverTimer);hoverTimer=setTimeout(()=>{if(!abort.signal.aborted&&inspectEnabled.current)setHoveredId(pick(event))},80)
+  }
+  const leave=(event:PointerEvent)=>{clearTimeout(hoverTimer);if(!(event.relatedTarget instanceof Element&&event.relatedTarget.closest('.organization-map-inspector')))setHoveredId(null)}
   let drag:{id:number;x:number;y:number;slop:number;moved:boolean;view:CanvasView}|null=null
   const down=(event:PointerEvent)=>{pointers.add(event.pointerId);if(pointers.size>1){drag=null;return}if(event.button!==0||!event.isPrimary)return;finishTransition();surface.focus({preventScroll:true});drag={id:event.pointerId,x:event.clientX,y:event.clientY,slop:event.pointerType==='touch'?12:6,moved:false,view:{...view}};if(!spatial)surface.setPointerCapture(event.pointerId)}
   const move=(event:PointerEvent)=>{if(!drag||event.pointerId!==drag.id)return;drag.moved ||= Math.hypot(event.clientX-drag.x,event.clientY-drag.y)>=drag.slop;if(spatial||!drag.moved)return;view={...drag.view,x:drag.view.x-(event.clientX-drag.x)*drag.view.w/width,y:drag.view.y-(event.clientY-drag.y)*drag.view.h/height};schedule()}
@@ -183,12 +220,20 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    else{planar=createNetworkCanvas(surface);surface.dataset.backend='canvas';bindPlanarNavigation(surface,{zoom:factor=>zoom(1/factor),pan:(x,y)=>{finishTransition();view.x+=x*view.w;view.y+=y*view.h;schedule()},speed:()=>speedRef.current},abort.signal)}
    // The renderer owns 3D pointer/keyboard movement; this layer only selects nodes.
    surface.addEventListener('pointerdown',down,{signal:abort.signal});surface.addEventListener('pointermove',move,{signal:abort.signal});surface.addEventListener('pointerup',up,{signal:abort.signal});surface.addEventListener('pointercancel',cancel,{signal:abort.signal});surface.addEventListener('lostpointercapture',cancel,{signal:abort.signal})
+   surface.addEventListener('pointermove',hover,{signal:abort.signal})
+   // Keep the preview stable while crossing the gutter to its Keep details
+   // button. Leaving the entire map/inspector workspace restores selection.
+   element.addEventListener('pointerleave',()=>clearTimeout(hoverTimer),{signal:abort.signal})
+   element.closest('.organization-ecomap-stage')?.addEventListener('pointerleave',leave as EventListener,{signal:abort.signal})
    if(!spatial)surface.addEventListener('wheel',event=>{if(document.activeElement!==surface&&!event.ctrlKey&&!event.metaKey)return;event.preventDefault();zoom(event.deltaY>0?1.2:1/1.2)},{passive:false,signal:abort.signal})
    surface.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();surface.blur()}},{signal:abort.signal})
-   controls.current={zoom,fit,focus,stopFocus:()=>gpu?.stopFocus()};initialized=true
+   controls.current={zoom,fit,focus,open,stopFocus:()=>gpu?.stopFocus()};initialized=true
    let firstSize=true
    observer=new ResizeObserver(()=>{
-    const previousWidth=width; width=element.clientWidth;height=element.clientHeight
+    // Fullscreen transitions can briefly detach/zero the viewport. Keep the
+    // last valid camera dimensions rather than dividing by that zero width.
+    const nextWidth=element.clientWidth,nextHeight=element.clientHeight;if(!nextWidth||!nextHeight)return
+    const previousWidth=width; width=nextWidth;height=nextHeight
     if(gpu)gpu.resize(width,height);else planar?.resize(width,height,devicePixelRatio)
     if(firstSize){
      firstSize=false;fit()
@@ -203,7 +248,7 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    if(document.activeElement===modeSelect.current)surface.focus({preventScroll:true})
   }
   requestLayout(data)
-  return()=>{replaceData.current=null;recolor.current=null;layoutAbort?.abort();abort.abort();observer?.disconnect();cancelAnimationFrame(frame);gpu?.dispose();planar?.dispose();layer.replaceChildren();controls.current=null}
+  return()=>{clearTimeout(hoverTimer);replaceData.current=null;recolor.current=null;layoutAbort?.abort();abort.abort();observer?.disconnect();cancelAnimationFrame(frame);gpu?.dispose();planar?.dispose();layer.replaceChildren();controls.current=null}
  },[mode,attempt])
  useEffect(()=>{replaceData.current?.(data)},[data,layout,hubSpacing])
  useEffect(()=>{recolor.current?.()},[colorScheme,titlePlacement,showReceived])
@@ -217,28 +262,31 @@ export function OrganizationMapCanvas({data,mode,onModeChange,onSelect,initialVi
    {layout==='hubs'&&<label>Hub spacing<select aria-label="Hub spacing" value={hubSpacing} onChange={event=>setHubSpacing(Number(event.target.value))}><option value={.8}>Compact</option><option value={1}>Balanced</option><option value={1.5}>Spread out</option></select></label>}
    <label>Color by<select aria-label="Color by" value={colorScheme} onChange={event=>setColorScheme(event.target.value as OrganizationMapColorScheme)}><option value="category">Category</option><option value="volume">Dollar volume</option></select></label>
    <label>Titles<select aria-label="Title placement" value={titlePlacement} onChange={event=>{const value=event.target.value as 'floating'|'surface';setTitlePlacement(value);try{localStorage.setItem('organization-map-title-placement',value)}catch{/* Storage may be disabled. */}}}><option value="floating">Floating labels</option><option value="surface">{mode==='2d'?'On circles':'On spheres'}</option></select></label>
-   <label>Received USD<select aria-label="Received amounts" value={showReceived?'show':'hide'} onChange={event=>{const value=event.target.value==='show';setShowReceived(value);try{localStorage.setItem('organization-map-show-received',String(value))}catch{/* Storage may be disabled. */}}}><option value="hide">Hidden</option><option value="show">Show amounts</option></select></label>
+   <label>Flow USD<select aria-label="Cash flow amounts" value={showReceived?'show':'hide'} onChange={event=>{const value=event.target.value==='show';setShowReceived(value);try{localStorage.setItem('organization-map-show-received',String(value))}catch{/* Storage may be disabled. */}}}><option value="hide">Hidden</option><option value="show">Show amounts</option></select></label>
    {mode==='3d'&&<label>Navigation<select aria-label="Navigation" value={navigation} onChange={event=>{setNavigation(event.target.value as 'orbit'|'fly');controls.current?.stopFocus();canvas.current?.focus({preventScroll:true})}}><option value="orbit">Orbit selection</option><option value="fly">Free fly</option></select></label>}
    </div>
    <div className="organization-ecomap-actions">
-   <label className="organization-ecomap-find">Find a node<input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Organization name"/></label>
+   <label className="organization-ecomap-find">Find a node<input type="search" maxLength={128} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search all nodes"/></label>
    <div className="organization-ecomap-zoom" role="group" aria-label="Map zoom"><button disabled={!ready} onClick={()=>run(()=>controls.current?.zoom(1/1.5))} aria-label="Zoom in on organization map">+</button><button disabled={!ready} onClick={()=>run(()=>controls.current?.zoom(1.5))} aria-label="Zoom out on organization map">−</button><button disabled={!ready} onClick={()=>run(()=>controls.current?.fit())} aria-label="Fit all connections">Fit</button></div>
    <label className="organization-ecomap-speed">Speed<select aria-label="Navigation speed" value={speed} onChange={event=>setSpeed(Number(event.target.value))}><option value={.25}>0.25×</option><option value={1}>1×</option><option value={3}>3×</option></select></label>
    </div>
   </div>
-  {search&&<div className="organization-ecomap-search"><p role="status">{matches.length} matching nodes{matches.length>20?' · Showing the first 20; refine your search.':''}</p>{matches.slice(0,20).map(node=><button disabled={!ready} key={node.id} title={node.name} aria-label={node.name} onClick={()=>controls.current?.focus(node.id)}>{abbreviateBoardLabel(node.name)}</button>)}</div>}
+  {search.trim()&&<OrganizationNodeSearchResults key={search.trim()} query={search.trim()} ready={ready} onSelect={node=>controls.current?.open(data.organizations.find(existing=>existing.id===node.id)||node)}/>}
   {colorScheme==='volume'?<div className="organization-ecomap-volume-legend" aria-label="Node colors: recorded USD volume, logarithmic black-body scale">
    <span>Node color: recorded USD volume · log scale</span><span className="organization-ecomap-volume-ramp" aria-hidden="true" style={{background:`linear-gradient(to right,${volumeColorStops.join(',')})`}}/><span>$0 → {maxVolume>0?volumeLabel(maxVolume):'no disclosed amounts'}</span><span>Gray: undisclosed · blue outline: selected</span>
   </div>:<div className="organization-ecomap-category-legend" aria-label="Node colors: organization categories"><span>Node color: category</span>{categories.map(category=><span key={category}><i aria-hidden="true" style={{background:`#${(colors[category]??colors.general).toString(16).padStart(6,'0')}`}}/>{category.replaceAll('-',' ')}</span>)}<span><i aria-hidden="true" style={{border:'2px solid #57c7ff'}}/>Selected outline</span></div>}
+  {showReceived&&<div className="organization-ecomap-volume-legend" aria-label="Cash flow label legend">Label amounts (USD): ↓ received · ↑ disbursed · — unavailable</div>}
   {layout==='hubs'&&<p className="organization-ecomap-note">Hub particles clusters each branch around its connecting hub. Choose 2 or 3 parent or child levels to see secondary hubs. Shared connections keep their arrows; clusters are layout guides, not ownership groups.</p>}
   {status&&<p role="status">{status}</p>}
   {error&&<p role="alert">{error} <button onClick={()=>setAttempt(n=>n+1)}>Retry layout</button> {mode==='3d'&&<button onClick={()=>onModeChange('2d')}>Use 2D map</button>}</p>}
-  {showReceived&&<p className="organization-ecomap-note">Label amounts: recorded USD received. 0 means no net receipts in this snapshot; — means unavailable. Spending, budgets and awards are separate.</p>}
+  {showReceived&&<p className="organization-ecomap-note">Label amounts: ↓ received · ↑ disbursed (USD). Both appear when applicable. 0 means no net transfers in this snapshot; — means unavailable. Budgets and awards are excluded.</p>}
   <details className="organization-ecomap-help"><summary>Map help<span>{keyboardActive?'Keyboard active · Esc to release':'Navigation & reading the map'}</span></summary>
-   <p>Click a node to open its page. Click the selected node to open its largest incoming parent by recorded USD volume. Parent and child levels follow upstream and downstream arrows, up to three connections away.</p>
+   <p>Click a node to open its page. Click the selected node to open its largest incoming parent by recorded USD volume. Parent and child levels follow upstream and downstream arrows, up to three connections away. In fullscreen, hover a node to inspect it. Keep details pins it; × clears the inspected selection, and › minimizes the inspector.</p>
   <p id={helpId} className="organization-ecomap-keyboard-help">{keyboardActive?'Keyboard navigation active. ':'Click or Tab into the map to navigate. '}{mode==='2d'?'W/S zoom · A/D pan left/right · E/Q pan up/down. Drag to pan.':navigation==='orbit'?'W/S zoom · A/D orbit left/right · E/Q orbit up/down. Drag to orbit.':'W/S forward/back · A/D left/right · E/Q up/down. Drag to look.'} Scroll to zoom. Shift: faster · Ctrl: slower · Esc: release keyboard.</p>
-  <p className="organization-ecomap-note">Node size: recorded USD volume · logarithmic scale. {layout==='hubs'?'Branch springs and repulsion separate hubs; the particles settle after each layout change.':'Larger volumes are pulled closer to the center.'} Zero or undisclosed amounts use the smallest marker. Blue outline: selected organization.{titlePlacement==='surface'&&' Titles stay on the sphere surface. Find a node searches every connection.'} Gold amounts show recorded USD received for the selected fiscal year (K: thousand, M: million, B: billion, T: trillion). A dash means unavailable. Awards are excluded.</p>
+  <p className="organization-ecomap-note">Node size: recorded USD volume · logarithmic scale. {layout==='hubs'?'Branch springs and repulsion separate hubs; the particles settle after each layout change.':'Larger volumes are pulled closer to the center.'} Zero or undisclosed amounts use the smallest marker. Blue outline: selected organization.{titlePlacement==='surface'&&' Titles are centered on circles in 2D and drawn on sphere surfaces in 3D. Find a node searches the full directory, including universities and nodes outside this view.'} Gold amounts show recorded USD received (↓) and disbursed (↑) for the selected fiscal year (K: thousand, M: million, B: billion, T: trillion). A dash means unavailable. Awards are excluded.</p>
   </details>
-  <div className="organization-ecomap-stage"><div ref={host} className="organization-ecomap-canvas"><canvas key={`${mode}-${attempt}`} ref={canvas} tabIndex={0} data-mode={mode} data-layout={layout} data-hub-spacing={hubSpacing} data-anchor={data.anchor||''} aria-describedby={helpId} onFocus={()=>setKeyboardActive(true)} onBlur={()=>setKeyboardActive(false)} aria-label={`${data.organizations.find(n=>n.id===data.anchor)?.name} and all ${data.total} adjacent nodes`} role="img"/><div ref={labelLayer} className="organization-ecomap-labels"/></div><OrganizationFinancialBubbles totals={data.financialTotals} fy={data.fy}/></div>
+  <div className="organization-ecomap-stage"><div className="organization-ecomap-viewport"><div ref={host} className="organization-ecomap-canvas"><canvas key={`${mode}-${attempt}`} ref={canvas} tabIndex={0} data-mode={mode} data-layout={layout} data-hub-spacing={hubSpacing} data-anchor={data.anchor||''} aria-describedby={helpId} onFocus={()=>setKeyboardActive(true)} onBlur={()=>setKeyboardActive(false)} aria-label={`${data.organizations.find(n=>n.id===data.anchor)?.name} and all ${data.total} adjacent nodes`} role="img"/><div ref={labelLayer} className="organization-ecomap-labels" data-mode={mode}/></div><OrganizationFinancialBubbles totals={data.financialTotals} fy={data.fy}/></div>
+   {fullscreen&&(inspectorCollapsed?<button className="organization-map-inspector-restore" type="button" aria-label="Show node inspector" onClick={()=>setInspectorCollapsed(false)}>‹ <span>Node details</span></button>:<OrganizationMapInspector data={data} node={inspectedNode} hovered={Boolean(hoveredId)} onClear={()=>{setInspectedId(null);setHoveredId(null)}} onPin={()=>{setInspectedId(hoveredId);setHoveredId(null)}} onMinimize={()=>{setInspectorCollapsed(true);setHoveredId(null)}}/>)}
+  </div>
  </>
 }

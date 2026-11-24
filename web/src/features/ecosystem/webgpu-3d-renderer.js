@@ -215,7 +215,7 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
   },
   zoom(factor){cancelFocus();if(camera.isOrthographicCamera){camera.zoom=Math.max(.05,Math.min(100,camera.zoom*factor));camera.updateProjectionMatrix();changed();return}const delta=camera.position.clone().sub(controls.target),distance=Math.max(controls.minDistance,Math.min(controls.maxDistance,delta.length()/factor));camera.position.copy(controls.target).add(delta.setLength(distance));controls.update();changed()},
   zoomLevel(){return (camera.isOrthographicCamera?camera.zoom:1)*referenceDistance/Math.max(.01,camera.position.distanceTo(controls.target))},
-  hit(event){
+  hit(event,nodesOnly=false){
    if(!meshes[0])return {}
    camera.updateMatrixWorld();scene.updateMatrixWorld(true)
    const rect=canvas.getBoundingClientRect();ray.setFromCamera(new Vector2((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2),camera)
@@ -227,6 +227,7 @@ export async function createNetworkGPU3D(canvas,onLost,changed,dimension='3D',mo
    let nearest=null,best=tolerance*tolerance
    for(const node of renderedNodes){const point=api.project(node,projectedHit);if(!point.visible)continue;const distance=(point.x-x)**2+(point.y-y)**2;if(distance<best){nearest=node;best=distance}}
    if(nearest)return {node:nearest}
+   if(nodesOnly)return {}
    const first=ray.intersectObjects([meshes[1],meshes[2]].filter(Boolean),false)[0];if(!first)return {}
    return {edge:renderedEdges[first.object===meshes[1]?segmentOwners[first.instanceId]:first.instanceId]}
   },

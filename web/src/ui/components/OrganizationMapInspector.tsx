@@ -1,0 +1,45 @@
+import {useEffect,useMemo,useRef} from 'react'
+import type {MapNode,MapPage} from '../../features/ecosystem/organizationMap'
+import {OrganizationAnnualStatements} from './OrganizationAnnualStatements'
+import {OrganizationTransactionBubbles} from './OrganizationTransactionBubbles'
+
+const dollars=(amount:number|null|undefined)=>typeof amount==='number'&&Number.isFinite(amount)?new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(amount):'Unavailable'
+
+export function OrganizationMapInspector({data,node,hovered,onClear,onPin,onMinimize}:{data:MapPage;node?:MapNode;hovered:boolean;onClear:()=>void;onPin:()=>void;onMinimize:()=>void}){
+ const panel=useRef<HTMLElement>(null)
+ useEffect(()=>{if(panel.current)panel.current.scrollTop=0},[node?.id,data.fy])
+ const connections=useMemo(()=>{
+  const parents=new Set<string>(),children=new Set<string>();let records=0
+  for(const edge of data.relationships){
+   if(edge.target===node?.id)parents.add(edge.source)
+   if(edge.source===node?.id)children.add(edge.target)
+   if(!edge.hierarchy&&(edge.source===node?.id||edge.target===node?.id))records+=edge.recordCount
+  }
+  return {parents:parents.size,children:children.size,records}
+ },[data,node?.id])
+ return <aside ref={panel} className="organization-map-inspector" aria-label="Node inspector">
+  <div className="organization-map-inspector-toolbar">
+  <header><strong>Node details</strong><button type="button" onClick={onMinimize} aria-label="Minimize node inspector" title="Minimize to the right">›</button></header>
+   {node&&<div className="organization-map-inspector-actions"><span>{hovered?'Hovered node':'Selected node'}</span>{hovered?<button type="button" onClick={onPin}>Keep details</button>:<button type="button" onClick={onClear} aria-label="Close selected node details">×</button>}</div>}
+  </div>
+  {node?<>
+   <h3>{node.name}</h3>
+   <p>{node.category.replaceAll('-',' ')}{node.type?` · ${node.type}`:''}</p>
+   <p className="muted">{data.fy&&/^\d{4}$/.test(data.fy)?`FY${data.fy}`:data.fy==='unassigned'?'Year unavailable':'All years'}</p>
+   <dl className="organization-map-inspector-totals">
+    <div><dt>Recorded USD received</dt><dd>{dollars(node.receivedUsd)}</dd></div>
+    <div><dt>Recorded USD disbursed</dt><dd>{dollars(node.disbursedUsd)}</dd></div>
+   </dl>
+   <OrganizationTransactionBubbles key={JSON.stringify([node.id,data.fy,data.version])} node={node} data={data}/>
+   <OrganizationAnnualStatements key={node.id} organizationId={node.id} fy={data.fy}/>
+   <details><summary>Connections and source identity</summary><dl>
+    <div><dt>Recorded USD volume</dt><dd>{dollars(node.financialAmount)}</dd></div>
+    <div><dt>Upstream nodes in this view</dt><dd>{connections.parents.toLocaleString()}</dd></div>
+    <div><dt>Downstream nodes in this view</dt><dd>{connections.children.toLocaleString()}</dd></div>
+    <div><dt>Linked records in this view</dt><dd>{connections.records.toLocaleString()}</dd></div>
+   </dl>
+   <p className="muted">Received amounts are recorded transfers, not budgets or awards. Missing amounts are unavailable. Connection counts cover the loaded view.</p>
+   <p>{node.id}</p><p>Snapshot: {data.generatedAt}</p></details>
+  </>:<p>Hover a node to inspect it, or select a node in the map.</p>}
+ </aside>
+}

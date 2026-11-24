@@ -132,3 +132,12 @@ test('bulk export requests 2000 records but follows cursors from both larger and
   assert.deepEqual(result.data.relationships.map(r=>[r.id,r.amount]),rows.map(r=>[r.id,r.amount]));
  }
 });
+test('annual statement additions preserve every established native record index',()=>{
+ const input={organizations:[{id:'payer',name:'Payer'},{id:'recipient',name:'Recipient'}],relationships:[{id:'older',source:'payer',target:'recipient',kind:'mentoring'}],financing:[]}
+ const native=Array.from({length:1000},(_,i)=>({id:'native-'+i,record_id:'native-'+i,record_type:'organization_support',from_organization_id:'payer',to_organization_id:'recipient',transaction_type:'transfer',amount:i,currency:'USD'}))
+ const before=projectNativeEvidence(input,native)
+ const annual={id:'annual',source:'payer',target:'recipient',sourceRecordType:'nonprofit_statement',kind:'revenue',financialFactType:'revenue',amount:100000,currency:'USD'}
+ const after=projectNativeEvidence({...input,relationships:[annual,...input.relationships]},native)
+ assert.deepEqual(after.relationships.slice(0,-1),before.relationships)
+ assert.deepEqual(after.relationships.at(-1),annual)
+})

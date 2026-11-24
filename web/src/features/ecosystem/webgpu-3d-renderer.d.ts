@@ -12,7 +12,7 @@ export type Network3DRenderer={
  focus(node:SpatialNode,immediate?:boolean):void
  stopFocus():void
  zoom(factor:number):void
- hit(event:Pick<PointerEvent,'clientX'|'clientY'|'pointerType'>):{node?:SpatialNode;edge?:CanvasEdge}
+ hit(event:Pick<PointerEvent,'clientX'|'clientY'|'pointerType'>,nodesOnly?:boolean):{node?:SpatialNode;edge?:CanvasEdge}
  cameraView():CameraView
  restoreCameraView(view:CameraView,node:SpatialNode):void
  cameraPosition():{x:number;y:number;z:number}

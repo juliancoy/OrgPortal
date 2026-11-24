@@ -29,6 +29,7 @@
 .organization-ecomap-canvas:focus-within { outline:3px solid var(--primary); outline-offset:3px; }
 .organization-ecomap-canvas canvas:focus-visible { outline:none; }
 .organization-ecomap-stage { position:relative; }
+.organization-ecomap-viewport { position:relative; min-width:0; }
 .organization-ecomap-canvas { position:relative; height:390px; overflow:hidden; border:1px solid var(--border); border-radius:10px; background:var(--surface); }
 .organization-ecomap-canvas canvas { display:block; width:100%; height:100%; cursor:grab; touch-action:none; }
 .organization-ecomap-canvas canvas:active { cursor:grabbing; }
@@ -40,12 +41,22 @@
 .organization-ecomap-label-amount { display:block; color:#ffd166; font-weight:700; white-space:nowrap; text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000; }
 .organization-ecomap-labels button.on-circle { transform:translate(-50%,-50%); background:transparent; border:0; padding:0; color:#fff; text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000; white-space:normal; overflow-wrap:anywhere; line-height:1.15; }
 .organization-ecomap-labels button.on-circle .organization-ecomap-label-name { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; max-height:2.3em; }
+.organization-ecomap-labels[data-mode='2d'] button { max-width:none; white-space:normal; overflow:visible; overflow-wrap:anywhere; line-height:16px; }
+.organization-ecomap-labels[data-mode='2d'] button .organization-ecomap-label-name { display:block; overflow:visible; text-overflow:clip; max-height:none; -webkit-line-clamp:unset; }
 .organization-ecomap-selected { margin:.75rem 0; padding:.75rem; background:var(--surface); border-radius:8px; }
 .organization-ecomap-note { font-size:.8rem; }
 .organization-ecomap-category-legend,.organization-ecomap-volume-legend { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .75rem; font-size:.8rem; color:var(--text-secondary); margin:.5rem 0; }
 .organization-ecomap-volume-ramp { width:120px; height:12px; border:1px solid var(--border); border-radius:3px; }
-.organization-ecomap-search { display:flex; flex-wrap:wrap; gap:.4rem; margin:.5rem 0; }
+.organization-ecomap-search { display:flex; flex-wrap:wrap; align-items:flex-start; align-content:flex-start; gap:.4rem; margin:.5rem 0; max-height:min(280px,35dvh); overflow:auto; }
 .organization-ecomap-search p { flex-basis:100%; }
+.organization-ecomap-search-pages { display:flex; flex-basis:100%; gap:.5rem; }
+.organization-ecomap-search-group { flex:0 1 360px; min-width:0; max-width:100%; align-self:flex-start; border:1px solid var(--border-color,#526575); border-radius:12px; padding:.6rem .8rem; }
+.organization-ecomap-search-group summary { cursor:pointer; overflow-wrap:anywhere; }
+.organization-ecomap-search-group summary span { white-space:nowrap; font-size:.85em; }
+.organization-ecomap-search-group>div { display:grid; gap:.4rem; margin-top:.6rem; }
+.organization-ecomap-search-group button { display:grid; gap:.2rem; text-align:left; width:100%; min-width:0; white-space:normal; overflow-wrap:anywhere; }
+.organization-ecomap-search-group small { font-size:.7em; font-weight:normal; }
+.organization-ecomap:is(:fullscreen,.eco-fullscreen)>.organization-ecomap-search { flex-shrink:1; min-height:48px; }
 @media(max-width:600px) {
  .organization-ecomap { padding:.75rem; }
  .organization-ecomap-canvas { height:340px; }
@@ -66,8 +77,33 @@
 
 .organization-ecomap:is(:fullscreen,.eco-fullscreen) { position:fixed; inset:0; width:100%; height:100dvh; box-sizing:border-box; max-width:none; max-height:none; margin:0; border:0; border-radius:0; z-index:2000; display:flex; flex-direction:column; overflow:auto; }
 .organization-ecomap:is(:fullscreen,.eco-fullscreen)>* { flex-shrink:0; }
-.organization-ecomap:is(:fullscreen,.eco-fullscreen) .organization-ecomap-stage { flex:1 0 240px; display:flex; flex-direction:column; min-height:240px; }
+.organization-ecomap:is(:fullscreen,.eco-fullscreen) .organization-ecomap-stage { flex:1 0 240px; display:flex; gap:12px; min-height:240px; }
+.organization-ecomap:is(:fullscreen,.eco-fullscreen) .organization-ecomap-viewport { flex:1; display:flex; flex-direction:column; min-width:0; }
 .organization-ecomap:is(:fullscreen,.eco-fullscreen) .organization-ecomap-canvas { flex:1 0 240px; height:auto; min-height:240px; }
+.organization-map-inspector { flex:0 0 clamp(240px,25vw,340px); min-width:0; border:1px solid var(--border); border-radius:10px; background:var(--panel); padding:14px; box-sizing:border-box; overflow:auto; overflow-wrap:anywhere; max-height:calc(100dvh - 240px); padding-bottom:66px; }
+.organization-map-inspector header,.organization-map-inspector-actions { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.organization-map-inspector button { min-width:40px; min-height:40px; padding:4px 10px; }
+.organization-map-inspector-actions { margin-top:8px; font-size:.8rem; color:var(--text-secondary); }
+.organization-map-inspector h3 { font-size:1.1rem; margin:12px 0 6px; }
+.organization-map-inspector p,.organization-map-inspector details { font-size:.8rem; }
+.organization-map-inspector dl { margin:16px 0; display:grid; gap:12px; }
+.organization-map-inspector dt { font-size:.75rem; color:var(--text-secondary); }
+.organization-map-inspector dd { margin:2px 0 0; font-weight:600; font-variant-numeric:tabular-nums; }
+.organization-map-inspector-toolbar { position:sticky; top:-14px; z-index:1; background:var(--panel); padding:8px 0; }
+.organization-map-inspector dl.organization-map-inspector-totals { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; font-size:.85rem; }
+.organization-transaction-bubbles h4 { margin:18px 0 4px; }
+.organization-transaction-bubbles ol { list-style:none; padding:0; margin:0; display:grid; gap:20px; }
+.organization-transaction-bubbles li { min-width:0; }
+.organization-transaction-bubble { width:min(100%,var(--transaction-width)); box-sizing:border-box; margin:auto; border:1px solid #85c5b5; border-radius:50%; background:color-mix(in srgb,#289c7a 18%,var(--panel)); padding:28px 20px; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; font-size:.75rem; line-height:1.4; }
+.organization-transaction-bubble[data-direction="disbursed"] { background:color-mix(in srgb,#c58030 18%,var(--panel)); border-color:#d6a566; }
+.organization-transaction-bubble[data-direction="internal"] { background:var(--panel); border-style:dashed; }
+.organization-transaction-bubble strong { font-size:.95rem; font-variant-numeric:tabular-nums; }
+.organization-transaction-evidence { margin:8px 0 0; text-align:center; font-size:.75rem; }
+.organization-transaction-evidence details { margin:6px 0; text-align:left; }
+.organization-transaction-evidence a { display:inline-block; padding:6px; }
+.organization-transaction-pagination { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin:16px 0; }
+.organization-map-inspector-restore { align-self:flex-start; min-width:36px; padding:10px 6px; }
+.organization-map-inspector-restore span { writing-mode:vertical-rl; }
 .organization-ecomap:is(:fullscreen,.eco-fullscreen)>.organization-ecomap-note { display:none; }
 .organization-ecomap .eco-canvas-fullscreen { position:absolute; right:max(12px,env(safe-area-inset-right)); bottom:max(12px,env(safe-area-inset-bottom)); z-index:10; display:grid; place-items:center; width:44px; height:44px; min-height:44px; padding:0; border:1px solid var(--border); border-radius:6px; background:var(--panel); color:var(--text-primary); box-shadow:0 2px 8px #0003; cursor:pointer; }
 .organization-ecomap .eco-canvas-fullscreen::before { content:''; width:17px; height:17px; border:2px solid currentColor; border-radius:1px; }
@@ -86,6 +122,8 @@
 [data-theme='dark'] .organization-map-funds [data-direction='received'] { background:radial-gradient(ellipse at 35% 20%,#285e47,#142e24); color:#c3f8dc; border-color:#559e7d; }
 [data-theme='dark'] .organization-map-funds [data-direction='disbursed'] { background:radial-gradient(ellipse at 35% 20%,#684626,#302317); color:#ffdfb8; border-color:#b18b5a; }
 @media(max-width:600px) {
+ .organization-map-inspector { position:absolute; top:0; right:0; bottom:64px; width:min(280px,78%); max-height:none; z-index:4; box-shadow:-4px 0 16px #0003; padding-bottom:14px; }
+ .organization-map-inspector-restore { position:absolute; right:0; top:0; z-index:4; }
  .organization-ecomap:is(:fullscreen,.eco-fullscreen) .organization-ecomap-controls { max-height:180px; min-height:100px; overflow-y:auto; flex-shrink:1; scrollbar-gutter:stable; }
  .organization-ecomap:is(:fullscreen,.eco-fullscreen) .organization-ecomap-stage { flex-basis:350px; min-height:350px; }
  .organization-map-funds { position:static; padding:.5rem 4rem .25rem 0; max-width:100%; box-sizing:border-box; flex-shrink:0; }

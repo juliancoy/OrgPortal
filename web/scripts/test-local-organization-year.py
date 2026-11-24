@@ -28,7 +28,7 @@ with sync_playwright() as p:
   amounts=expected[fy]['financialTotals']['currencies']
   if amounts:
    expect(totals.locator('dd').first).to_have_text('USD\xa0'+format(amounts[0]['received'],',.2f'))
-  else:expect(totals.locator('dd').first).to_have_text('No recorded transfers')
+  else:expect(totals.locator('dd').first).to_have_text('No cash payments recorded')
   expect(totals).to_contain_text('across all dates' if fy=='all' else 'no assigned fiscal year' if fy=='unassigned' else 'for FY'+fy)
   ready()
   return expected[fy]['total']

@@ -61,8 +61,15 @@ export async function queryEcosystem(read,section,params){
   const {recordIndices,recordKinds,recordFiscalYears,...profile}=await organizationEvidenceYear(read,readRows,manifest,sourceProfile,fy)
   const offset=integer(params,'offset',0,1e7),limit=integer(params,'limit',25,MAX_PAGE);if(!limit)throw Error('Invalid limit')
   const kind=params.get('kind');if(kind&&kind.length>80)throw Error('Invalid evidence filter')
-  const ids=kind?(Object.hasOwn(recordKinds,kind)?recordKinds[kind]:[]):recordIndices
-  const financialTotals=await organizationFinancialTotals(read,readRows,manifest,{...profile,recordKinds},fy)
+  let ids=kind?(Object.hasOwn(recordKinds,kind)?recordKinds[kind]:[]):recordIndices
+  const sort=params.get('sort');if(sort&&sort!=='amount-desc')throw Error('Invalid evidence sort')
+  if(sort){
+   const ranks=await read(`${version}/relationships/amount-ranks.json`)
+   ids=ids.filter(id=>Number.isSafeInteger(ranks[id])).sort((a,b)=>ranks[a]-ranks[b])
+  }
+  // The inspector already has totals from the map. Avoid rescanning a merged
+  // group's complete ledger merely to show its first page of transactions.
+  const financialTotals=sort?profile.financialTotals:await organizationFinancialTotals(read,readRows,manifest,{...profile,recordKinds},fy)
   return {body:{...meta,...profile,financialTotals,records:await readRows(read,version,'relationships',ids.slice(offset,offset+limit)),total:ids.length,offset,nextOffset:offset+limit<ids.length?offset+limit:null}}
  }
  if(section==='overview')return {body:{...meta,...await read(`${version}/overview.json`)}}

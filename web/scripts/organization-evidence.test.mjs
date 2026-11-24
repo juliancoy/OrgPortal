@@ -1,3 +1,4 @@
+import {transactionAmountRanks} from '../src/features/ecosystem/transaction-amount-order.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {organizationEvidenceProfiles,consolidatedFinancialMetrics} from './organization-evidence.mjs'
@@ -20,6 +21,10 @@ test('every node indexes received USD from signed cash evidence, separately from
  assert.equal(consolidatedFinancialMetrics(get('recipient'),'2024').receivedUsd,0)
  assert.equal(consolidatedFinancialMetrics(get('state')).receivedUsd,0,'internal transfers are excluded from the hierarchy')
  assert.equal(consolidatedFinancialMetrics(get('department')).receivedUsd,900)
+ assert.equal(consolidatedFinancialMetrics(get('department')).disbursedUsd,15)
+ assert.equal(consolidatedFinancialMetrics(get('department'),'2025').disbursedUsd,15)
+ assert.equal(consolidatedFinancialMetrics(get('department'),'2024').disbursedUsd,0)
+ assert.equal(consolidatedFinancialMetrics({}).disbursedUsd,null)
  assert.equal(consolidatedFinancialMetrics(get('heading')).receivedUsd,0)
  assert.equal(consolidatedFinancialMetrics({financialTotals:{currencies:[],missingAmounts:1}}).receivedUsd,null)
  assert.equal(consolidatedFinancialMetrics({}).receivedUsd,null,'older data is not silently reported as zero')
@@ -78,4 +83,39 @@ test('public evidence endpoint resolves slug and ID, paginates, filters, and pin
  assert.equal((await queryEcosystem(read,'organization-evidence',new URLSearchParams({org:'state',version:'old'}))).status,409)
  await assert.rejects(queryEcosystem(read,'organization-evidence',new URLSearchParams({org:'state',limit:'101'})),/Invalid limit/)
  assert.equal((await queryEcosystem(read,'organization-evidence',new URLSearchParams({org:'state',fy:'2027'}))).body.total,0)
+})
+
+test('inspector ranks before pagination, honors years and grouping, and reads only the requested evidence page',async()=>{
+ const organizations=[{id:'payer',name:'Payer'},{id:'child',name:'Child',governmentParentId:'payer'},{id:'recipient',name:'Recipient'},{id:'other',name:'Other'}]
+ const relationships=Array.from({length:80},(_,i)=>({id:'tx-'+i,source:'child',target:'recipient',kind:'transfer',amount:i*100,currency:'USD',fiscalYear:2025}))
+ relationships.push({id:'voided',source:'child',target:'recipient',kind:'transfer',amount:1e10,currency:'USD',fiscalYear:2025,status:'voided'},
+  {id:'older',source:'child',target:'recipient',kind:'transfer',amount:1e9,currency:'USD',fiscalYear:2024},
+  {id:'award',source:'child',target:'recipient',kind:'approval',amount:9000,currency:'USD',fiscalYear:2025,financialFactType:'reported_award'},
+  {id:'adjustment',source:'child',target:'recipient',kind:'transfer',amount:-50,currency:'USD',fiscalYear:2025},
+  {id:'unknown',source:'child',target:'recipient',kind:'transfer',amount:null,currency:'USD',fiscalYear:2025},
+  {id:'euro',source:'child',target:'recipient',kind:'transfer',amount:1e9,currency:'EUR',fiscalYear:2025},
+  {id:'unrelated',source:'other',target:'other',kind:'transfer',amount:1e12,currency:'USD',fiscalYear:2025})
+ const profiles=organizationEvidenceProfiles({organizations,relationships}),ranks=transactionAmountRanks(relationships),calls=[]
+ const read=async path=>{
+  calls.push(path)
+  if(path==='manifest.json')return {version:'bubble',generatedAt:'2026-11-23',organizationEvidenceIndexVersion:1,temporalIndexVersion:1}
+  if(path==='bubble/organization-evidence/index.json')return profiles.aliases
+  if(path==='bubble/organization-evidence/0.json')return profiles.entries
+  if(path==='bubble/relationships/amount-ranks.json')return ranks
+  const match=path.match(/^bubble\/relationships\/(\d+)\.json$/)
+  if(match)return relationships.slice(Number(match[1])*25,Number(match[1])*25+25)
+  throw Error('Unexpected artifact '+path)
+ }
+ const query=params=>queryEcosystem(read,'organization-evidence',new URLSearchParams({org:'payer',fy:'2025',sort:'amount-desc',limit:'2',...params}))
+ const first=(await query()).body
+ assert.deepEqual(first.records.map(r=>r.id),['award','tx-79']);assert.equal(first.nextOffset,2);assert.equal(first.total,84)
+ assert.equal(calls.filter(path=>/relationships\/\d+/.test(path)).length,1,'fetch only the single shard containing the requested records')
+ assert.deepEqual((await query({offset:'2'})).body.records.map(r=>r.id),['tx-78','tx-77'])
+ assert.deepEqual((await query({offset:'80',limit:'10'})).body.records.map(r=>r.id),['tx-0','adjustment','unknown','euro'])
+ assert.equal((await query({fy:'2024'})).body.records[0].id,'older')
+ assert.equal((await query({fy:'2027'})).body.total,0)
+ const group=(await query({org:'payer',members:JSON.stringify(['child','recipient'])})).body
+ assert.equal(group.total,84,'overlapping group evidence must not duplicate transactions')
+ assert.equal((await query({version:'old'})).status,409)
+ await assert.rejects(query({sort:'random'}),/Invalid evidence sort/)
 })

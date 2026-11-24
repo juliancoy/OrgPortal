@@ -8,10 +8,12 @@ import {browserLogin} from './event-upload.mjs';
 import {accountCommand} from './mcp-account-client.mjs';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StreamableHTTPClientTransport} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-const {values}=parseArgs({options:{file:{type:'string'},'expected-sha256':{type:'string'},'expected-commit':{type:'string'},apply:{type:'boolean'},directory:{type:'string'},connection:{type:'string',default:'platform-admin'}}});
+const {values}=parseArgs({options:{file:{type:'string'},'expected-sha256':{type:'string'},'expected-commit':{type:'string'},apply:{type:'boolean'},directory:{type:'string'},connection:{type:'string',default:'platform-admin'},resource:{type:'string',default:'https://lifetech.fyi/api/org/mcp'},'organization-id':{type:'string',default:'ef646755-9443-4c7b-ba4b-a7a29754f666'}}});
 if(!values.file||!values['expected-sha256']||!values['expected-commit'])throw Error('Supply reviewed file SHA256 and deployed commit');
 const bytes=await readFile(values.file);if(createHash('sha256').update(bytes).digest('hex')!==values['expected-sha256'])throw Error('Bootstrap file changed');
-const {datasetId,rows}=JSON.parse(bytes),organizationId='ef646755-9443-4c7b-ba4b-a7a29754f666',resource='https://lifetech.fyi/api/org/mcp',issuer='https://orgportal.cc';
+const {datasetId,parentDatasetId,rows}=JSON.parse(bytes),organizationId=values['organization-id'],resource=values.resource,issuer='https://orgportal.cc';
+if(!['https://lifetech.fyi/api/org/mcp','https://orgportal.cc/mcp'].includes(resource))throw Error('Unreviewed resource');
+const checkParent=async()=>{if(!parentDatasetId)return;const response=await fetch(resource==='https://orgportal.cc/mcp'?'https://orgportal.cc/api/org/api/network/ecosystem/public/metadata':'https://lifetech.fyi/api/org/api/network/ecosystem/public/metadata',{signal:AbortSignal.timeout(60000)});if(!response.ok)throw Error('Cannot verify current dataset');const current=await response.json();if(current.datasetId!==parentDatasetId&&current.datasetId!==datasetId)throw Error('Public dataset changed; rebase reviewed additions before publishing');};
 const directory=resolve(values.directory||'../../../.runtime/unified-ecosystem/import');await mkdir(directory,{recursive:true,mode:0o700});
 const path=resolve(directory,'progress.json');let state={datasetId,offset:0,pending:null};try{state=JSON.parse(await readFile(path,'utf8'));if(state.datasetId!==datasetId)throw Error('Wrong dataset receipt directory');}catch(e){if(e.code!=='ENOENT')throw e;}
 const save=async()=>{await writeFile(path+'.tmp',JSON.stringify(state)+'\n',{mode:0o600});await rename(path+'.tmp',path);};
@@ -33,9 +35,11 @@ try{
  const apply=async payload=>{const preview=await call('preview_ecosystem_dataset',payload);state.pending={previewId:preview.previewId,count:payload.rows.length,action:payload.action};await save();
  const result=await call('apply_ecosystem_dataset',{...payload,confirm:true,previewId:preview.previewId});await appendFile(resolve(directory,'receipts.jsonl'),JSON.stringify({offset:state.offset,...result})+'\n',{mode:0o600});if(payload.action==='stage')state.offset+=payload.rows.length;else state.published=true;state.pending=null;await save();};
  if(values.apply){
+ await checkParent();
  while(state.offset<rows.length){const batch=[];let size=0;while(state.offset+batch.length<rows.length&&batch.length<200){const row=rows[state.offset+batch.length],length=Buffer.byteLength(JSON.stringify(row));if(batch.length&&size+length>450000)break;batch.push(row);size+=length;}
  await apply({organizationId,datasetId,action:'stage',rows:batch});console.log(JSON.stringify({staged:state.offset,total:rows.length}));}
  const verification=await status();if(verification.digest!==datasetId||verification.counts.reduce((n,r)=>n+r.records,0)!==rows.length)throw Error('Live checksum/count reconciliation failed');
+ await checkParent();
  if(!state.published)await apply({organizationId,datasetId,action:'publish',rows:[]});
  const final=await status();if(final.dataset?.state!=='active')throw Error('Dataset is not active');
  const report={...final,account:identity.account.email,commit:identity.server.commit,verifiedAt:new Date().toISOString()};await writeFile(resolve(directory,'verification.json'),JSON.stringify(report,null,2)+'\n',{mode:0o600});console.log(JSON.stringify(report));

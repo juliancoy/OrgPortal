@@ -1,0 +1,112 @@
+{
+  "scope": "FY ending June 2025: Johns Hopkins University, The Johns Hopkins Hospital, Bayview Medical Center and Health System Corporation. Separate legal filers; no consolidated group total. Public is an aggregate customer category, not exclusively household payments. Earlier years and unitemized customer revenue are outside this reviewed statement import.",
+  "filings": [
+    {
+      "ein": "521465301",
+      "organizationId": "registry-f53e1ea1-fa9f-4563-9e33-811b7ee4fa80",
+      "filingId": "202601349349303215",
+      "periodEnd": "2025-06-30",
+      "file": "202601349349303215.xml",
+      "sourceSha256": "4e5b5f877be812e151b13468182cf952375b1852a613f90c72e0a91bb6ce4502",
+      "sourceFormat": "irs_xml",
+      "archiveUrl": "https://apps.irs.gov/pub/epostcard/990/xml/2026/2026_TEOS_XML_05A.zip",
+      "sourceDocumentUrl": "https://projects.propublica.org/nonprofits/full_text/202601349349303215/IRS990",
+      "publicLines": [
+        {
+          "sourceLine": "ProgramServiceRevenueGrp[2]/TotalRevenueColumnAmt",
+          "label": "PACE PROG. REV.",
+          "reason": "PACE program care revenue; not an assertion of patient out-of-pocket payments."
+        }
+      ]
+    },
+    {
+      "ein": "521341890",
+      "organizationId": "registry-a55f67fe-f0bb-4af0-aed7-c93b44075b5c",
+      "filingId": "202601359349301130",
+      "periodEnd": "2025-06-30",
+      "file": "202601359349301130.xml",
+      "sourceSha256": "82c2fc768e28763f288dcec510e9e490713ec21f9bd791c9187e096a289e9a28",
+      "sourceFormat": "irs_xml",
+      "archiveUrl": "https://apps.irs.gov/pub/epostcard/990/xml/2026/2026_TEOS_XML_05A.zip",
+      "sourceDocumentUrl": "https://projects.propublica.org/nonprofits/full_text/202601359349301130/IRS990",
+      "publicLines": [
+        {
+          "sourceLine": "ProgramServiceRevenueGrp[1]/TotalRevenueColumnAmt",
+          "label": "NET PATIENT SERVICES",
+          "reason": "Net patient service revenue."
+        },
+        {
+          "sourceLine": "ProgramServiceRevenueGrp[2]/TotalRevenueColumnAmt",
+          "label": "PHARMACY REVENUE",
+          "reason": "Pharmacy service revenue."
+        }
+      ]
+    },
+    {
+      "ein": "520591656",
+      "organizationId": "registry-9c4d09ac-0939-473e-990e-20ea7cabdcad",
+      "filingId": "202641349349308029",
+      "periodEnd": "2025-06-30",
+      "file": "202641349349308029.html",
+      "sourceSha256": "a5147c182e6edd7538660be9ea029a6585d1c5692f55ccfee845d862d5e5cc61",
+      "sourceFormat": "irs_efile_rendered_html",
+      "archiveUrl": "",
+      "sourceDocumentUrl": "https://projects.propublica.org/nonprofits/full_text/202641349349308029/IRS990",
+      "publicLines": [
+        {
+          "sourceLine": "ProgramServiceRevenueGrp[1]/TotalRevenueColumnAmt",
+          "label": "NET PATIENT SRV",
+          "reason": "Net patient service revenue."
+        },
+        {
+          "sourceLine": "ProgramServiceRevenueGrp[2]/TotalRevenueColumnAmt",
+          "label": "PHARMACY REV",
+          "reason": "Pharmacy service revenue."
+        },
+        {
+          "sourceLine": "ProgramServiceRevenueGrp[3]/TotalRevenueColumnAmt",
+          "label": "ONCOLOGY REVENUE",
+          "reason": "Oncology services."
+        },
+        {
+          "sourceLine": "ProgramServiceRevenueGrp[4]/TotalRevenueColumnAmt",
+          "label": "CARDIAC SURGERY",
+          "reason": "Cardiac surgery services."
+        },
+        {
+          "sourceLine": "ProgramServiceRevenueGrp[5]/TotalRevenueColumnAmt",
+          "label": "NEUROSURGERY REVENUE",
+          "reason": "Neurosurgery services."
+        }
+      ]
+    },
+    {
+      "ein": "520595110",
+      "organizationId": "org-johns-hopkins-university",
+      "filingId": "202611359349312681",
+      "periodEnd": "2025-06-30",
+      "file": "202611359349312681.xml",
+      "sourceSha256": "3cbea457acae9d9852bfa4d66dfebdaa6f1f0cad0f697e1a04d81c55bb60a1b0",
+      "sourceFormat": "irs_xml",
+      "archiveUrl": "https://apps.irs.gov/pub/epostcard/990/xml/2026/2026_TEOS_XML_05A.zip",
+      "sourceDocumentUrl": "https://projects.propublica.org/nonprofits/full_text/202611359349312681/IRS990",
+      "publicLines": [
+        {
+          "sourceLine": "ProgramServiceRevenueGrp[2]/TotalRevenueColumnAmt",
+          "label": "TUITION AND FEES",
+          "reason": "Tuition and fees for education; student, family and third-party payer shares are unspecified."
+        },
+        {
+          "sourceLine": "ProgramServiceRevenueGrp[3]/TotalRevenueColumnAmt",
+          "label": "CLINICAL SERVICES",
+          "reason": "Clinical services purchased for patients; source does not identify payer shares."
+        },
+        {
+          "sourceLine": "ProgramServiceRevenueGrp[5]/TotalRevenueColumnAmt",
+          "label": "SALES - AUXILIARY ENTP",
+          "reason": "Part III describes housing, food, bookstores and publishing services provided to customers."
+        }
+      ]
+    }
+  ]
+}

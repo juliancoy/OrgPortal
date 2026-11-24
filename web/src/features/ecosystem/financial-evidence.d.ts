@@ -1,0 +1,1 @@
+export function financialEvidence(row:{financialFactType?:string;financialMeasure?:string;status?:string;grantStatus?:string;kind?:string;type?:string;description?:string;evidence?:string;notes?:string}):string|null

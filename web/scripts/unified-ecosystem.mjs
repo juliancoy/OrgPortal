@@ -61,7 +61,12 @@ export function projectNativeEvidence(input,records,directory=[]){
    provenance,transactionRecordId:r.id,sourceRecordType:r.record_type};
   newEdges.push(edge);
  }
- data.relationships=[...data.relationships.filter(r=>!replaced.has(r.id)),...newEdges];
+ // Keep new annual observations after the established transactional stream.
+ // Inserting a few statement rows before 500k native records would renumber
+ // every evidence shard and force a full static-asset reupload.
+ const retained=data.relationships.filter(r=>!replaced.has(r.id));
+ const statement=r=>r.sourceRecordType==='nonprofit_statement'&&['revenue','expense'].includes(r.kind);
+ data.relationships=[...retained.filter(r=>!statement(r)),...newEdges,...retained.filter(statement)];
  const referenced=new Set(data.relationships.flatMap(r=>[r.source,r.target]));
  data.organizations=[...orgs.values()].filter(o=>o.entityType!=='source_label'||referenced.has(o.id));
  // financing is a secondary presentation of the same evidence, never extra graph edges.

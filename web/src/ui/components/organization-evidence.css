@@ -25,3 +25,9 @@
 .organization-financial-totals dd span { display:block; }
 .organization-financial-summary > p { max-width:80ch; }
 @media(max-width:600px) { .organization-financial-totals { grid-template-columns:1fr; } }
+.organization-annual-statements {margin-block:1rem;overflow-wrap:anywhere}
+.organization-annual-statements summary {cursor:pointer;line-height:1.6}
+.organization-annual-statements dl>div {display:flex;flex-wrap:wrap;justify-content:space-between;gap:.25rem 1rem;padding-block:.3rem;border-bottom:1px solid var(--border-color,#64748b55)}
+.organization-annual-statements dt {flex:1 1 12rem}
+.organization-annual-statements dd {margin:0;font-variant-numeric:tabular-nums}
+.organization-annual-statements code {font-size:.75rem}

@@ -5,7 +5,7 @@ export function summarizeOrganizationTransfers(records, memberIds, seen=new Set(
  let missingAmounts=0,missingAwardAmounts=0
  for(const row of records){
   const fact=financialEvidence(row),award=fact==='reported_award'
-  if(row.kind!=='transfer'||row.status==='voided'||['obligation','appropriation','program_ceiling','balance','rescission','administration'].includes(fact))continue
+  if(row.kind!=='transfer'||row.status==='voided'||['revenue','expense','obligation','appropriation','program_ceiling','balance','rescission','administration'].includes(fact))continue
   const incoming=members.has(row.target),outgoing=members.has(row.source)
   if(incoming===outgoing)continue // Exclude transfers within a displayed grouping.
   const key=row.transactionRecordId||row.id

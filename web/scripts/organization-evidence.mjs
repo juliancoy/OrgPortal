@@ -1,6 +1,6 @@
 // Public evidence profiles: no directory writes, inferred owners, or name matching.
 import {summarizeOrganizationTransfers} from '../server/organization-financial-totals.mjs'
-import {receivedUsdFromTotals} from '../src/features/ecosystem/received-amount.js'
+import {receivedUsdFromTotals,disbursedUsdFromTotals} from '../src/features/ecosystem/received-amount.js'
 export function organizationEvidenceProfiles(data) {
  const nodes = new Map(data.organizations.map(org => [org.id, org])), children = new Map(), parents = new Map()
  function connect(parent, child, classification, sourceUrl) {
@@ -78,9 +78,9 @@ export function organizationEvidenceProfiles(data) {
 export function consolidatedFinancialMetrics(profile,fy='all'){
  if(!profile)return null
  const totals=fy==='all'?profile.financialTotals:profile.financialTotalsByYear?.[fy]||(profile.financialTotals?{currencies:[],missingAmounts:0}:undefined)
- const receivedUsd=receivedUsdFromTotals(totals)
- if(!profile.financialMembers&&!profile.financialTotals?.awards?.length)return {receivedUsd}
+ const receivedUsd=receivedUsdFromTotals(totals),disbursedUsd=disbursedUsdFromTotals(totals)
+ if(!profile.financialMembers&&!profile.financialTotals?.awards?.length)return {receivedUsd,disbursedUsd}
  const usd=totals?.currencies.find(total=>total.currency==='USD')
  const incoming=usd?.received||0,outgoing=usd?.disbursed||0
- return {incoming,outgoing,amount:Math.max(0,incoming+outgoing),receivedUsd}
+ return {incoming,outgoing,amount:Math.max(0,incoming+outgoing),receivedUsd,disbursedUsd}
 }

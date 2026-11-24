@@ -2,6 +2,7 @@
 import json,math,os,pathlib
 from urllib.parse import urlparse,parse_qs
 from playwright.sync_api import sync_playwright,expect
+from node_directory_fixture import install_node_directory_fixture
 base=os.environ.get('PLAYWRIGHT_BASE_URL','https://localhost:8443').rstrip('/')
 assert urlparse(base).hostname in ['localhost','127.0.0.1','::1']
 out=pathlib.Path(__file__).resolve().parents[2]/'artifacts/layout-review/organization-map-sizing'
@@ -27,6 +28,7 @@ with sync_playwright() as p:
  # Observe actual 2D drawing primitives, including the selected outline.
  ctx.add_init_script('''window.mapCircles=[];const arc=Path2D.prototype.arc;
  Path2D.prototype.arc=function(x,y,r,...rest){window.mapCircles.push({x,y,r});if(window.mapCircles.length>500)window.mapCircles.shift();return arc.call(this,x,y,r,...rest)};''')
+ install_node_directory_fixture(ctx)
  page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def ready(mode,anchor):
   page.locator(f'.organization-ecomap canvas[data-mode="{mode}"][data-ready="true"][data-anchor="{anchor}"]').wait_for(timeout=60000)

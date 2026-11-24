@@ -2,6 +2,7 @@
 import pathlib,re,json
 from urllib.parse import urlparse,parse_qs
 from playwright.sync_api import sync_playwright,expect
+from node_directory_fixture import install_node_directory_fixture
 base='https://localhost:8443'
 out=pathlib.Path(__file__).resolve().parents[2]/'artifacts/layout-review/organization-hubs';out.mkdir(parents=True,exist_ok=True)
 def node(id):return {'id':id,'name':id,'slug':None,'recordCount':0,'category':'government' if 'Hub' in id else 'company','financialAmount':5000000 if 'Hub' in id else 500000,'receivedUsd':400000}
@@ -28,6 +29,7 @@ with sync_playwright() as p:
      for leaf in range(3):add(f'Branch {branch+1} · Node 1',f'Third level {branch+1}.{leaf+1}')
   r.fulfill(json={**meta,'fy':q.get('fy',['2025'])[0],'parentDepth':int(q.get('parentDepth',['1'])[0]),'childDepth':levels,'anchor':anchor,'organizations':nodes,'relationships':edges,'total':len(nodes)-1,'incoming':0,'outgoing':len(nodes)-1,'offset':0,'nextOffset':None})
  c.route('**/api/ecosystem/organization-map?*',graph)
+ install_node_directory_fixture(c)
  page=c.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('console',lambda m:errors.append(m.text) if m.type=='error' and ('React' in m.text or 'TypeError' in m.text) else None)
  page.goto(base+'/ecosystem/organizations/Root?childDepth=2',wait_until='domcontentloaded');panel=page.locator('.organization-ecomap')
  def ready():
@@ -39,7 +41,7 @@ with sync_playwright() as p:
  ready();page.evaluate('window.canvasBefore=document.querySelector(".organization-ecomap canvas")')
  panel.get_by_label('Map layout',exact=True).select_option('hubs');ready()
  assert page.evaluate('canvasBefore===document.querySelector(".organization-ecomap canvas")')
- panel.get_by_label('Color by',exact=True).select_option('volume');panel.get_by_label('Received amounts',exact=True).select_option('show')
+ panel.get_by_label('Color by',exact=True).select_option('volume');panel.get_by_label('Cash flow amounts',exact=True).select_option('show')
  for spacing in ['.8','1.5','1']:
   panel.get_by_label('Hub spacing',exact=True).select_option(str(float(spacing)) if spacing!='1' else '1');ready()
  panel.get_by_label('Fiscal year',exact=True).select_option('2024');ready();expect(panel.get_by_label('Map layout',exact=True)).to_have_value('hubs');expect(panel.get_by_label('Color by',exact=True)).to_have_value('volume')

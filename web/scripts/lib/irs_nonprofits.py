@@ -101,6 +101,9 @@ def normalize_filing(data,row,archive_url,retrieved_at):
       'expenses':money(form,'CYTotalExpensesAmt','AnalysisOfRevenueAndExpenses/TotalExpensesRevAndExpnssAmt'),
       'assets':money(form,'TotalAssetsGrp/EOYAmt','Form990PFBalanceSheetsGrp/TotalAssetsEOYAmt'),
       'liabilities':money(form,'TotalLiabilitiesGrp/EOYAmt','Form990PFBalanceSheetsGrp/TotalLiabilitiesEOYAmt')}
+    if form_type=='990':
+        from nonprofit_statements import statement_lines
+        summary['statements']=statement_lines(form,money,text)
     summary['reportedPaidGrants']=money(form,'SupplementaryInformationGrp/TotalGrantOrContriPdDurYrAmt')
     summary['reportedFutureGrants']=money(form,'SupplementaryInformationGrp/TotalGrantOrContriApprvFutAmt')
     grants=[]

@@ -2,6 +2,7 @@
 import os
 from urllib.parse import urlparse,parse_qs
 from playwright.sync_api import sync_playwright,expect
+from node_directory_fixture import install_node_directory_fixture
 base=os.environ.get('PLAYWRIGHT_BASE_URL','https://localhost:8443').rstrip('/')
 assert urlparse(base).hostname in ['localhost','127.0.0.1','::1']
 nodes=[{'id':key,'name':name,'slug':None,'category':'company','financialAmount':amount} for key,name,amount in [
@@ -24,6 +25,7 @@ with sync_playwright() as p:
   ids={anchor}|{e[k] for e in links for k in ['source','target']}
   route.fulfill(json={'version':'parent-fixture','generatedAt':'2026-11-22','anchor':anchor,'organizations':[n for n in nodes if n['id'] in ids],'relationships':links,'total':len(ids)-1,'incoming':sum(e['target']==anchor for e in links),'outgoing':sum(e['source']==anchor for e in links),'offset':0,'nextOffset':None})
  ctx.route('**/api/ecosystem/organization-map?*',neighborhood)
+ install_node_directory_fixture(ctx)
  page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def ready(mode,anchor):
   page.locator(f'.organization-ecomap canvas[data-mode="{mode}"][data-ready="true"][data-anchor="{anchor}"]').wait_for(timeout=60000)

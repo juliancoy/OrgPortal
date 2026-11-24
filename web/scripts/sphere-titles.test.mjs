@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {sphereTitleLines,paintSphereTitle,sphereTitleReadable} from '../src/features/ecosystem/sphere-title-text.js'
-import {shortReceivedAmount,receivedAmountColor} from '../src/features/ecosystem/received-amount.js'
+import {shortReceivedAmount,receivedAmountColor,cashFlowLabel} from '../src/features/ecosystem/received-amount.js'
 test('surface titles wrap words and long tokens, preserving text until the bounded overflow',()=>{
  const title='University of Maryland Department of Health'
  assert.equal(sphereTitleLines(title).join(' '),title)
@@ -49,4 +49,14 @@ test('received subtitle paints below the name in a distinct color',()=>{
  assert(rows[1].y>rows[0].y);assert.equal(rows[0].color,'#fff');assert.equal(rows[1].color,receivedAmountColor)
  assert.equal(sphereTitleReadable('UMD',10,true,1),true)
  assert.equal(sphereTitleReadable('UMD',10,true,1,'5B'),false,'subtitle participates in the available surface space')
+})
+
+test('cash labels distinguish payers, recipients, reciprocal transfers, signed adjustments and unavailable amounts',()=>{
+ assert.equal(cashFlowLabel({receivedUsd:0,disbursedUsd:2.5e9}),'↑2.5B')
+ assert.equal(cashFlowLabel({receivedUsd:52.1e6,disbursedUsd:0}),'↓52.1M')
+ assert.equal(cashFlowLabel({receivedUsd:5e6,disbursedUsd:2e6}),'↓5M · ↑2M')
+ assert.equal(cashFlowLabel({receivedUsd:0,disbursedUsd:0}),'↓0 · ↑0')
+ assert.equal(cashFlowLabel({receivedUsd:0,disbursedUsd:-2500}),'↑-2.5K')
+ assert.equal(cashFlowLabel({receivedUsd:null,disbursedUsd:null}),'↓— · ↑—')
+ assert.equal(cashFlowLabel({financialAmount:5e9}),'↓— · ↑—')
 })
