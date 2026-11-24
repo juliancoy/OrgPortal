@@ -149,3 +149,32 @@ transactions: 565,053 graph records, 74,161 assets, and a largest asset of
 12,435,851 bytes. It completed with about 3.3 GB resident memory. Its artifacts
 are private test output, not a current production snapshot; release still requires
 a fresh remote export after the complete import reconciles.
+
+## Production reconciliation, 2026-11-23
+
+The completed production import reconciled **434,193 unique transactions** from
+eight official source files against the reviewed source digest
+`afcd95d1039383a4205e5dbf9865b164629f0c30278aab99e2d822e92afc726a`.
+The private remote verification receipt was recorded at 21:50:06 UTC.
+
+| Federal fiscal year | Transactions | Signed obligation total, cents |
+| --- | ---: | ---: |
+| FY2025 | 246,690 | 12,358,270,402,649 |
+| FY2026 | 187,503 | 9,797,890,508,985 |
+
+These are reported obligations and signed adjustments, not cash receipts or
+balances. They do not fill a received-USD label merely because an award exists.
+The verified full remote export generated snapshot `6fa7c882645e97f852accdb4`
+with 554,922 native records, including all 434,193 federal records, and 565,053
+graph records across 43,338 organizations. Its local public query endpoint was
+verified against this version; production frontend publication is verified below.
+
+Publication on OrgPortal was verified at **2026-11-24 00:03:18 UTC** (November 23 in
+Maryland). Frontend commit `19fe62f4d963607d6ceb9d6fc359c867c60d93fc`, version
+`d530cd5c-5c5e-45d9-b8eb-ed7e09a6b150`, serves the full snapshot on OrgPortal.
+API commit `ffc123d5ed2f4c6224b94ec0832a0979335acee0`, version
+`297af278-830b-4ff8-9b17-7e11c4f230ba`, serves the bounded larger-page export.
+Read-only production checks matched the built JavaScript checksum, verified HHS
+FY2025 and FY2026 evidence (24,455 and 13,677 records respectively), and traversed
+the Maryland map with two parent and child levels (6,012 connections). Native
+release checks also verified service identity, HTML, entry JavaScript and API proxy.

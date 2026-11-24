@@ -158,3 +158,24 @@ A production read check on 2026-11-23 retrieved the same 2,000 rows in 0.451 s
 with one larger page versus 1.566 s with four 500-row requests, with exact row
 and field equality. This is a single network sample, not a whole-build timing
 promise. The 554,922-row snapshot needs 278 native requests instead of 1,110.
+
+The complete pre-batching frontend build on 2026-11-23 took 1,472.23 seconds:
+752.33 seconds for remote export and query indexing, 360.58 seconds for Vite,
+and the remainder for staging and the dry-run upload preparation. The artifact
+contained 83,840 files (about 3.9 GB); Cloudflare requested 43,240 changed assets.
+Host samples during staging showed 73–78% I/O wait. These costs are separate
+from the measured HTTP paging improvement; that improvement is not a promise
+of a 3.5× faster complete release.
+
+The installed Wrangler 4.131.0 upload implementation also uses a linear
+`manifestLookup.find(...)` for each requested file hash when constructing upload
+buckets. At this artifact size, a hash index would avoid repeated full manifest
+scans. No vendor code or ongoing upload was modified for this observation.
+
+The first frontend asset-upload session returned 401 Unauthorized after about an
+hour; it was stopped after 39,485 completed assets. Re-running only the native
+`deploy --target web` command reused the same clean built artifact and completed
+3,870 remaining/re-requested assets in a fresh upload session. It did not repeat
+the import, export, validation suites or build. Publication and public data checks passed on
+2026-11-24 at 00:03 UTC. Retain the matching `.release/site` and `.release/web.json`
+when recovering interrupted uploads; changed application code requires a matching build.
