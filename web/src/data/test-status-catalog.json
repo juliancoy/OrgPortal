@@ -2901,6 +2901,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-statement-graph-test-mjs",
+      "label": "web/scripts/statement-graph.test.mjs",
+      "category": "Ecosystem and data",
+      "source": "web/scripts/statement-graph.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "statement-graph.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-android-session-persistence-mjs",
       "label": "web/scripts/test-android-session-persistence.mjs",
       "category": "Identity and access",
@@ -3363,6 +3377,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-inspector-py",
+      "label": "web/scripts/test-local-organization-inspector.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-inspector.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-inspector.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-label-sharpness-py",
       "label": "web/scripts/test-local-organization-label-sharpness.py",
       "category": "Organizations and membership",
@@ -3545,6 +3573,34 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-node-search-py",
+      "label": "web/scripts/test-local-organization-node-search.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-node-search.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-node-search.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-obligations-py",
+      "label": "web/scripts/test-local-organization-obligations.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-obligations.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-obligations.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-page-statistics-py",
       "label": "web/scripts/test-local-organization-page-statistics.py",
       "category": "Organizations and membership",
@@ -3611,6 +3667,20 @@
         {
           "id": "suite",
           "label": "test-local-organization-sphere-titles.py"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-scripts-test-local-organization-statements-py",
+      "label": "web/scripts/test-local-organization-statements.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-statements.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-statements.py"
         }
       ]
     },
@@ -5389,6 +5459,20 @@
         {
           "id": "suite",
           "label": "organizationEvidenceImport.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-ui-components-organizationEvidenceLabel-test-ts",
+      "label": "web/src/ui/components/organizationEvidenceLabel.test.ts",
+      "category": "Organizations and membership",
+      "source": "web/src/ui/components/organizationEvidenceLabel.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationEvidenceLabel.test.ts"
         }
       ]
     },
