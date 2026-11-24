@@ -67,6 +67,20 @@ def ein(value):
     digits=re.sub(r'[^0-9]','',str(value or ''))
     return digits.zfill(9) if 1<=len(digits)<=9 and int(digits)>0 else None
 
+def organization_identity(organizations,ein_id,name,filing=None):
+    """A filer's own return defines its legal name; grant labels remain evidence."""
+    normalized=ein(ein_id)
+    if not normalized:raise ValueError('A nonprofit identity requires an EIN')
+    id='nonprofit:'+normalized
+    node=organizations.setdefault(id,{'id':id,'name':name,'type':'Nonprofit organization','category':'general','website':'','relevance':'Identity documented in an IRS nonprofit filing.','proximity':None,'publicEmails':[],'sourceRows':[],'sourceCategory':'IRS Form 990','identifiers':{'ein':normalized}})
+    if filing:
+        if ein(filing['ein'])!=normalized:raise ValueError('Filer identity EIN mismatch')
+        prior=node.get('identityEvidence',{})
+        if (filing['periodEnd'],filing['filedAt']) >= (prior.get('periodEnd',''),prior.get('filedAt','')):
+            node['name']=filing['name']
+            node['identityEvidence']={key:filing[key] for key in ['id','ein','periodEnd','filedAt','sourceUrl','sourceSha256']}
+    return id
+
 def business_name(element,path):
     return ' '.join(filter(None,[text(element,path+'/BusinessNameLine1Txt'),text(element,path+'/BusinessNameLine2Txt')]))
 

@@ -10,6 +10,8 @@ import {isNotApplicableNode} from '../src/features/ecosystem/node-classes.js'
 import {compileFunding,companyKey,fundingSummary,fundingCsv} from '../src/features/ecosystem/fundingStatistics.ts'
 import {compareAttainment} from '../src/features/ecosystem/performance.ts'
 import {graphRelevance,spreadTransactionRows} from './graph-relevance.mjs'
+import {groupNodeSearchResults} from '../src/features/ecosystem/node-search-groups.js'
+import {matchOrganizationNames,organizationMatchCandidate} from '../../shared/organizationMatching.ts'
 
 export const PAGE_SIZE=25, MAX_PAGE=100, MAX_NODES=250, MAX_EDGES=1000
 export const normalize=value=>String(value??'').normalize('NFKC').toLowerCase().trim()
@@ -79,6 +81,17 @@ export async function queryEcosystem(read,section,params){
  if(!['relationships','events','organizations','nonprofits','performance','graph'].includes(section))return {status:404,body:{error:'Unknown ecosystem view'}}
  const graph=section==='graph',collection=graph?'organizations':section==='organizations'?'directory':section
  const index=await read(`${version}/${collection}/index.json`)
+ if(section==='organizations'&&params.get('match')==='fuzzy'){
+  const name=params.get('q')||'';if(name.length<3||name.length>128)throw Error('Matching requires a name between 3 and 128 characters');
+  const offset=integer(params,'offset',0,1e7),limit=integer(params,'limit',20,MAX_PAGE);if(!limit)throw Error('Invalid limit');
+  const candidates=index.rows.map((row,i)=>({row,i})).filter(({row})=>organizationMatchCandidate(name,row.search));
+  // Old snapshots are paged in bounded batches; expose truncation, never claim
+  // an exhaustive match if a broad name exceeds the review window.
+  const truncated=candidates.length>500,window=candidates.slice(0,500);
+  const nodes=window.every(({row})=>typeof row.name==='string')?window.map(({row})=>row):await readRows(read,version,collection,window.map(({i})=>i));
+  const ranked=nodes.map(({id,name:nodeName,type})=>({id,name:nodeName,type,match:matchOrganizationNames(name,nodeName)})).filter(n=>n.match.score>=60).sort((a,b)=>b.match.score-a.match.score||a.id.localeCompare(b.id));
+  return {body:{...meta,records:ranked.slice(offset,offset+limit),total:ranked.length,truncated,offset,nextOffset:offset+limit<ranked.length?offset+limit:null}};
+ }
  if(index.shards&&!graph){
   const offset=integer(params,'offset',0,1e7),limit=integer(params,'limit',50,MAX_PAGE);if(!limit)throw new Error('Invalid limit')
   const q=normalize(params.get('q'));if(q.length>128)throw new Error('Search is limited to 128 characters')
@@ -189,6 +202,14 @@ export async function queryEcosystem(read,section,params){
 
  }
  const offset=integer(params,'offset',0,1e7),limit=integer(params,'limit',50,MAX_PAGE);if(!limit)throw new Error('Invalid limit')
+ if(section==='organizations'&&params.get('group')==='name'){
+  // New snapshots carry compact names in the search index, so grouping never
+  // fetches full graph records or one request per matching organization.
+  // Older immutable snapshots remain readable during a frontend rollout.
+  const nodes=ids.every(i=>typeof index.rows[i].name==='string')?ids.map(i=>index.rows[i]):await readRows(read,version,collection,ids)
+  const groups=groupNodeSearchResults(nodes)
+  return {body:{...meta,groupedBy:'name',records:groups.slice(offset,offset+limit),total:groups.length,nodeTotal:ids.length,offset,nextOffset:offset+limit<groups.length?offset+limit:null}}
+ }
  const rows=await readRows(read,version,collection,ids.slice(offset,offset+limit))
  return {body:{...meta,...(section==='performance'?manifest.performance:{}),records:section==='organizations'?rows.map(({id,name,type})=>({id,name,type})):rows,total:ids.length,offset,nextOffset:offset+limit<ids.length?offset+limit:null}}
 }

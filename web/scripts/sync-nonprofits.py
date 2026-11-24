@@ -2,7 +2,7 @@
 """Refresh selected nonprofit evidence; no production organization writes."""
 import argparse,csv,io,json,sys,urllib.request,datetime,pathlib,os
 sys.path.insert(0,str(pathlib.Path(__file__).parent/'lib'))
-from irs_nonprofits import filing_xml,normalize_filing,ein,transactions_sql
+from irs_nonprofits import filing_xml,normalize_filing,ein,transactions_sql,organization_identity
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 # EINs verified through ProPublica's Maryland discovery results.
 TARGETS=['526036106','237180620','521951681','526037034','520591543','521420138']
@@ -15,10 +15,8 @@ def refresh(index_year,index_file=None):
         with urllib.request.urlopen(url,timeout=60) as response:
             rows=[r for r in csv.DictReader(io.TextIOWrapper(response,encoding='utf-8-sig')) if ein(r['EIN']) in TARGETS]
     organizations={};profiles=[];relationships=[];versions=[]
-    def organization(ein_id,name):
-        id='nonprofit:'+ein_id
-        if id not in organizations:organizations[id]={'id':id,'name':name,'type':'Nonprofit organization','category':'general','website':'','relevance':'Identity documented in an IRS nonprofit filing.','proximity':None,'publicEmails':[],'sourceRows':[],'sourceCategory':'IRS Form 990','identifiers':{'ein':ein_id}}
-        return id
+    def organization(ein_id,name,filing=None):
+        return organization_identity(organizations,ein_id,name,filing)
     for target in TARGETS:
         api_url=f'https://projects.propublica.org/nonprofits/api/v2/organizations/{int(target)}.json'
         with urllib.request.urlopen(api_url,timeout=30) as response:api=json.load(response)
@@ -35,7 +33,7 @@ def refresh(index_year,index_file=None):
             parsed.sort(key=lambda value:datetime.datetime.fromisoformat(value[0]['filedAt'].replace('Z','+00:00')))
         if len(parsed)>1 and datetime.datetime.fromisoformat(parsed[-1][0]['filedAt'].replace('Z','+00:00'))==datetime.datetime.fromisoformat(parsed[-2][0]['filedAt'].replace('Z','+00:00')):raise ValueError('Ambiguous filing versions require review')
         summary,grants=parsed[-1];versions.extend([{**s,'selected':s['id']==summary['id']} for s,_ in parsed])
-        source=organization(target,summary['name'])
+        source=organization(target,summary['name'],summary)
         profile={**summary,'organizationId':source,'city':api['organization'].get('city'),'state':api['organization'].get('state'),'nteeCode':api['organization'].get('ntee_code'),'propublicaUrl':f'https://projects.propublica.org/nonprofits/organizations/{int(target)}','apiSourceUrl':api_url,'apiLatestTaxPeriod':max((str(f.get('tax_prd','')) for f in api.get('filings_with_data',[])),default=None)}
         profiles.append(profile)
         for g in grants:

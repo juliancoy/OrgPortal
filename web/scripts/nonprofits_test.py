@@ -1,11 +1,23 @@
 import sys,pathlib,unittest,json
 sys.path.insert(0,str(pathlib.Path(__file__).parent/'lib'))
-from irs_nonprofits import normalize_filing,ein,transactions_sql
+from irs_nonprofits import normalize_filing,ein,transactions_sql,organization_identity
 
 def xml(form,schedule='',extra=''):
     return f'''<Return xmlns="http://www.irs.gov/efile"><ReturnHeader><ReturnTs>2025-11-01T00:00:00Z</ReturnTs><TaxPeriodBeginDt>2024-01-01</TaxPeriodBeginDt><TaxPeriodEndDt>2024-12-31</TaxPeriodEndDt><TaxYr>2024</TaxYr><ReturnTypeCd>{'990PF' if form.startswith('<IRS990PF>') else '990'}</ReturnTypeCd><Filer><EIN>012345678</EIN><BusinessName><BusinessNameLine1Txt>Example Foundation</BusinessNameLine1Txt></BusinessName></Filer></ReturnHeader><ReturnData>{form}{schedule}{extra}</ReturnData></Return>'''.encode()
 ROW={'EIN':'012345678','TAX_PERIOD':'202412','OBJECT_ID':'202500000000000001'}
 class NonprofitParsing(unittest.TestCase):
+    def test_filer_name_wins_over_grant_label_without_merging_related_eins(self):
+        nodes={}
+        hospital='012345678';university='098765432'
+        organization_identity(nodes,hospital,'Cancer center grant label')
+        summary,_=normalize_filing(xml('<IRS990/>'),ROW,'https://apps.irs.gov/archive.zip','2026-11-24')
+        organization_identity(nodes,hospital,summary['name'],summary)
+        organization_identity(nodes,hospital,'Another grant label')
+        organization_identity(nodes,university,summary['name'])
+        self.assertEqual(nodes['nonprofit:'+hospital]['name'],'Example Foundation')
+        self.assertEqual(nodes['nonprofit:'+hospital]['identityEvidence']['sourceSha256'],summary['sourceSha256'])
+        self.assertEqual(len(nodes),2)
+        with self.assertRaisesRegex(ValueError,'EIN mismatch'):organization_identity(nodes,university,summary['name'],summary)
     def test_foundation_period_finances_paid_future_and_no_personal_fields(self):
         form='''<IRS990PF><AmendedReturnInd>true</AmendedReturnInd><MethodOfAccountingAccrualInd>true</MethodOfAccountingAccrualInd><AnalysisOfRevenueAndExpenses><TotalRevAndExpnssAmt>1000</TotalRevAndExpnssAmt></AnalysisOfRevenueAndExpenses><SupplementaryInformationGrp><GrantOrContributionPdDurYrGrp><RecipientBusinessName><BusinessNameLine1Txt>Example Recipient</BusinessNameLine1Txt></RecipientBusinessName><Amt>100</Amt><RecipientPersonNm>Do not publish</RecipientPersonNm></GrantOrContributionPdDurYrGrp><GrantOrContriApprvForFutGrp><RecipientBusinessName><BusinessNameLine1Txt>Future Recipient</BusinessNameLine1Txt></RecipientBusinessName><Amt>50</Amt></GrantOrContriApprvForFutGrp><TotalGrantOrContriPdDurYrAmt>100</TotalGrantOrContriPdDurYrAmt><TotalGrantOrContriApprvFutAmt>50</TotalGrantOrContriApprvFutAmt></SupplementaryInformationGrp></IRS990PF>'''
         summary,grants=normalize_filing(xml(form),ROW,'https://apps.irs.gov/archive.zip','2026-10-14')

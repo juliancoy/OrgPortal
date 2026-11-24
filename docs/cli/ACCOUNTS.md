@@ -45,7 +45,25 @@ selection. It does not sign out or revoke the previously selected account.
 `auth logout` revokes only the selected grant, then removes its local name and
 selection; a failed revocation retains the saved grant for recovery.
 
-Refresh credentials stay in the existing OS keyring. Only connection labels,
+Refresh credentials and the current short-lived access token with its expiry
+stay in the existing OS keyring. Restarting the CLI reuses that access token
+until 30 seconds before expiry, avoiding an unnecessary refresh on every command.
+Expired access tokens are ignored and replaced at the next successful renewal;
+logout clears both tokens after revoking the grant. These credentials must not
+be exported to working copies, public snapshots, logs or source control. OS
+keyring backups remain subject to server expiry and revocation; restoring a
+consumed refresh token does not restore access.
+
+Renewal allows up to two minutes for the complete response on slow connections.
+Concurrent callers share one renewal. A temporary keyring-write failure can be
+retried in the same process without repeating a completed token exchange. A
+timeout after sending still has an uncertain outcome: the current PIdP protocol
+does not support recovering a lost replacement token. The CLI requires sign-in
+in that case instead of replaying a one-use token. This change reduces avoidable
+reconnections; it does not guarantee recovery from every network interruption.
+Live server revocation and organization permission checks remain required.
+
+Only connection labels,
 resource and issuer URLs, and local selections are stored in the private
 `~/.orgportal-connections/connections.json` file. No account profiles, access
 tokens, refresh tokens or client credentials belong in that file. Logout removes

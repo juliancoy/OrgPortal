@@ -1,0 +1,456 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-11-24T01:22:14.349068+00:00",
+  "sourceSnapshot": "6fa7c882645e97f852accdb4",
+  "sourceSearchSha256": "c94606d436c64a36e9adee138257014dce0bd8116d33ef9263a6858417b17fb3",
+  "status": "applied and read back from production API",
+  "policy": "Group aliases of the same filed entity. Different EINs remain distinct even with shared names or a group exemption. Retain original labels and evidence. University schools are units; APL and Peabody retain distinct legal/source identities.",
+  "supplementalSources": [
+    "https://jhura.jhu.edu/proposaldevelopment/goldenrod/",
+    "https://www.jhu.edu/schools/"
+  ],
+  "entities": [
+    {
+      "key": "university",
+      "organizationId": "org-johns-hopkins-university",
+      "name": "Johns Hopkins University",
+      "ein": "520595110",
+      "website": "https://www.jhu.edu/",
+      "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/520595110/202611359349312681/full",
+      "description": "Maryland nonprofit educational corporation, EIN 52-0595110. The university is a separate legal entity from The Johns Hopkins Hospital (EIN 52-0591656) and Johns Hopkins Health System Corporation (EIN 52-1465301). Its FY2025 Form 990 Schedule R identifies Johns Hopkins Applied Physics Laboratory LLC (EIN 52-0595111) as a disregarded entity controlled by the university; APL retains a separate source grouping. Source: https://projects.propublica.org/nonprofits/organizations/520595110/202611359349312681/full",
+      "members": [
+        {
+          "id": "source-label:nonprofit_grant:recipient:bb3b3b6ec21f13354f39b07c1affc975",
+          "name": "BERMAN INSTITUTE OF BIOETHICS OF THE JOHNS HOPKINS UNIVERSITY"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:26aa74c87114e45e2391a61dd6b47fc4",
+          "name": "Board of Trustees of Johns Hopkins University"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:138dd0c02be13a203eeb8d2affa112d8",
+          "name": "Board of Trustees of the Johns Hopkins University"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:a3a2004b6fc3417bd5ba43e5570a672c",
+          "name": "JOHN HOPKINS UNIVERSITY"
+        },
+        {
+          "id": "usgov:recipient:C1UWDMHWXKP8",
+          "name": "JOHNS HOPKINS CAREY BUSINESS SCHOOL"
+        },
+        {
+          "id": "source-label:nonprofit_grant:recipient:a4e88e0a121ed92ede584d29ee36b1a0",
+          "name": "JOHNS HOPKINS SCHOOL OF NURSING"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:ccdeb7b2959ec1c7d2ff33505d2ea090",
+          "name": "Johns Hopkins University"
+        },
+        {
+          "id": "source-label:nonprofit_grant:recipient:ccdeb7b2959ec1c7d2ff33505d2ea090",
+          "name": "Johns Hopkins University"
+        },
+        {
+          "id": "nonprofit:520595110",
+          "name": "JOHNS HOPKINS UNIVERSITY"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:558189f677c575be44e04f1013b5ecad",
+          "name": "JOHNS HOPKINS UNIVERSITY"
+        },
+        {
+          "id": "source-label:nonprofit_grant:recipient:558189f677c575be44e04f1013b5ecad",
+          "name": "JOHNS HOPKINS UNIVERSITY"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:b87621db1a802bc30c69c5d6b6ed38ac",
+          "name": "Johns Hopkins University Bloomberg School of Public Health"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:98bbd4d1efbe7497635160d677484001",
+          "name": "JOHNS HOPKINS UNIVERSITY C/O BANK OF AMERICA"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:d8dbafdd1d58c0d9c7abcea282ab70e6",
+          "name": "JOHNS HOPKINS UNIVERSITY CENTRAL LOCKBOX"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:61dd49242775c80f94e0cab862ed9985",
+          "name": "JOHNS HOPKINS UNIVERSITY SAIS"
+        },
+        {
+          "id": "source-label:nonprofit_grant:recipient:f9b472247933a621796446258210b66c",
+          "name": "JOHNS HOPKINS UNIVERSITY SCHOOL OF EDUCATION"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:5d78dd434c8d437672580a8b6dc4dee2",
+          "name": "JOHNS HOPKINS UNIVERSITY SCHOOL OF NURSING"
+        },
+        {
+          "id": "source-label:nonprofit_grant:recipient:d6d289b2fd529ae8f2f61190f86a7d9e",
+          "name": "JOHNS HOPKINS UNIVERSITY WHITING SCHOOL OF ENGINEERING"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:c282d0635bdaff3e7eb4c4eca21b0406",
+          "name": "Johns Hopkins University, Office of Government and Community Affairs"
+        },
+        {
+          "id": "usgov:recipient:RK5HD4Y72HD7",
+          "name": "JOHNS HOPKINS UNIVERSITY, THE"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:2b551450a5e619ffff7da7fd76286361",
+          "name": "The Johns Hopkins University"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:cedcbbc7059a4b6bdc8726da94e48748",
+          "name": "THE JOHNS HOPKINS UNIVERSITY"
+        },
+        {
+          "id": "usgov:recipient:FTMTDMBR29C7",
+          "name": "THE JOHNS HOPKINS UNIVERSITY"
+        }
+      ],
+      "tags": [
+        "nonprofit",
+        "EIN:520595110",
+        "university"
+      ],
+      "slug": "johns-hopkins-university"
+    },
+    {
+      "key": "hospital",
+      "name": "The Johns Hopkins Hospital",
+      "ein": "520591656",
+      "website": "https://www.hopkinsmedicine.org/the-johns-hopkins-hospital",
+      "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/520591656/202641349349308029/full",
+      "description": "Nonprofit hospital, EIN 52-0591656, filing its own Form 990. Its FY2025 return and the health system Schedule R identify it separately from Johns Hopkins University (EIN 52-0595110), under Johns Hopkins Health System Corporation (EIN 52-1465301). Source records carrying the hospital EIN remain hospital records even when a grantor uses a cancer-center label. Source: https://projects.propublica.org/nonprofits/organizations/520591656/202641349349308029/full",
+      "members": [
+        {
+          "id": "source-label:maryland_comptroller:recipient:89106ce478a6f35212df7a6941637281",
+          "name": "Board of Trustees of the Johns Hopkins Hospital"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:f84717793ef5352796b7e8b126c7bb95",
+          "name": "JOHNS HOPKINS HOSPITAL"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:9b19172dd43a14e9107183c3776ced72",
+          "name": "THE JOHNS HOPKINS HOSPITAL"
+        },
+        {
+          "id": "source-label:nonprofit_grant:recipient:9b19172dd43a14e9107183c3776ced72",
+          "name": "THE JOHNS HOPKINS HOSPITAL"
+        },
+        {
+          "id": "usgov:recipient:KGSAVNB1JEK3",
+          "name": "THE JOHNS HOPKINS HOSPITAL"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:3c2d5be2a6f817fa950261a5d4a1bc16",
+          "name": "THE JOHNS HOPKINS HOSPITAL INC"
+        },
+        {
+          "id": "nonprofit:520591656",
+          "name": "THE JOHNS HOPKINS SIDNEY KIMMEL COMPREHENSIVE CANCER CENTER"
+        }
+      ],
+      "tags": [
+        "nonprofit",
+        "EIN:520591656",
+        "healthcare"
+      ],
+      "organizationId": "registry-9c4d09ac-0939-473e-990e-20ea7cabdcad",
+      "slug": "the-johns-hopkins-hospital-a4471ed8eb88"
+    },
+    {
+      "key": "health-system",
+      "name": "Johns Hopkins Health System Corporation",
+      "ein": "521465301",
+      "website": "https://www.hopkinsmedicine.org/about/johns-hopkins-health-system",
+      "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/521465301/202601349349303215/full",
+      "description": "Nonprofit supporting organization, EIN 52-1465301, filing its own Form 990. FY2025 Schedule R lists The Johns Hopkins Hospital (EIN 52-0591656) and Johns Hopkins Bayview Medical Center Inc (EIN 52-1341890) as separately identified controlled tax-exempt organizations. Each retains its own source grouping and financial evidence. Source: https://projects.propublica.org/nonprofits/organizations/521465301/202601349349303215/full",
+      "members": [
+        {
+          "id": "usgov:recipient:CJJKBJKFAHM9",
+          "name": "THE JOHNS HOPKINS HEALTH SYSTEM CORPORATION"
+        }
+      ],
+      "tags": [
+        "nonprofit",
+        "EIN:521465301",
+        "healthcare"
+      ],
+      "organizationId": "registry-f53e1ea1-fa9f-4563-9e33-811b7ee4fa80",
+      "slug": "johns-hopkins-health-system-corporation-9789038488d3"
+    },
+    {
+      "key": "bayview",
+      "name": "Johns Hopkins Bayview Medical Center Inc",
+      "ein": "521341890",
+      "website": "https://www.hopkinsmedicine.org/johns-hopkins-bayview",
+      "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/521341890/202601359349301130/full",
+      "description": "Nonprofit hospital, EIN 52-1341890, filing its own Form 990. A separate legal entity from The Johns Hopkins Hospital and Johns Hopkins University. FY2025 Schedule R identifies Johns Hopkins Health System Corporation (EIN 52-1465301) as its direct controlling entity. Source: https://projects.propublica.org/nonprofits/organizations/521341890/202601359349301130/full",
+      "members": [
+        {
+          "id": "source-label:maryland_comptroller:recipient:4a3db72b1d2ac5768619315c56123a6e",
+          "name": "Board of Trustees of Johns Hopkins Bayview Medical Center, Inc."
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:060e0195e9a1dd615b5c670a05f2654d",
+          "name": "JOHNS HOPKINS BAYVIEW"
+        },
+        {
+          "id": "nonprofit:521341890",
+          "name": "JOHNS HOPKINS BAYVIEW MEDICAL CENTER"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:cbffb0fa9e9ea05362ffd9f0f76e5930",
+          "name": "JOHNS HOPKINS BAYVIEW MEDICAL CENTER"
+        },
+        {
+          "id": "source-label:nonprofit_grant:recipient:cbffb0fa9e9ea05362ffd9f0f76e5930",
+          "name": "JOHNS HOPKINS BAYVIEW MEDICAL CENTER"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:79cbfe8774b7ee692bf7d6e2904885ac",
+          "name": "JOHNS HOPKINS BAYVIEW MEDICAL CENTER INC"
+        },
+        {
+          "id": "usgov:recipient:VAHXFBLGVHE1",
+          "name": "JOHNS HOPKINS BAYVIEW MEDICAL CENTER, INC."
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:77c35e18b818c98a9c1ed3e90c4e1feb",
+          "name": "The Johns Hopkins Bayview Medical Center, Inc."
+        }
+      ],
+      "tags": [
+        "nonprofit",
+        "EIN:521341890",
+        "healthcare"
+      ],
+      "organizationId": "registry-a55f67fe-f0bb-4af0-aed7-c93b44075b5c",
+      "slug": "johns-hopkins-bayview-medical-center-inc-6ce4ae9b4b5d"
+    },
+    {
+      "key": "apl",
+      "organizationId": "federal-portal:federal-recipient-jhu-apl",
+      "name": "Johns Hopkins University Applied Physics Laboratory",
+      "ein": "520595111",
+      "website": "https://www.jhuapl.edu/",
+      "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/520595110/202611359349312681/full",
+      "description": "Johns Hopkins Applied Physics Laboratory LLC, EIN 52-0595111. Listed in the university FY2025 Form 990 Schedule R Part I as a disregarded entity directly controlled by Johns Hopkins University (EIN 52-0595110). APL retains its own recipient/source grouping; affiliation does not establish a payment. Source: https://projects.propublica.org/nonprofits/organizations/520595110/202611359349312681/full",
+      "members": [
+        {
+          "id": "usgov:recipient:C1HBCJ9RMBV3",
+          "name": "THE JOHNS HOPKINS UNIVERSITY APPLIED PHYSICS LABORATORY LLC"
+        },
+        {
+          "id": "source-label:maryland_comptroller:recipient:6f7b6c9414f79373a1ed1e04e8ccee19",
+          "name": "THE JOHNS HOPKINS UNIV APPLIED PHYSICS LAB"
+        }
+      ],
+      "tags": [
+        "nonprofit",
+        "EIN:520595111",
+        "research"
+      ],
+      "slug": "johns-hopkins-university-applied-physics-laboratory"
+    }
+  ],
+  "relationships": [
+    {
+      "parent": "university",
+      "child": "apl",
+      "kind": "disregarded_entity",
+      "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/520595110/202611359349312681/full",
+      "asOf": "2025-06-30"
+    },
+    {
+      "parent": "health-system",
+      "child": "hospital",
+      "kind": "controlled_tax_exempt_entity",
+      "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/521465301/202601349349303215/full",
+      "asOf": "2025-06-30"
+    },
+    {
+      "parent": "health-system",
+      "child": "bayview",
+      "kind": "controlled_tax_exempt_entity",
+      "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/521465301/202601349349303215/full",
+      "asOf": "2025-06-30"
+    }
+  ],
+  "unassigned": [
+    {
+      "id": "source-label:maryland_comptroller:recipient:94985ae833fe12575c2fba97ac697394",
+      "name": "Board of Directors of The Johns Hopkins House, Inc.",
+      "type": "Source label"
+    },
+    {
+      "id": "org-fastforward-johns-hopkins-technology-ventures",
+      "name": "FastForward / Johns Hopkins Technology Ventures",
+      "type": "University commercialization / incubator"
+    },
+    {
+      "id": "source-label:nonprofit_grant:recipient:6bb4556f29cb2358c70babd02c16f421",
+      "name": "HENDERSON HOPKINS SCHOOL",
+      "type": "Source label"
+    },
+    {
+      "id": "org-hexcite-johns-hopkins-technology-ventures",
+      "name": "Hexcite — Johns Hopkins Technology Ventures",
+      "type": "Digital-health venture program"
+    },
+    {
+      "id": "source-label:maryland_comptroller:recipient:cf3112a4ac1e7f3a4bba67228ed3e920",
+      "name": "HOPKINS ELDERPLUS",
+      "type": "Source label"
+    },
+    {
+      "id": "source-label:nonprofit_grant:recipient:cbaf0592372077c6881e0d4ca53ccb3c",
+      "name": "JOHN HOPKINS HOSPITAL HACKERMAN-PATZ PATIENT AND FAMILY PAVILLION",
+      "type": "Source label"
+    },
+    {
+      "id": "source-label:maryland_comptroller:recipient:4994d7d3b012f0fa0b18ea9e87728479",
+      "name": "JOHN HOPKINS UNIV - PEABODY INST FUND",
+      "type": "Source label"
+    },
+    {
+      "id": "source-label:maryland_comptroller:recipient:a953f0ee8c01585dae71bd361bde0f46",
+      "name": "JOHNS HOPKINS ADULT LEVEL I",
+      "type": "Source label"
+    },
+    {
+      "id": "federal-portal:federal-recipient-jhu-cersi",
+      "name": "Johns Hopkins CERSI",
+      "type": "Organization"
+    },
+    {
+      "id": "federal-recipient-jhu-cersi",
+      "name": "Johns Hopkins CERSI",
+      "type": "Research institution or ecosystem organization"
+    },
+    {
+      "id": "source-label:nonprofit_grant:recipient:2ef9f5595ab14fc51de32e6f754d5925",
+      "name": "JOHNS HOPKINS CHILDREN'S CENTER",
+      "type": "Source label"
+    },
+    {
+      "id": "source-label:maryland_comptroller:recipient:33a325d132b3fa2b99fa53b97a44724d",
+      "name": "JOHNS HOPKINS COMMUNITY PHYSICIANS INC",
+      "type": "Source label"
+    },
+    {
+      "id": "usgov:recipient:JC4KQ6JE1HY1",
+      "name": "JOHNS HOPKINS COMMUNITY PHYSICIANS, INC.",
+      "type": "Grant recipient"
+    },
+    {
+      "id": "52fcbab8-a3e2-4b82-85fd-98b3374c4b04",
+      "name": "Johns Hopkins Data Science and AI Institute",
+      "type": "Organization"
+    },
+    {
+      "id": "source-label:maryland_comptroller:recipient:f2bb3c1cf42b3111d5ac59414b5b942f",
+      "name": "JOHNS HOPKINS GERIATRIC CENTER",
+      "type": "Source label"
+    },
+    {
+      "id": "source-label:nonprofit_grant:recipient:50eac9b9c7652d63ca4e7dd51077e9a9",
+      "name": "JOHNS HOPKINS HOME CARE GROUP INC",
+      "type": "Source label"
+    },
+    {
+      "id": "source-label:maryland_comptroller:recipient:1be97b069ce30138e4ac9ba0eca470ae",
+      "name": "JOHNS HOPKINS HOSPITAL EXECUTIVE OFFICES",
+      "type": "Source label"
+    },
+    {
+      "id": "source-label:maryland_comptroller:recipient:a3930fcf2d8dc77f8cbc56a1d1c7a9f8",
+      "name": "JOHNS HOPKINS HOSPITAL HEALTH SYSTEM",
+      "type": "Source label"
+    },
+    {
+      "id": "source-label:maryland_comptroller:recipient:711e31c31a8e0de913ebdca0782a5b33",
+      "name": "JOHNS HOPKINS HOSPITAL PHARMACY",
+      "type": "Source label"
+    },
+    {
+      "id": "compass-program:3342",
+      "name": "Johns Hopkins Live Near Your Work Program",
+      "type": "Organization"
+    },
+    {
+      "id": "source-label:maryland_comptroller:recipient:329501e66781a264b8fad7330cdee545",
+      "name": "JOHNS HOPKINS OUTPATIENT PHARMACY AT WEINBERG",
+      "type": "Source label"
+    },
+    {
+      "id": "source-label:maryland_comptroller:recipient:598c431eef9e60fd30be2ed72b156396",
+      "name": "JOHNS HOPKINS PEDIATRIC TRAUMA",
+      "type": "Source label"
+    },
+    {
+      "id": "source-label:organization_support:recipient:d566299137439e0e218b59b2fb28f961",
+      "name": "Johns Hopkins research initiatives",
+      "type": "Source label"
+    },
+    {
+      "id": "org-johns-hopkins-technology-ventures",
+      "name": "Johns Hopkins Technology Ventures",
+      "type": "Funding-network organization"
+    },
+    {
+      "id": "federal-recipient-jhu-apl",
+      "name": "Johns Hopkins University Applied Physics Laboratory",
+      "type": "Research institution or ecosystem organization"
+    },
+    {
+      "id": "source-label:maryland_comptroller:recipient:6674f638cc1cae23e185ac91d3fd388c",
+      "name": "JOHNS HOPKINS WILMER",
+      "type": "Source label"
+    },
+    {
+      "id": "696fbd32-b492-4a46-9e90-82d4972af234",
+      "name": "Makerspace at Johns Hopkins Events",
+      "type": "Organization"
+    },
+    {
+      "id": "source-label:nonprofit_grant:recipient:501f15b3ff44b010ac7a3a9f66837dd4",
+      "name": "THE FUND FOR JOHNS HOPKINS MEDICINE",
+      "type": "Source label"
+    },
+    {
+      "id": "usgov:recipient:RZLCPNEEJDC5",
+      "name": "THE JOHNS HOPKINS MEDICAL SERVICES CORPORATION",
+      "type": "Organization"
+    },
+    {
+      "id": "source-label:nonprofit_grant:recipient:370b434d603892b1bc107274e31f5275",
+      "name": "THE JOHNS HOPKINS SIDNEY KIMMEL COMPREHENSIVE CANCER CENTER",
+      "type": "Source label"
+    },
+    {
+      "id": "nonprofit:520591627",
+      "name": "THE PEABODY INSTITUTE OF THE JOHNS HOPKINS UNIVERSITY",
+      "type": "Nonprofit organization"
+    },
+    {
+      "id": "source-label:nonprofit_grant:recipient:24d896cfc1abe233bedd191453798b5b",
+      "name": "THE PEABODY INSTITUTE OF THE JOHNS HOPKINS UNIVERSITY",
+      "type": "Source label"
+    }
+  ],
+  "unassignedReason": "Retained as independent entities, separate native program pages, unrelated names, or ambiguous source labels requiring additional formation evidence. A shared Hopkins name is insufficient.",
+  "omittedUnrelatedSearchResults": 10,
+  "verifiedAt": "2026-11-24T01:41:43.833335+00:00",
+  "verification": {
+    "distinctSourceNodes": 41,
+    "crossGroupOverlaps": 0,
+    "sourceRecordsPreserved": true
+  }
+}

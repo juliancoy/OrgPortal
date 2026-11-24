@@ -13,18 +13,29 @@ function memoryStore() {
   return { async save(value: any) { record = structuredClone(value); }, async load() { return structuredClone(record); } };
 }
 
-test('persistent close retains only refresh credentials and restart rotates them once', async () => {
+test('restart reuses unexpired keyring access token; expiry rotates once for concurrent callers', async () => {
   const store = memoryStore();
   const first = await tokenConnection({ ...base, token, store });
   await first.close();
-  assert.deepEqual(await store.load(), { clientId: 'client', refreshToken: 'refresh', pending: false });
+  const saved = await store.load();
+  assert.equal(saved.accessToken, 'access');
+  assert.equal(saved.refreshToken, 'refresh');
+  assert.equal(saved.pending, false);
+  assert.ok(saved.expiresAt > Date.now());
   let calls = 0;
-  const second = await tokenConnection({ ...base, store, saved: await store.load(), requestJson: async (_url: string, init: any) => {
+  const requestJson = async (_url: string, init: any) => {
     calls++;
     assert.equal((await store.load()).pending, true);
+    assert.equal((await store.load()).accessToken, undefined);
     assert.equal(init.body.get('refresh_token'), 'refresh');
+    assert.equal(init.timeoutMs, 120000);
     return { ...token, refresh_token: 'rotated' };
-  } });
+  };
+  const resumed = await tokenConnection({ ...base, store, saved, requestJson });
+  assert.equal(await resumed.accessToken(), 'access');
+  assert.equal(calls, 0);
+  await resumed.close();
+  const second = await tokenConnection({ ...base, store, saved: { ...saved, expiresAt: Date.now() + 20000 }, requestJson });
   assert.deepEqual(await Promise.all([second.accessToken(), second.accessToken()]), ['access', 'access']);
   assert.equal(calls, 1);
   assert.equal((await store.load()).refreshToken, 'rotated');
@@ -70,6 +81,49 @@ test('failed keyring write prevents refresh request', async () => {
   assert.equal(calls, 0);
 });
 
+test('temporary keyring failure before sending can recover without reconnecting', async () => {
+  let locked = true, calls = 0;
+  const connection = await tokenConnection({ ...base, saved: { refreshToken: 'refresh' },
+    store: { save: async () => { if (locked) throw new Error('keyring unavailable'); } },
+    requestJson: async () => { calls++; return token; } });
+  await assert.rejects(connection.accessToken(), /keyring/);
+  locked = false;
+  assert.equal(await connection.accessToken(), 'access');
+  assert.equal(calls, 1);
+});
+
+test('received refresh replacement survives temporary save failure without replaying the exchange', async () => {
+  const memory = memoryStore();
+  let locked = true, calls = 0;
+  const store = { save: async (value: any) => {
+    if (value.refreshToken === 'replacement' && locked) throw new Error('keyring unavailable');
+    await memory.save(value);
+  } };
+  const connection = await tokenConnection({ ...base, saved: { refreshToken: 'refresh' }, store,
+    requestJson: async () => { calls++; return { ...token, refresh_token: 'replacement' }; } });
+  await assert.rejects(connection.accessToken(), /keyring/);
+  assert.equal((await memory.load()).pending, true);
+  locked = false;
+  assert.deepEqual(await Promise.all([connection.accessToken(), connection.accessToken()]), ['access', 'access']);
+  assert.equal(calls, 1);
+  assert.equal((await memory.load()).refreshToken, 'replacement');
+  assert.equal((await memory.load()).pending, false);
+});
+
+test('ambiguous refresh blocks even a cached access token; legacy records still renew', async () => {
+  let calls = 0;
+  const requestJson = async () => { calls++; return token; };
+  const pending = await tokenConnection({ ...base, saved: { refreshToken: 'refresh',
+    accessToken: 'cached', expiresAt: Date.now() + 300000, pending: true }, requestJson });
+  await assert.rejects(pending.accessToken(), /uncertain/);
+  assert.equal(calls, 0);
+  for (const saved of [{ refreshToken: 'refresh' }, { refreshToken: 'refresh', accessToken: 'cached' }]) {
+    const connection = await tokenConnection({ ...base, saved, store: memoryStore(), requestJson });
+    assert.equal(await connection.accessToken(), 'access');
+  }
+  assert.equal(calls, 2);
+});
+
 test('credential namespace includes issuer and exact resource', () => {
   assert.notEqual(connectionKey('https://portal.example/mcp', 'https://id.example'), connectionKey('https://portal.example/other', 'https://id.example'));
   assert.notEqual(connectionKey('https://portal.example/mcp', 'https://id.example'), connectionKey('https://portal.example/mcp', 'https://other.example'));
@@ -107,11 +161,11 @@ test('dynamic registration and consent happen once; later process reuses saved a
     const second = await browserLogin(base.resource, 'https://id.example', undefined, false, { store });
     assert.equal(await second.accessToken(), 'access');
     await second.close();
-    assert.deepEqual([registrations, consents, refreshes], [1, 1, 1]);
+    assert.deepEqual([registrations, consents, refreshes], [1, 1, 0]);
     const replacement = await browserLogin(base.resource, 'https://id.example', undefined, false, { store, reauthorize: true });
     assert.equal(await replacement.accessToken(), 'access');
     await callback!; await replacement.close();
-    assert.deepEqual([registrations, consents, refreshes], [1, 2, 1]);
+    assert.deepEqual([registrations, consents, refreshes], [1, 2, 0]);
   } finally { globalThis.fetch = originalFetch; console.log = originalLog; }
 });
 

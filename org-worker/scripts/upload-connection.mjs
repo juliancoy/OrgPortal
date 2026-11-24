@@ -31,6 +31,8 @@ export async function credentialStore(resource, issuer, connection = process.env
           const record = value ? JSON.parse(value) : null;
           if (record && (typeof record.clientId !== 'string' || !record.clientId
               || (record.refreshToken !== undefined && typeof record.refreshToken !== 'string')
+              || (record.accessToken !== undefined && typeof record.accessToken !== 'string')
+              || (record.expiresAt !== undefined && (!Number.isFinite(record.expiresAt) || record.expiresAt < 0))
               || (record.pending !== undefined && typeof record.pending !== 'boolean'))) throw new Error();
           return record;
         } catch { throw new Error('Cannot read the saved connection. Check your OS keyring; no plaintext fallback is used.'); }
@@ -48,10 +50,20 @@ export async function credentialStore(resource, issuer, connection = process.env
 }
 
 export async function tokenConnection({ resource, clientId, metadata, token, store, saved, requestJson }) {
-  let expiresAt = 0;
+  const initialToken = token;
+  let expiresAt = saved?.expiresAt || 0;
   let refreshToken = saved?.refreshToken;
   let pending = saved?.pending || false;
-  const save = async () => store?.save({ clientId, refreshToken, pending });
+  let unsaved = false;
+  if (!token && saved?.accessToken) token = { access_token: saved.accessToken };
+  const save = async () => store?.save({ clientId, refreshToken, pending,
+    ...(!pending && token?.access_token && expiresAt ? { accessToken: token.access_token, expiresAt } : {}) });
+  const persistAccepted = async () => {
+    // Retry only the local write, never the one-use network exchange. Retain
+    // the received replacement in memory if the keyring is temporarily locked.
+    try { await save(); unsaved = false; }
+    catch (error) { unsaved = true; throw error; }
+  };
   const accept = async value => {
     if (!value || typeof value.access_token !== 'string' || !value.access_token
         || typeof value.refresh_token !== 'string' || !value.refresh_token
@@ -60,9 +72,9 @@ export async function tokenConnection({ resource, clientId, metadata, token, sto
     refreshToken = value.refresh_token;
     expiresAt = Date.now() + value.expires_in * 1000;
     pending = false;
-    try { await save(); } catch (error) { pending = true; throw error; }
+    await persistAccepted();
   };
-  if (token) {
+  if (initialToken) {
     try { await accept(token); }
     catch (error) {
       if (typeof token?.refresh_token === 'string' && token.refresh_token) {
@@ -81,12 +93,17 @@ export async function tokenConnection({ resource, clientId, metadata, token, sto
     async accessToken() {
       if (refreshing) return refreshing;
       if (pending) throw new Error('Previous refresh outcome is uncertain. Disconnect and sign in again; the old refresh token will not be replayed.');
-      if (Date.now() < expiresAt - 30000) return token.access_token;
       refreshing = (async () => {
+        if (unsaved) await persistAccepted();
+        if (token?.access_token && Date.now() < expiresAt - 30000) return token.access_token;
         // Persist intent before a one-use refresh. A crash cannot replay the token.
         pending = true;
-        await save();
-        const value = await requestJson(metadata.token_endpoint, { method: 'POST', body: new URLSearchParams({
+        try { await save(); } catch (error) {
+          // Nothing was sent: retrying the local intent write is safe.
+          pending = false;
+          throw error;
+        }
+        const value = await requestJson(metadata.token_endpoint, { method: 'POST', timeoutMs: 120000, body: new URLSearchParams({
           grant_type: 'refresh_token', client_id: clientId, refresh_token: refreshToken, resource }) });
         await accept(value);
         return token.access_token;
@@ -100,7 +117,7 @@ export async function tokenConnection({ resource, clientId, metadata, token, sto
         if (!response.ok) throw new Error('Disconnect failed; saved credentials retained. Revoke the connection in PIdP.');
       }
       await store?.save({ clientId });
-      token = null; refreshToken = null; expiresAt = 0; pending = true;
+      token = null; refreshToken = null; expiresAt = 0; pending = true; unsaved = false;
     },
     async close() { if (!store) await this.disconnect(); },
   };

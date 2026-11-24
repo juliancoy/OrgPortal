@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {EventTestDb} from './event-test-db';
 import {organizationEvidenceGrouping,changeOrganizationEvidenceGrouping} from '../src/organizationEvidenceGroups';
 import {defaultEvidenceGroups,evidenceGroupSource,evidenceGroupExclusionSource} from '../../shared/organizationEvidenceGroups';
@@ -15,6 +16,21 @@ function setup(){return new EventTestDb(`
  CREATE TABLE external_financial_observations(id TEXT,source_system TEXT,recipient_label TEXT,agency_label TEXT,metadata_json TEXT,source_sha256 TEXT,source_url TEXT);
  `)}
 const node={id:'source-one',name:'Source One'};
+test('federal identity indexes avoid source-wide scans and preserve source data',async()=>{
+ const db=setup();
+ try{
+  await db.prepare("INSERT INTO external_financial_observations VALUES('fixture','usaspending','Dummy','Dummy','{}','hash','https://example.test')").run();
+  const sql=readFileSync(new URL('../migrations/0137_external_financial_identity_indexes.sql',import.meta.url),'utf8').replace(/^--.*$/gm,'');
+  for(const statement of sql.split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(statement).run();
+  for(const statement of sql.split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(statement).run();
+  for(const [label,field,index] of [['recipient_label','recipient_uei','recipient'],['agency_label','awarding_agency_code','agency']]){
+   const plan=await db.prepare(`EXPLAIN QUERY PLAN SELECT id,source_sha256,source_url FROM external_financial_observations WHERE source_system='usaspending' AND ${label}=? AND json_extract(metadata_json,'$.${field}')=? LIMIT 1`).bind('Dummy','dummy').all<{detail:string}>();
+   assert(plan.results.some(row=>row.detail.includes(`external_usaspending_${index}_identity`)));
+   assert(!plan.results.some(row=>row.detail.includes('SCAN ')||row.detail.includes('TEMP B-TREE')));
+  }
+  assert.equal((await db.prepare('SELECT count(*) n FROM external_financial_observations').first()).n,1);
+ }finally{db.close()}
+});
 test('master federal identities absent from the older export require exact identifier and source label evidence',async()=>{
  const db=setup(),d1=db as unknown as D1Database;
  try{
