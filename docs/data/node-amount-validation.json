@@ -1,0 +1,110 @@
+{
+  "files": {
+    "web/src/features/ecosystem/node-financial-observations.js": "60d0368002ea88bd76acccf7e07ab9f41a719fa36adebe400e6246e6bdf3e594",
+    "web/src/features/ecosystem/node-financial-observations.d.ts": "22bb99fdcd1af5d92be5c503b34e077f6f5ceb3d97559eec4103946fd66864f0",
+    "web/src/features/ecosystem/received-amount.js": "d7b2956d3e2b4740a15cb84d5636cc33d3ac2c5906961e7b739af21187f601b7",
+    "web/src/features/ecosystem/organizationMap.ts": "f78ae6d81a4ec55766e77fec405f1afb2829e7109ac9b249f15cf2c722f26c91",
+    "web/src/ui/components/OrganizationMapCanvas.tsx": "ffc25c10b394fe19dcbf554e85dc2e5db5a297712530a2f5d9bd3055f19e42c5",
+    "web/src/ui/components/OrganizationMapInspector.tsx": "ab2d90549e7eec99ea0793bcd49e072af998c16440f3b1a2a5900727264354f8",
+    "web/scripts/organization-evidence.mjs": "1bb1af94b143ff7137ac323fa3c14ec4bf48e5839ee41c92c987e54ec2cf0ac1",
+    "web/scripts/organization-evidence.test.mjs": "904bb5f2bb30735a6f6050ad42e35c0d719984e3a77552fc0a793c68383f22b1",
+    "web/scripts/organization-map.test.mjs": "7186da23c1bf82992e70bf508825a0378e6f896bd468ce900ad114aff030cb8a",
+    "web/server/organization-map.mjs": "e3eaa1d72f7e3e18cc4c36ac2918d5858bd1449bed743d11033151170a1dc5c3",
+    "web/scripts/node-financial-observations.test.mjs": "37c1a8a02bfec5b1c350a19feeba3353f43001aa80de4fb3d5bed42eeed07b9c",
+    "web/scripts/test-local-organization-statements.py": "78a5c4bebd679fdc2268b7c60d0fb8b52e86e20399d37857234a484d92690da2",
+    "web/scripts/test-local-organization-inspector.py": "60113e1bf9f7f96137b6f4f697a00c285212666108c4207b629987ee069c4584",
+    "web/scripts/test-local-organization-label-sharpness.py": "08fad41715d5270596bd912d225201008802c578b559ddc314073ce65c3725b9",
+    "web/scripts/test-local-organization-hubs.py": "6d247ff3858ad3c46dbee6e762506a568a1e8c3a7ac4d830d00281c300ecccbb"
+  },
+  "validation": [
+    {
+      "date": "2026-11-24T04:54:59.427522+00:00",
+      "command": [
+        "node",
+        "--test",
+        "web/scripts/node-financial-observations.test.mjs",
+        "web/scripts/organization-evidence.test.mjs",
+        "web/scripts/organization-map.test.mjs",
+        "web/server/organization-financial-totals.test.mjs"
+      ],
+      "cwd": "/home/julian/Documents/Organization/OrgPortal",
+      "revision": "3ed531eb9223fcad82af21eee8136024eefbe736",
+      "content_sha256": "34550fd676746d8180c0374ff5e8707b49cb5f850c4ca6f901c68b39df95ee32",
+      "result": 0,
+      "elapsed_seconds": 0.22,
+      "output": "/home/julian/Documents/Organization/OrgPortal/.test-output/organization-evidence-12153989328a41b38ef9f3fc2cb08ca4.log"
+    },
+    {
+      "date": "2026-11-24T04:55:06.295482+00:00",
+      "command": [
+        "npm",
+        "--prefix",
+        "web",
+        "run",
+        "typecheck"
+      ],
+      "cwd": "/home/julian/Documents/Organization/OrgPortal",
+      "revision": "3ed531eb9223fcad82af21eee8136024eefbe736",
+      "content_sha256": "34550fd676746d8180c0374ff5e8707b49cb5f850c4ca6f901c68b39df95ee32",
+      "result": 0,
+      "elapsed_seconds": 15.0,
+      "output": "/home/julian/Documents/Organization/OrgPortal/.test-output/organization-evidence-32cba1472ee7497ab340099096c64c45.log"
+    },
+    {
+      "date": "2026-11-24T04:57:18.028018+00:00",
+      "command": [
+        "node",
+        "--test",
+        "web/scripts/node-financial-observations.test.mjs"
+      ],
+      "cwd": "/home/julian/Documents/Organization/OrgPortal",
+      "revision": "3ed531eb9223fcad82af21eee8136024eefbe736",
+      "content_sha256": "27621f530dc1acb6c381825f9206323aec4d7b7e7a9ca326ebe95dbf2e91a20b",
+      "result": 0,
+      "elapsed_seconds": 0.16,
+      "output": "/home/julian/Documents/Organization/OrgPortal/.test-output/organization-evidence-bc2769f03a434a0f90ecca630e02ed5f.log"
+    },
+    {
+      "date": "2026-11-24T04:57:45.108581+00:00",
+      "command": [
+        "node",
+        "--test",
+        "web/scripts/node-financial-observations.test.mjs"
+      ],
+      "cwd": "/home/julian/Documents/Organization/OrgPortal",
+      "revision": "3ed531eb9223fcad82af21eee8136024eefbe736",
+      "content_sha256": "207387d44cc8567fff5bb9e44aa442541929fb5ecbbe8657b4ca209e6fe7009b",
+      "result": 0,
+      "elapsed_seconds": 0.11,
+      "output": "/home/julian/Documents/Organization/OrgPortal/.test-output/organization-evidence-691bb4fe51414e17881cf09b575f4c6a.log"
+    },
+    {
+      "date": "2026-11-24T04:59:06.306824+00:00",
+      "command": [
+        "python3",
+        "web/scripts/test-local-organization-statements.py"
+      ],
+      "cwd": "/home/julian/Documents/Organization/OrgPortal",
+      "revision": "3ed531eb9223fcad82af21eee8136024eefbe736",
+      "content_sha256": "f490bf047355330eee9986a3648f15c9fc281687e6c74ad90f1ddb458bb68628",
+      "result": 0,
+      "elapsed_seconds": 7.49,
+      "output": "/home/julian/Documents/Organization/OrgPortal/.test-output/organization-evidence-3e35625c09d34cd6839955bbd30b7483.log"
+    },
+    {
+      "date": "2026-11-24T04:59:07.514507+00:00",
+      "command": [
+        "python3",
+        "web/scripts/test-local-organization-inspector.py"
+      ],
+      "cwd": "/home/julian/Documents/Organization/OrgPortal",
+      "revision": "3ed531eb9223fcad82af21eee8136024eefbe736",
+      "content_sha256": "f490bf047355330eee9986a3648f15c9fc281687e6c74ad90f1ddb458bb68628",
+      "result": 0,
+      "elapsed_seconds": 26.61,
+      "output": "/home/julian/Documents/Organization/OrgPortal/.test-output/organization-evidence-2dba85f56f9a40e49d9248b92413c748.log"
+    }
+  ],
+  "previousWebVersion": "2583f5ae-9a7a-4d6d-a4bd-be1387b018e6",
+  "notes": "Reuse local passing checks on identical promoted files. No financial source records changed."
+}

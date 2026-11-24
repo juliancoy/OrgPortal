@@ -47,9 +47,9 @@ with sync_playwright() as p:
    assert button.locator('.organization-ecomap-label-name').evaluate('(e)=>getComputedStyle(e).webkitLineClamp') in ['none','unset']
    panel.locator('.organization-ecomap-canvas').screenshot(path=str(out/f'full-name-{placement}.png'))
  ready();full_labels();expect(inspector).not_to_be_visible()
- panel.get_by_label('Cash flow amounts',exact=True).select_option('show');ready()
- expect(label(nodes[0]['id']).locator('.organization-ecomap-label-amount')).to_have_text('↑5B')
- expect(label(nodes[1]['id']).locator('.organization-ecomap-label-amount')).to_have_text('↓125M · ↑1.9B')
+ panel.get_by_label('Node amounts',exact=True).select_option('show');ready()
+ expect(label(nodes[0]['id']).locator('.organization-ecomap-label-amount')).to_have_text('Cash ↑5B')
+ expect(label(nodes[1]['id']).locator('.organization-ecomap-label-amount')).to_have_text('Cash ↓125M · ↑1.9B')
  for mode in ['2d','3d']:
   panel.get_by_label('Map mode',exact=True).select_option(mode);ready()
   panel.get_by_label('Title placement',exact=True).select_option('floating');ready()

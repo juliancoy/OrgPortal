@@ -41,7 +41,7 @@ with sync_playwright() as p:
  ready();page.evaluate('window.canvasBefore=document.querySelector(".organization-ecomap canvas")')
  panel.get_by_label('Map layout',exact=True).select_option('hubs');ready()
  assert page.evaluate('canvasBefore===document.querySelector(".organization-ecomap canvas")')
- panel.get_by_label('Color by',exact=True).select_option('volume');panel.get_by_label('Cash flow amounts',exact=True).select_option('show')
+ panel.get_by_label('Color by',exact=True).select_option('volume');panel.get_by_label('Node amounts',exact=True).select_option('show')
  for spacing in ['.8','1.5','1']:
   panel.get_by_label('Hub spacing',exact=True).select_option(str(float(spacing)) if spacing!='1' else '1');ready()
  panel.get_by_label('Fiscal year',exact=True).select_option('2024');ready();expect(panel.get_by_label('Map layout',exact=True)).to_have_value('hubs');expect(panel.get_by_label('Color by',exact=True)).to_have_value('volume')

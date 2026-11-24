@@ -2775,6 +2775,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-node-financial-observations-test-mjs",
+      "label": "web/scripts/node-financial-observations.test.mjs",
+      "category": "User interface and integrations",
+      "source": "web/scripts/node-financial-observations.test.mjs",
+      "kind": "node",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "node-financial-observations.test.mjs"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-organization-evidence-test-mjs",
       "label": "web/scripts/organization-evidence.test.mjs",
       "category": "Organizations and membership",

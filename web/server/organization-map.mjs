@@ -9,7 +9,7 @@ import {receivedUsdFromTotals,disbursedUsdFromTotals} from '../src/features/ecos
 // rereading them for every 250-node page caused repeated parsing and GC.
 const depth=params=>Object.fromEntries(['parentDepth','childDepth'].map(key=>{const value=params.get(key)??'1';if(!/^[123]$/.test(value))throw Error(`Invalid ${key}`);return [key,Number(value)]}))
 const readers=new WeakMap(),maxBytes=16*1024*1024,maxEntries=12
-const projectOrganization=(org,amount,receivedUsd,disbursedUsd)=>({id:org.id,name:org.name,slug:org.portalSlug||null,category:org.category||'general',type:org.type||'',financialAmount:Number.isFinite(amount)&&amount>=0?amount:null,receivedUsd:Number.isFinite(receivedUsd)?receivedUsd:null,disbursedUsd:Number.isFinite(disbursedUsd)?disbursedUsd:null})
+const projectOrganization=(org,amount,receivedUsd,disbursedUsd,financialObservations=[])=>({id:org.id,name:org.name,slug:org.portalSlug||null,category:org.category||'general',type:org.type||'',financialAmount:Number.isFinite(amount)&&amount>=0?amount:null,receivedUsd:Number.isFinite(receivedUsd)?receivedUsd:null,disbursedUsd:Number.isFinite(disbursedUsd)?disbursedUsd:null,financialObservations})
 async function hiddenYearParent(read,readRows,manifest,params){
  const allYears=new URLSearchParams(params);allYears.set('fy','all');allYears.set('parentDepth','1');allYears.set('childDepth','1')
  const map=await neighborhood(read,readRows,manifest,allYears)
@@ -53,7 +53,7 @@ export async function organizationMap(read, readRows, manifest, params, meta) {
  if(fy&&fy!=='all'&&(fy==='unassigned'||manifest.fiscalYears?.map(String).includes(fy)))await Promise.all([...new Set(selected.map(i=>Math.floor(i/100)))].map(async shard=>metrics.set(shard,await read(`${manifest.version}/fiscal/${fy}/metrics/${shard}.json`))))
  const organizations=(await readRows(read,manifest.version,'organizations',selected)).map((org,i)=>{
   const metric=fy&&fy!=='all'?metrics.get(Math.floor(selected[i]/100))?.[selected[i]%100]:org.networkMetrics
-  return projectOrganization(org,metric?.amount,metric?.receivedUsd,metric?.disbursedUsd)
+  return projectOrganization(org,metric?.amount,metric?.receivedUsd,metric?.disbursedUsd,metric?.financialObservations)
  })
  // A displayed group has one cash volume, including its attached source nodes.
  if(params.has('members')&&map.financialTotals){const anchor=organizations.find(org=>org.id===map.anchor?.id),usd=map.financialTotals.currencies.find(total=>total.currency==='USD');if(anchor)anchor.financialAmount=usd?Math.max(0,usd.received+usd.disbursed):0}

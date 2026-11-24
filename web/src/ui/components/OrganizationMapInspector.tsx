@@ -1,3 +1,4 @@
+import {observationTitle,observationAmount} from '../../features/ecosystem/node-financial-observations.js'
 import {useEffect,useMemo,useRef} from 'react'
 import type {MapNode,MapPage} from '../../features/ecosystem/organizationMap'
 import {OrganizationAnnualStatements} from './OrganizationAnnualStatements'
@@ -27,9 +28,10 @@ export function OrganizationMapInspector({data,node,hovered,onClear,onPin,onMini
    <p>{node.category.replaceAll('-',' ')}{node.type?` · ${node.type}`:''}</p>
    <p className="muted">{data.fy&&/^\d{4}$/.test(data.fy)?`FY${data.fy}`:data.fy==='unassigned'?'Year unavailable':'All years'}</p>
    <dl className="organization-map-inspector-totals">
-    <div><dt>Recorded USD received</dt><dd>{dollars(node.receivedUsd)}</dd></div>
-    <div><dt>Recorded USD disbursed</dt><dd>{dollars(node.disbursedUsd)}</dd></div>
+    <div><dt>Recorded cash received (USD)</dt><dd>{dollars(node.receivedUsd)}</dd></div>
+    <div><dt>Recorded cash disbursed (USD)</dt><dd>{dollars(node.disbursedUsd)}</dd></div>
    </dl>
+   {!!node.financialObservations?.length&&<section aria-label="Other recorded amounts"><p>Other recorded amounts (USD). ↓ incoming · ↑ outgoing. Types and periods are separate; do not add them to cash totals.</p><dl className="organization-map-inspector-totals">{node.financialObservations.map((row,index)=><div key={index}><dt>{observationTitle(row)}</dt><dd>{observationAmount(row,value=>dollars(value))}</dd>{!!row.missingAmounts&&<dd>{row.missingAmounts} records with unavailable amounts excluded</dd>}</div>)}</dl></section>}
    <OrganizationTransactionBubbles key={JSON.stringify([node.id,data.fy,data.version])} node={node} data={data}/>
    <OrganizationAnnualStatements key={node.id} organizationId={node.id} fy={data.fy}/>
    <details><summary>Connections and source identity</summary><dl>

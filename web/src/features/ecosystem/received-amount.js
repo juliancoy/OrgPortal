@@ -2,12 +2,12 @@
 export function receivedUsdFromTotals(totals){
  if(!totals)return null
  const usd=totals.currencies?.find(total=>total.currency==='USD')
- return usd?Number.isFinite(usd.received)?usd.received:null:totals.missingAmounts?null:0
+ return usd?Number.isFinite(usd.received)?usd.received:null:null
 }
 export function disbursedUsdFromTotals(totals){
  if(!totals)return null
  const usd=totals.currencies?.find(total=>total.currency==='USD')
- return usd?Number.isFinite(usd.disbursed)?usd.disbursed:null:totals.missingAmounts?null:0
+ return usd?Number.isFinite(usd.disbursed)?usd.disbursed:null:null
 }
 // Keep cash directions explicit. A payer's spending must never be relabeled
 // as receipts, and missing data must never be substituted with total volume.

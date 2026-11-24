@@ -1,3 +1,4 @@
+import {summarizeNodeObservations} from '../src/features/ecosystem/node-financial-observations.js'
 // Public evidence profiles: no directory writes, inferred owners, or name matching.
 import {summarizeOrganizationTransfers} from '../server/organization-financial-totals.mjs'
 import {receivedUsdFromTotals,disbursedUsdFromTotals} from '../src/features/ecosystem/received-amount.js'
@@ -50,6 +51,9 @@ export function organizationEvidenceProfiles(data) {
  const aliases=Object.create(null)
  for(const entry of entries){
   const members=scopes.get(entry.organization.id)||[entry.organization.id]
+  // Statement and commitment observations stay with their own reporting entity.
+  // Hierarchy cash rollups must not consolidate overlapping nonprofit filings.
+  entry.financialObservations=summarizeNodeObservations((recordIndices.get(entry.organization.id)||[]).map(index=>data.relationships[index]),entry.organization.id)
   if(members.length>1){
    entry.financialMembers=members
    entry.recordIndices=scopedIndices.get(entry.organization.id)
@@ -79,8 +83,9 @@ export function consolidatedFinancialMetrics(profile,fy='all'){
  if(!profile)return null
  const totals=fy==='all'?profile.financialTotals:profile.financialTotalsByYear?.[fy]||(profile.financialTotals?{currencies:[],missingAmounts:0}:undefined)
  const receivedUsd=receivedUsdFromTotals(totals),disbursedUsd=disbursedUsdFromTotals(totals)
- if(!profile.financialMembers&&!profile.financialTotals?.awards?.length)return {receivedUsd,disbursedUsd}
+ const financialObservations=(profile.financialObservations||[]).filter(row=>fy==='all'||String(row.fiscalYear||'unassigned')===fy)
+ if(!profile.financialMembers&&!profile.financialTotals?.awards?.length)return {receivedUsd,disbursedUsd,financialObservations}
  const usd=totals?.currencies.find(total=>total.currency==='USD')
  const incoming=usd?.received||0,outgoing=usd?.disbursed||0
- return {incoming,outgoing,amount:Math.max(0,incoming+outgoing),receivedUsd,disbursedUsd}
+ return {incoming,outgoing,amount:Math.max(0,incoming+outgoing),receivedUsd,disbursedUsd,financialObservations}
 }

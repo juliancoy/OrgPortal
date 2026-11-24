@@ -112,3 +112,13 @@ test('deeper hierarchy remains undated; terms and transfers obey the year at eve
  assert.equal(body.relationships.filter(e=>e.hierarchy).length,2)
  assert.equal(body.relationships.find(e=>e.kinds.includes('terms')).recordCount,1)
 })
+
+test('typed observations reach map labels without per-node evidence reads',async()=>{
+ const f=fixture(),calls=[]
+ const observations=[{fact:'revenue',fiscalYear:2025,received:123,disbursed:null}]
+ f.organizations.find(n=>n.id==='a').networkMetrics.financialObservations=observations
+ const read=async path=>{calls.push(path);return f.read(path)}
+ const {body}=await query(read)
+ assert.deepEqual(body.organizations.find(n=>n.id==='a').financialObservations,observations)
+ assert(!calls.some(path=>/\/relationships\/\d+/.test(path)))
+})
