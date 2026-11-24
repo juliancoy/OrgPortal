@@ -3,6 +3,8 @@
  * including an empty group; source records and their original endpoints survive.
  */
 export const evidenceGroupSource = 'orgportal:evidence-group';
+// Explicit removals survive subsequent matcher versions and source refreshes.
+export const evidenceGroupExclusionSource = 'orgportal:evidence-group-excluded';
 export const defaultEvidenceGroups: Record<string, string[]> = {
  'compass-agency:a44ff7414e0ba84c9068': [
   'source-label:maryland_comptroller:recipient:98db49db361400f16726d978ba1205b7',

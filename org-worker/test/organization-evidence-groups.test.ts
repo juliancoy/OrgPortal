@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventTestDb} from './event-test-db';
 import {organizationEvidenceGrouping,changeOrganizationEvidenceGrouping} from '../src/organizationEvidenceGroups';
-import {defaultEvidenceGroups,evidenceGroupSource} from '../../shared/organizationEvidenceGroups';
+import {defaultEvidenceGroups,evidenceGroupSource,evidenceGroupExclusionSource} from '../../shared/organizationEvidenceGroups';
 const actor={id:'pidp-user',name:'Fixture editor',email:null,isOperator:false};
 function setup(){return new EventTestDb(`
  CREATE TABLE audit_events(id TEXT PRIMARY KEY,actor_user_id TEXT,action TEXT,resource_type TEXT,resource_id TEXT,metadata_json TEXT,created_at TEXT);
@@ -10,9 +10,81 @@ function setup(){return new EventTestDb(`
  CREATE TABLE ecosystem_public_datasets(id TEXT PRIMARY KEY,state TEXT); INSERT INTO ecosystem_public_datasets VALUES('published','active');
  CREATE TABLE ecosystem_public_records(dataset_id TEXT,collection TEXT,payload_json TEXT);
  INSERT INTO ecosystem_public_records VALUES('published','organizations','{"id":"source-one","name":"Source One"}'),('published','organizations','{"id":"source-two","name":"Source Two"}');
+ ALTER TABLE ecosystem_public_records ADD COLUMN sha256 TEXT DEFAULT 'fixture-hash';
  CREATE TABLE master_transaction_records_before_ecosystem(from_label TEXT,to_label TEXT,record_type TEXT,evidence TEXT,from_organization_id TEXT,to_organization_id TEXT);
+ CREATE TABLE external_financial_observations(id TEXT,source_system TEXT,recipient_label TEXT,agency_label TEXT,metadata_json TEXT,source_sha256 TEXT,source_url TEXT);
  `)}
 const node={id:'source-one',name:'Source One'};
+test('master federal identities absent from the older export require exact identifier and source label evidence',async()=>{
+ const db=setup(),d1=db as unknown as D1Database;
+ try{
+  await db.prepare('INSERT INTO external_financial_observations VALUES(?,?,?,?,?,?,?)').bind('federal-row','usaspending','Example University','Example agency',JSON.stringify({recipient_uei:'ABCDEFGHIJK1',awarding_agency_code:'075'}),'federal-source-hash','https://www.usaspending.gov/award/example').run();
+  for(const member of [{id:'usgov:recipient:ABCDEFGHIJK1',name:'Example University'},{id:'usgov:agency:075',name:'Example agency'}])await changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',member});
+  for(const member of [{id:'usgov:recipient:ABCDEFGHIJK2',name:'Example University'},{id:'usgov:recipient:ABCDEFGHIJK1',name:'Different name'},{id:'usgov:agency:999',name:'Example agency'}])await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',member}),/existing public source/);
+  const {evidenceGroupingHistory}=await import('../src/organizationEvidenceGroups');
+  assert.equal((await evidenceGroupingHistory(d1,'org-one')).records[0].source.sha256,'federal-source-hash');
+  assert.equal((await db.prepare('SELECT count(*) n FROM external_financial_observations').first()).n,1);
+ }finally{db.close()}
+});
+test('automatic associations use server-recorded EINs and refuse conflicting nonprofit identities',async()=>{
+ const db=setup(),d1=db as unknown as D1Database;
+ try{
+  await db.prepare("UPDATE organizations SET name='Johns Hopkins University' WHERE id='org-one'").run();
+  const university={id:'nonprofit:520595110',name:'Johns Hopkins University'};
+  const hospital={id:'nonprofit:520591656',name:'Johns Hopkins University'}; // A misleading source label must not defeat the EIN.
+  for(const n of [university,hospital])await db.prepare("INSERT INTO ecosystem_public_records(dataset_id,collection,payload_json) VALUES('published','organizations',?)").bind(JSON.stringify(n)).run();
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',mode:'automatic',member:university}),/Confirm the organization EIN/);
+  await changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',member:university});
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',mode:'automatic',member:hospital}),/Different EINs/);
+  const alias={id:'source-one',name:'University research source',identifiers:{ein:'52-0595110'}};
+  await db.prepare("UPDATE ecosystem_public_records SET payload_json=? WHERE json_extract(payload_json,'$.id')='source-one'").bind(JSON.stringify(alias)).run();
+  await changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',mode:'automatic',member:{id:alias.id,name:alias.name}});
+  const {evidenceGroupingHistory}=await import('../src/organizationEvidenceGroups');
+  const record=(await evidenceGroupingHistory(d1,'org-one')).records.find(r=>r.memberId===alias.id);
+  assert.deepEqual(record?.match.eins,{organization:['520595110'],source:['520595110']});
+  assert.deepEqual((await organizationEvidenceGrouping(d1,'org-one'))?.members,[university.id,alias.id]);
+ }finally{db.close()}
+});
+test('automatic associations are durable, auditable, reversible, and suppressed after human removal',async()=>{
+ const {evidenceGroupingHistory}=await import('../src/organizationEvidenceGroups');
+ const db=setup(),d1=db as unknown as D1Database;
+ const member={id:'source-one',name:'Board of Trustees of The Johns Hopkins University'};
+ try{
+  await db.prepare("UPDATE organizations SET name='Johns Hopkins University' WHERE id='org-one'").run();
+  await db.prepare("UPDATE ecosystem_public_records SET payload_json=? WHERE json_extract(payload_json,'$.id')='source-one'").bind(JSON.stringify(member)).run();
+  const input={action:'add',mode:'automatic',member};
+  assert.deepEqual((await changeOrganizationEvidenceGrouping(d1,actor,'org-one',input))?.members,[member.id]);
+  await changeOrganizationEvidenceGrouping(d1,actor,'org-one',input);
+  const history=await evidenceGroupingHistory(d1,'org-one');assert.equal(history.records.length,1);
+  assert.equal(history.records[0].method,'automatic');assert.equal(history.records[0].match.score,100);
+  assert.equal(history.records[0].match.version,'organization-name-v1');assert.equal(history.records[0].source.datasetId,'published');
+  assert(!JSON.stringify(history).includes(actor.id));
+  await changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'remove',member});
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',input),/human removed/);
+  assert.equal((await db.prepare('SELECT count(*) n FROM organization_source_identities WHERE source=?').bind(evidenceGroupExclusionSource).first()).n,1);
+  await changeOrganizationEvidenceGrouping(d1,actor,'org-one',{action:'add',member});
+  assert.equal((await db.prepare('SELECT count(*) n FROM organization_source_identities WHERE source=?').bind(evidenceGroupExclusionSource).first()).n,0);
+  assert.equal((await evidenceGroupingHistory(d1,'org-one')).records.length,3);
+  assert.equal((await db.prepare('SELECT count(*) n FROM ecosystem_public_records').first()).n,2);
+ }finally{db.close()}
+});
+test('automatic matching rejects ambiguous targets, structural differences, forged names and permission loss',async()=>{
+ const db=setup(),d1=db as unknown as D1Database;
+ try{
+  await db.prepare("UPDATE organizations SET name='Johns Hopkins University' WHERE id='org-one'").run();
+  const member={id:'source-one',name:'THE JOHNS HOPKINS UNIVERSITY'};
+  await db.prepare("UPDATE ecosystem_public_records SET payload_json=? WHERE json_extract(payload_json,'$.id')='source-one'").bind(JSON.stringify(member)).run();
+  const input={action:'add',mode:'automatic',member};
+  await db.prepare("INSERT INTO organizations(id,name,slug) VALUES('other','Johns Hopkins University','other')").run();
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',input),/Ambiguous/);
+  await db.prepare("UPDATE organizations SET name='Unrelated School' WHERE id='other'").run();
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',{...input,member:{...member,name:'Johns Hopkins Hospital'}}),/requires review/);
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',{...input,member:{...member,name:'Johns Hopkins University'}}),/Source name changed/);
+  await db.prepare("UPDATE organization_memberships SET status='inactive'").run();
+  await assert.rejects(changeOrganizationEvidenceGrouping(d1,actor,'org-one',input),/management access/);
+  assert.deepEqual((await organizationEvidenceGrouping(d1,'org-one'))?.members,[]);
+ }finally{db.close()}
+});
 test('authorized reversible grouping preserves original organizations, source records and permissions',async()=>{
  const db=setup(),d1=db as unknown as D1Database;
  try{
@@ -26,7 +98,7 @@ test('authorized reversible grouping preserves original organizations, source re
   assert.equal((await db.prepare('SELECT count(*) n FROM organizations').first()).n,1);
   assert.equal((await db.prepare('SELECT role FROM organization_memberships').first()).role,'owner');
   assert.equal((await db.prepare("SELECT count(*) n FROM audit_events WHERE action='organization.evidence_group'").first()).n,3);
-  assert.deepEqual((await db.prepare('SELECT external_id FROM organization_source_identities').all()).results.map(row=>row.external_id),['org-one']);
+  assert.deepEqual((await db.prepare('SELECT external_id FROM organization_source_identities WHERE source=?').bind(evidenceGroupSource).all()).results.map(row=>row.external_id),['org-one']);
  }finally{db.close()}
 });
 test('denies other tenants, inactive editors, unknown nodes, directory merges, and conflicting group membership',async()=>{

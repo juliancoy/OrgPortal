@@ -18,7 +18,7 @@ import {organizationPortalLinks} from './organizationPortalUrls';
 import {canonicalOrganizationHref,organizationPagePath,organizationRoutingBase} from '../../shared/organizationUrls';
 import {organizationPageStatisticsRoutes} from './organizationPageStatistics';
 import { organizationBrandingRoutes } from './organizationBranding';
-import {organizationEvidenceGrouping,changeOrganizationEvidenceGrouping} from './organizationEvidenceGroups';
+import {organizationEvidenceGrouping,changeOrganizationEvidenceGrouping,evidenceGroupingHistory} from './organizationEvidenceGroups';
 import { organizationRecognitionRoutes } from './organizationRecognition';
 import { z } from 'zod'
 import { lookupPortalPeople } from './portalPeople'
@@ -3275,6 +3275,11 @@ app.get('/api/network/orgs/:organizationId/evidence-group/access',async c=>{
  if(c.env.ORGANIZATION_REPLICA_SOURCE)return c.json({canManage:false,reason:'Edit shared groupings on the authoritative portal.'});
  const user=await currentUser(c.env,c.req.raw);c.header('Cache-Control','no-store');
  try{await authorizeOrganization(c.env.DB,organizationActor(user,c.env),'manage',c.req.param('organizationId'));return c.json({canManage:true});}
+ catch(error){return eventErrorResponse(error,c.env,c.req.raw);}
+});
+app.get('/api/network/orgs/:organizationId/evidence-group/history',async c=>{
+ c.header('Cache-Control','no-store');
+ try{return c.json(await evidenceGroupingHistory(c.env.DB,c.req.param('organizationId'),Number(c.req.query('offset')||0)));}
  catch(error){return eventErrorResponse(error,c.env,c.req.raw);}
 });
 app.put('/api/network/orgs/:organizationId/evidence-group',bodyLimit({maxSize:4096}),async c=>{
