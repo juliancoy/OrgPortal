@@ -56,6 +56,16 @@ Bayview, one for the hospital, and five unresolved historical labels. It is
 complete for that specific Hopkins organization-name query and saved page totals;
 it is not proof that every public funding source or recipient alias is covered.
 The collection and checksummed page manifest are not yet imported into production.
+The [annual award table](data/johns-hopkins-nih-annual-awards.csv) and
+[coverage/checksum summary](data/johns-hopkins-nih-coverage.json) preserve the
+reviewed results separately from recorded cash transfers. Missing award amounts
+are counted explicitly; their subtotal is not a complete total.
+
+For FY2025, university parent-project rows report $874,880,790; FY2026 reports
+$867,151,484 in this retrieval. Neither is a cash-disbursement total. The live
+OrgPortal university grouping currently shows $51,876,031.25 in recorded FY2025
+USD receipts, from its existing transfer evidence. The NIH and transfer amounts
+measure different things and must not be added together.
 
 Annual summaries exclude subproject rows to avoid adding them to parent project
 awards. These amounts are reported awards, not cash disbursements. They must not

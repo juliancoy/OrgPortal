@@ -1,0 +1,22 @@
+{
+  "retrievedAt": "2026-11-24T01:32:48.941018+00:00",
+  "source": "https://api.reporter.nih.gov/v2/projects/search",
+  "years": [
+    1985,
+    2027
+  ],
+  "records": 65173,
+  "identityGroups": {
+    "university": 65144,
+    "hospital": 1,
+    "bayview": 23,
+    "unresolved": 5
+  },
+  "measurement": "Reported project award amounts; not disbursements. Parent rows only; subprojects excluded. Do not add these to USAspending obligations or Form 990 expenses.",
+  "productionImported": false,
+  "pageCount": 155,
+  "pageManifestSha256": "ac1be856267b2f2decba50243a596313ab30dd3be39d1be9eb29943443407500",
+  "annualCsvSha256": "d533a2c3f63f56d5c7e8e1933597e1a51d8095bff9833770b68850acc1f73a6c",
+  "scope": "Hopkins organization-name search only; historical aliases and all public sources are not yet fully reconciled.",
+  "rawRetention": "Original responses and checksummed page manifest retained in the private local audit workspace."
+}

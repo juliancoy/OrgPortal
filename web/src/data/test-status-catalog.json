@@ -3517,6 +3517,20 @@
       ]
     },
     {
+      "id": "suite-web-scripts-test-local-organization-matching-py",
+      "label": "web/scripts/test-local-organization-matching.py",
+      "category": "Organizations and membership",
+      "source": "web/scripts/test-local-organization-matching.py",
+      "kind": "external",
+      "cwd": ".",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "test-local-organization-matching.py"
+        }
+      ]
+    },
+    {
       "id": "suite-web-scripts-test-local-organization-node-pages-py",
       "label": "web/scripts/test-local-organization-node-pages.py",
       "category": "Organizations and membership",
@@ -4693,6 +4707,20 @@
       ]
     },
     {
+      "id": "suite-web-src-features-ecosystem-node-search-groups-test-ts",
+      "label": "web/src/features/ecosystem/node-search-groups.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/node-search-groups.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "node-search-groups.test.ts"
+        }
+      ]
+    },
+    {
       "id": "suite-web-src-features-ecosystem-organizationHubLayout-test-ts",
       "label": "web/src/features/ecosystem/organizationHubLayout.test.ts",
       "category": "Ecosystem and data",
@@ -4745,6 +4773,34 @@
         {
           "id": "suite",
           "label": "organizationMapNavigation.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-organizationMatching-test-ts",
+      "label": "web/src/features/ecosystem/organizationMatching.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/organizationMatching.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationMatching.test.ts"
+        }
+      ]
+    },
+    {
+      "id": "suite-web-src-features-ecosystem-organizationMatchingQuery-test-ts",
+      "label": "web/src/features/ecosystem/organizationMatchingQuery.test.ts",
+      "category": "Ecosystem and data",
+      "source": "web/src/features/ecosystem/organizationMatchingQuery.test.ts",
+      "kind": "vitest",
+      "cwd": "web",
+      "cases": [
+        {
+          "id": "suite",
+          "label": "organizationMatchingQuery.test.ts"
         }
       ]
     },
