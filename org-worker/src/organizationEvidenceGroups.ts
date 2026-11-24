@@ -62,9 +62,11 @@ async function federalMemberEvidence(db:D1Database,member:{id:string;name:string
  const recipient=/^usgov:recipient:([A-Z0-9]{12})$/.exec(member.id),agency=/^usgov:agency:(\d{3})$/.exec(member.id);
  if(!recipient&&!agency||agency?.[1]==='999')return null;
  const field=recipient?'recipient_uei':'awarding_agency_code',label=recipient?'recipient_label':'agency_label';
+ // Reject unrelated labels before parsing metadata, and stop at the first
+ // exact observation. Sorting this source-wide scan defeats LIMIT 1.
  return db.prepare(`SELECT id,source_sha256,source_url FROM external_financial_observations
-  WHERE source_system='usaspending' AND json_extract(metadata_json,'$.${field}')=? AND ${label}=? ORDER BY id LIMIT 1`)
-  .bind((recipient||agency)![1],member.name).first<{id:string;source_sha256:string;source_url:string}>();
+  WHERE source_system='usaspending' AND ${label}=? AND json_extract(metadata_json,'$.${field}')=? LIMIT 1`)
+  .bind(member.name,(recipient||agency)![1]).first<{id:string;source_sha256:string;source_url:string}>();
 }
 const exclusionKey=(org:string,member:string)=>JSON.stringify([org,member]);
 async function recordedEins(db:D1Database,ids:string[]){
