@@ -46,7 +46,8 @@ nodes are in [the reconciliation manifest](data/johns-hopkins-identity-reconcili
 Private preview/apply receipts are retained in the local operation workspace.
 Public association history is exposed by the deployed API; authorized editors
 can remove associations, with durable exclusions against automatic recreation.
-The new matcher editor remains a local frontend change until its release.
+The matcher editor and public history are deployed on orgportal.cc. Authorized
+editors can inspect scores, accept eligible matches, or remove an association.
 
 ## Funding audit coverage
 
@@ -94,3 +95,24 @@ Matching tests cover separate EINs, ambiguous names, explicit removal exclusions
 permission denial and tenant boundaries. Browser editor checks use isolated
 local accounts; live verification uses public API reads. Commands, timestamps
 and code fingerprints are in the adjacent TEST_LOG.jsonl.
+
+## Published website verification
+
+Frontend commit `6622a61946d65cada77c3efcb080cb635ea24718`, Worker version
+`9a88b7bc-6996-47a1-8b3a-2549dde94e56`, is live on orgportal.cc. The API remains
+on tested commit `67bdf055ad7a5431409af0291452ec49f008470f`, version
+`9c0773f0-f44f-4f54-96b9-ce18405383ab`. Public domain, nested hospital HTML,
+referenced JavaScript and API proxy checks passed. No canary rollout was used.
+
+Refreshed map snapshot `8e55d48a451a055d0d0fd000` contains all five centers.
+Live map and evidence checks passed with zero missing members: university 8,984
+evidence records, hospital 32, health system 11, Bayview 32, and APL 4,276.
+These are evidence counts, not payment counts or completeness claims. The first
+combined university map/evidence check took 40.7 seconds; the identity lookup
+index fix does not establish that cold map loading is fast.
+
+The main-directory operator connection is saved and selected locally. The
+uploader reuses an unexpired keyring access token across invocations and renewed
+during these operations without another interactive login. Recovery from a lost
+one-use refresh response still requires a fresh sign-in under the current PIdP
+protocol; no authorization or expiry checks were bypassed.
