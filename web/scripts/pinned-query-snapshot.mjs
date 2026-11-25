@@ -1,6 +1,7 @@
 import {cp,mkdir,mkdtemp,readFile,readdir,rm} from 'node:fs/promises'
 import {dirname,join,resolve} from 'node:path'
 import {digestPaths,replaceDirectory} from './release-cache.mjs'
+import {packFiscalMetrics} from './pack-fiscal-metrics.mjs'
 
 // Explicit code releases may retain a reviewed evidence snapshot. This is not
 // a cache hit or a fresh export: its original manifest and dates stay unchanged.
@@ -19,6 +20,7 @@ export async function installPinnedQuerySnapshot(source,target,expected){
  try{
   await cp(source,temporary,{recursive:true})
   if(await digestPaths(temporary,['.'])!==expected)throw Error('Pinned query snapshot changed while copying')
+  await packFiscalMetrics(temporary,manifest)
   await replaceDirectory(temporary,target)
  }finally{await rm(temporary,{recursive:true,force:true})}
  console.log(JSON.stringify({evidenceInput:'explicit-pinned-query',version:manifest.version,sha256:expected,generatedAt:manifest.generatedAt,exportedAt:manifest.transactionalCoverage.exportedAt}))

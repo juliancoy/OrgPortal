@@ -102,7 +102,10 @@ Use the normal pinned-container release build and deployment commands.
 
 This input is checksum-verified before and after copying; missing hashes,
 symlinks, mixed versions and conflicting fresh-export settings fail the build.
-The snapshot's export timestamp and manifest remain unchanged. The deployment
+The snapshot's export timestamp and logical records remain unchanged. Ten fiscal
+metric files are packed into one physical file, with the original arrays kept
+separate and an explicit format marker in the manifest. Readers fail on a
+missing packed shard instead of substituting zeros. The deployment
 metadata records its version, dates, digest and explicit selection. This does
 not claim fresh data or completion of a backfill. Default builds still perform
 the normal export and retain the existing 15-minute cache freshness limit.

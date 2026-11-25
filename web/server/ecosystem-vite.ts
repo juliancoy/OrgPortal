@@ -4,11 +4,12 @@ import { resolve, sep } from 'node:path'
 import { execFile } from 'node:child_process'
 import { ecosystemResponse } from './ecosystem-query.mjs'
 import {createArtifactBuffer} from './ecosystem-artifact-buffer.mjs'
+import {packedFiscalMetricReader} from './packed-fiscal-metrics.mjs'
 export function ecosystemApi(): Plugin {
  let root = ''
  const attach = (server: ViteDevServer | PreviewServer) => {
   const folder=resolve(root,'public/ecosystem-data/query')
-  const readArtifact=createArtifactBuffer(async(key:string)=>{const path=resolve(folder,key);if(!path.startsWith(folder+sep))throw Error('Invalid artifact path');return readFile(path,'utf8')})
+  const readArtifact=packedFiscalMetricReader(createArtifactBuffer(async(key:string)=>{const path=resolve(folder,key);if(!path.startsWith(folder+sep))throw Error('Invalid artifact path');return readFile(path,'utf8')}))
   server.middlewares.use('/api/ecosystem', (req, res, next) => {
    if (!req.url) return next()
    const request = new Request(`http://localhost/api/ecosystem${req.url}`, { method: req.method })
