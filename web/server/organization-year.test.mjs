@@ -115,3 +115,9 @@ test('explicit source fiscal-year labels are parsed without inventing a calendar
  assert.equal(transactionTime({date:'FY2025',fiscalYear:2024}).fiscalYear,2024)
  for(const date of ['2025','around FY2025','FY2025/2026','FY0000'])assert.equal(transactionTime({date}).fiscalYear,null)
 })
+
+test('source exclusions and snapshots remain non-additive after year normalization',async()=>{
+ const {transactionTime}=await import('../src/features/ecosystem/transaction-time.js')
+ for(const row of [{date:'2025-01-01',financialMeasure:'snapshot'},{date:'2025-01-01',financialMeasure:'period_total',annualAmountEligible:false}])assert.equal(transactionTime(row).annualAmountEligible,false)
+ assert.equal(transactionTime({date:'2025-01-01',financialMeasure:'delta'}).annualAmountEligible,true)
+})

@@ -25,8 +25,10 @@ const rowSchema=z.object({
  let official=false;
  try{const url=new URL(row.source_url);official=url.protocol==='https:'&&!url.username&&!url.password&&url.hostname==='www.usaspending.gov'&&decodeURIComponent(url.pathname).replace(/\/$/,'')==='/award/'+row.metadata.award_key;}catch{}
  const fy=Number(row.occurred_at.slice(0,4))+(Number(row.occurred_at.slice(5,7))>=10?1:0);
- const maryland=(row.metadata.recipient_state_code==='MD'&&row.metadata.recipient_country_code==='USA')||
-  (row.metadata.primary_place_of_performance_state_code==='MD'&&row.metadata.primary_place_of_performance_country_code==='USA');
+ // Historical reports may omit country codes. Retain that missing value;
+ // accept an explicit Maryland state code only without a contradictory country.
+ const maryland=(row.metadata.recipient_state_code==='MD'&&['','USA'].includes(row.metadata.recipient_country_code))||
+  (row.metadata.primary_place_of_performance_state_code==='MD'&&['','USA'].includes(row.metadata.primary_place_of_performance_country_code));
  if(!official||!maryland||row.metadata.transaction_key!==row.external_id||String(fy)!==row.metadata.fiscal_year)
   ctx.addIssue({code:'custom',message:'Official award link, transaction key, federal year and Maryland geography must match'});
 });

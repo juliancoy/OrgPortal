@@ -159,3 +159,14 @@ test('reconciliation uses covering indexes without source-wide temporary sorts',
   }
  }finally{db.sqlite.close();}
 });
+
+test('historical Maryland evidence preserves missing country codes and rejects contradictory countries',async()=>{
+ const db=setup();try{
+  const missing={...row,metadata:{...row.metadata,recipient_state_code:'MD',recipient_country_code:'',primary_place_of_performance_country_code:''}};
+  const preview=await importUsaspending(db.asD1(),actor,{...input,rows:[missing]});
+  await importUsaspending(db.asD1(),actor,{...input,rows:[missing],confirm:true,previewId:preview.previewId});
+  const metadata=JSON.parse(String(db.sqlite.prepare('SELECT metadata_json FROM external_financial_observations').get()!.metadata_json));
+  assert.equal(metadata.recipient_country_code,'');assert.equal(metadata.primary_place_of_performance_country_code,'');
+  await assert.rejects(importUsaspending(db.asD1(),actor,{...input,rows:[{...missing,metadata:{...missing.metadata,recipient_country_code:'CAN',primary_place_of_performance_country_code:'CAN'}}]}),/Invalid/);
+ }finally{db.sqlite.close();}
+});
