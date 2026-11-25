@@ -94,7 +94,61 @@ test('status reconciles fiscal-year boundaries and signed totals without sorting
  await importUsaspending(db.asD1(),actor,{...input,confirm:true,previewId:preview.previewId});
  const expected=db.sqlite.prepare(`SELECT dataset,json_extract(metadata_json,'$.fiscal_year') AS fiscal_year,count(*) AS records,sum(amount_cents) AS amount_cents,min(occurred_at) AS period_start,max(occurred_at) AS period_end FROM external_financial_observations WHERE source_system='usaspending' GROUP BY dataset,json_extract(metadata_json,'$.fiscal_year') ORDER BY dataset,fiscal_year`).all();
  const status=await usaspendingStatus(db.asD1(),actor,input.organizationId);assert.ok('totals' in status);
- assert.deepEqual(status.totals,expected);assert.equal(status.totals.find(r=>r.fiscal_year==='2025')!.amount_cents,700);
+ assert.deepEqual(status.totals,expected.map(row=>({...row})));assert.equal(status.totals.find(r=>r.fiscal_year==='2025')!.amount_cents,700);
  assert.equal(status.sources[0].records,6);
  }finally{db.sqlite.close();}
+});
+
+function financialShards(){return Array.from({length:4},()=>{
+ const db=Object.create(TimebankDatabase.prototype) as TimebankDatabase;
+ Object.defineProperty(db,'sqlite',{value:new DatabaseSync(':memory:')});
+ db.sqlite.exec(readFileSync(new URL('../financial-migrations/0001_public_observations.sql',import.meta.url),'utf8'));return db;
+});}
+test('financial stores preserve legacy records, signed totals, exact replay, public pagination and identity evidence',async()=>{
+ const db=setup(),stores=financialShards(),shards=stores.map(s=>s.asD1());
+ const {federalShard,federalStores}=await import('../src/federalStorage');
+ const {publicEcosystemNativeRecords}=await import('../src/ecosystemPublic');
+ const {changeOrganizationEvidenceGrouping}=await import('../src/organizationEvidenceGroups');
+ try{
+  assert.deepEqual(federalStores({}),[]);assert.throws(()=>federalStores({FEDERAL_0:shards[0]}),/incomplete/);
+  async function apply(value:typeof row,target:D1Database[]=[]){const input={organizationId:'federal-test',rows:[value]};const preview=await importUsaspending(db.asD1(),actor,input,target);return importUsaspending(db.asD1(),actor,{...input,confirm:true,previewId:preview.previewId},target);}
+  await apply(row);const legacy=(await publicEcosystemNativeRecords(db.asD1())).records.find(r=>r.id===row.id)!;
+  await apply(row,shards);assert.equal(stores.reduce((n,s)=>n+Number(s.sqlite.prepare('SELECT count(*) n FROM external_financial_observations').get()!.n),0),0,'existing main observation stays in place');
+  const values=[];
+  for(let bucket=0;bucket<4;bucket++){
+   let key='',id='';for(let i=0;;i++){key='SHARD_'+bucket+'_'+i;id='usaspending:transaction:'+createHash('sha256').update(key).digest('hex');if(federalShard(id)===bucket)break;}
+   const value={...row,id,external_id:key,amount_cents:bucket%2?-100:200,metadata:{...row.metadata,transaction_key:key}};values.push(value);await apply(value,shards);
+  }
+  await assert.rejects(importUsaspending(db.asD1(),actor,{organizationId:'federal-test',rows:[values[0],values[1]]},shards),/Partition/);
+  const replay=await apply(values[0],shards);assert.equal(replay.recorded,0);assert.equal(replay.existing,1);
+  await assert.rejects(importUsaspending(db.asD1(),actor,{organizationId:'federal-test',rows:[{...values[0],amount_cents:1}]},shards),/correction/);
+  const status=await usaspendingStatus(db.asD1(),actor,'federal-test',undefined,shards);assert.ok('totals' in status);
+  assert.equal(status.totals[0].records,5);assert.equal(status.totals[0].amount_cents,-12145);assert.equal(status.sources[0].records,5);
+  const seen=[];let after='';for(;;){const page=await publicEcosystemNativeRecords(db.asD1(),after,2,shards);seen.push(...page.records);if(!page.next)break;after=String(page.next);}
+  const federal=seen.filter(r=>String(r.id).startsWith('usaspending:'));assert.equal(federal.length,5);assert.equal(new Set(federal.map(r=>r.id)).size,5);
+  const newEntry=federal.find(r=>r.id===values[0].id)!;const expected={...legacy,id:values[0].id,record_id:values[0].id,amount:2,provenance_json:JSON.stringify(Object.fromEntries(Object.entries(values[0].metadata).sort(([a],[b])=>a.localeCompare(b))))};
+  // Compare every projected field to the established master view, allowing only
+  // fields that legitimately contain the new transaction identity.
+  for(const [key,value] of Object.entries(expected)){if(value===row.id)expected[key]=values[0].id;if(value===row.external_id)expected[key]=values[0].external_id;}
+  assert.deepEqual({...newEntry},expected);
+  db.sqlite.exec('DELETE FROM external_financial_observations');
+  const group=await changeOrganizationEvidenceGrouping(db.asD1(),actor,'federal-test',{action:'add',member:{id:'usgov:recipient:ABCDEFGHIJKL',name:'Reported recipient'},mode:'manual'},shards);
+  assert.ok(group!.members.includes('usgov:recipient:ABCDEFGHIJKL'));
+ }finally{db.sqlite.close();stores.forEach(s=>s.sqlite.close());}
+});
+test('financial atomic receipts recover a lost primary completion without duplicate writes or leaked permissions',async()=>{
+ const db=setup(),stores=financialShards(),shards=stores.map(s=>s.asD1());
+ const {federalShard}=await import('../src/federalStorage');
+ try{
+  const preview=await importUsaspending(db.asD1(),actor,input,shards);
+  db.sqlite.exec("CREATE TRIGGER fail_completion_audit BEFORE INSERT ON audit_events WHEN NEW.action='organization.usaspending_import' BEGIN SELECT RAISE(ABORT,'completion unavailable'); END");
+  await assert.rejects(importUsaspending(db.asD1(),actor,{...input,confirm:true,previewId:preview.previewId},shards),/completion unavailable/);
+  const status=await usaspendingStatus(db.asD1(),actor,'federal-test',preview.previewId,shards);
+  assert.equal(status.status,'completed');assert.equal(status.storageVerified,true);assert.equal(status.recorded,1);
+  assert.equal(stores[federalShard(row.id)].sqlite.prepare('SELECT count(*) n FROM external_financial_observations').get()!.n,1);
+  assert.equal(db.sqlite.prepare("SELECT count(*) n FROM audit_events WHERE action='organization.usaspending_import_started'").get()!.n,1);
+  await assert.rejects(usaspendingStatus(db.asD1(),{...actor,id:'other'},'federal-test',preview.previewId,shards),/not found/);
+  await assert.rejects(usaspendingStatus(db.asD1(),{...actor,isOperator:false},'federal-test',preview.previewId,shards),/Operator/);
+  await assert.rejects(importUsaspending(db.asD1(),actor,{...input,confirm:true,previewId:preview.previewId},shards),/already used|changed/);
+ }finally{db.sqlite.close();stores.forEach(s=>s.sqlite.close());}
 });

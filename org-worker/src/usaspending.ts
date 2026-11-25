@@ -1,3 +1,4 @@
+import {federalShard} from './federalStorage';
 import { z } from 'zod';
 import { authorizeOrganization, type OrganizationActor } from './organizationIam';
 import { EventIntegrationError } from './eventPlatforms';
@@ -34,7 +35,7 @@ export const usaspendingImportSchema = z.object({
   confirm:z.boolean().optional(), previewId:z.string().uuid().optional(),
 }).strict();
 
-export async function importUsaspending(db:D1Database, actor:OrganizationActor, input:unknown) {
+export async function importUsaspending(db:D1Database, actor:OrganizationActor, input:unknown, shards:D1Database[]=[]) {
   if (!actor.isOperator) throw new EventIntegrationError(403,'Operator access required for USAspending observations');
   const parsed=usaspendingImportSchema.safeParse(input);
   if (!parsed.success) throw new EventIntegrationError(400,'Invalid USAspending observations');
@@ -43,8 +44,17 @@ export async function importUsaspending(db:D1Database, actor:OrganizationActor, 
   await enforceEventRateLimit(db,actor.id);
   if (new Set(changes.rows.map(row=>row.id)).size !== changes.rows.length)
     throw new EventIntegrationError(400,'Duplicate observation identifiers');
+  const shard=shards.length?federalShard(changes.rows[0].id):-1;
+  if(shards.length!==0&&shards.length!==4)throw new EventIntegrationError(503,'Federal storage configuration is incomplete');
+  if(shard>=0&&changes.rows.some(row=>federalShard(row.id)!==shard))throw new EventIntegrationError(400,'Partition the import batch by federal storage shard');
+  const dataDb=shard>=0?shards[shard]:db;
   const existing=await db.prepare('SELECT * FROM external_financial_observations WHERE id IN (SELECT value FROM json_each(?))')
     .bind(JSON.stringify(changes.rows.map(row=>row.id))).all<Record<string,unknown>>();
+  if(dataDb!==db){
+    const remote=await dataDb.prepare('SELECT * FROM external_financial_observations WHERE id IN (SELECT value FROM json_each(?))').bind(JSON.stringify(changes.rows.map(row=>row.id))).all<Record<string,unknown>>();
+    if(remote.results.some(r=>existing.results.some(e=>e.id===r.id)))throw new EventIntegrationError(409,'Federal transaction is duplicated across stores; review before importing');
+    existing.results.push(...remote.results);
+  }
   const previousById=new Map((existing.results || []).map(row=>[row.id,row]));
   const plan=[];
   for (const row of changes.rows) {
@@ -61,7 +71,7 @@ export async function importUsaspending(db:D1Database, actor:OrganizationActor, 
     plan.push({stored,previous});
   }
   const owner={userId:actor.id,organizationId:changes.organizationId,eventId:'organization:usaspending-import'};
-  const fingerprint=await previewFingerprint({changes,plan});
+  const fingerprint=await previewFingerprint({changes,plan,...(shard>=0?{shard}:{})});
   if (!confirm) {
     const totals=new Map<string,{records:number;amount_cents:number}>();
     for(const row of changes.rows){
@@ -80,28 +90,55 @@ export async function importUsaspending(db:D1Database, actor:OrganizationActor, 
   if (!previewId) throw new EventIntegrationError(409,'Request a preview first');
   await claimEventOperation(db,owner,previewId,fingerprint);
   try {
-    const sql=plan.filter(p=>!p.previous).map(({stored:r})=>db.prepare(`INSERT INTO external_financial_observations
+    const sql=plan.filter(p=>!p.previous).map(({stored:r})=>dataDb.prepare(`INSERT INTO external_financial_observations
       (id,source_system,dataset,external_id,agency_label,recipient_label,occurred_at,amount_cents,currency,measurement,fact_type,notes,description,source_url,metadata_json,retrieved_at,source_sha256)
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(r.id,r.source_system,r.dataset,r.external_id,r.agency_label,r.recipient_label,r.occurred_at,r.amount_cents,r.currency,r.measurement,r.fact_type,r.notes,r.description,r.source_url,r.metadata_json,r.retrieved_at,r.source_sha256));
-    sql.push(db.prepare(`INSERT INTO audit_events(id,actor_user_id,action,resource_type,resource_id,metadata_json,created_at)
+    const audit=db.prepare(`INSERT INTO audit_events(id,actor_user_id,action,resource_type,resource_id,metadata_json,created_at)
       VALUES(?,?,'organization.usaspending_import','organization',?,?,?)`).bind(crypto.randomUUID(),actor.id,changes.organizationId,
-      JSON.stringify({ids:changes.rows.map(r=>r.id),sourceHashes:[...new Set(changes.rows.map(r=>r.source_sha256))]}),new Date().toISOString()));
-    await db.batch(sql);
+      JSON.stringify({ids:changes.rows.map(r=>r.id),sourceHashes:[...new Set(changes.rows.map(r=>r.source_sha256))],...(shard>=0?{shard}:{})}),new Date().toISOString());
+    if(shard>=0){
+      // Keep source rows and their completion receipt atomic in the same store.
+      // The primary operation owns actor/tenant authorization and remains auditable.
+      sql.push(dataDb.prepare('INSERT INTO federal_import_receipts(id,fingerprint,recorded,existing,source_hashes_json,created_at) VALUES(?,?,?,?,?,?)').bind(previewId,fingerprint,plan.filter(p=>!p.previous).length,plan.filter(p=>p.previous).length,JSON.stringify([...new Set(changes.rows.map(r=>r.source_sha256))]),new Date().toISOString()));
+      await db.prepare(`INSERT INTO audit_events(id,actor_user_id,action,resource_type,resource_id,metadata_json,created_at) VALUES(?,?,'organization.usaspending_import_started','organization',?,?,?)`).bind(crypto.randomUUID(),actor.id,changes.organizationId,JSON.stringify({previewId,shard,ids:changes.rows.map(r=>r.id),sourceHashes:[...new Set(changes.rows.map(r=>r.source_sha256))]}),new Date().toISOString()).run();
+      await dataDb.batch(sql);await audit.run();
+    }else {sql.push(audit);await db.batch(sql);}
     await finishEventOperation(db,previewId,true,['import_usaspending']);
     return {previewId,recorded:plan.filter(p=>!p.previous).length,existing:plan.filter(p=>p.previous).length};
   } catch(error) { await finishEventOperation(db,previewId,false,[]); throw error; }
 }
 
-export async function usaspendingStatus(db:D1Database,actor:OrganizationActor,organizationId:string,previewId?:string){
+export async function usaspendingStatus(db:D1Database,actor:OrganizationActor,organizationId:string,previewId?:string,shards:D1Database[]=[]){
   if(!actor.isOperator) throw new EventIntegrationError(403,'Operator access required for USAspending observations');
   await authorizeOrganization(db,actor,'manage',organizationId);
-  if(previewId) return eventOperationStatus(db,actor.id,organizationId,previewId);
+  if(previewId){
+    const operation:Record<string,unknown>=await eventOperationStatus(db,actor.id,organizationId,previewId);
+    if(operation.status!=='completed'&&shards.length){
+      const original=await db.prepare('SELECT fingerprint FROM event_mcp_operations WHERE id=?').bind(previewId).first<{fingerprint:string}>();
+      for(const store of shards){const receipt=await store.prepare('SELECT fingerprint,recorded,existing FROM federal_import_receipts WHERE id=?').bind(previewId).first<{fingerprint:string;recorded:number;existing:number}>();
+        if(receipt){if(receipt.fingerprint!==original?.fingerprint)throw new EventIntegrationError(409,'Federal completion receipt differs from its preview');return {...operation,status:'completed',storageVerified:true,recorded:receipt.recorded,existing:receipt.existing,warning:undefined};}
+      }
+    }
+    return operation;
+  }
+  const all=await Promise.all([db,...shards].map(async store=>{
+
   // Import validation requires fiscal_year to match occurred_at. Group the small
   // date column: sorting metadata_json for every row exhausts D1 memory at scale.
-  const totals=await db.prepare(`SELECT dataset,CAST(CAST(substr(occurred_at,1,4) AS INTEGER)+(substr(occurred_at,6,2)>='10') AS TEXT) AS fiscal_year,count(*) AS records,sum(amount_cents) AS amount_cents,
+  const totals=await store.prepare(`SELECT dataset,CAST(CAST(substr(occurred_at,1,4) AS INTEGER)+(substr(occurred_at,6,2)>='10') AS TEXT) AS fiscal_year,count(*) AS records,sum(amount_cents) AS amount_cents,
     min(occurred_at) AS period_start,max(occurred_at) AS period_end
     FROM external_financial_observations WHERE source_system='usaspending' GROUP BY dataset,CAST(CAST(substr(occurred_at,1,4) AS INTEGER)+(substr(occurred_at,6,2)>='10') AS TEXT) ORDER BY dataset,fiscal_year`).all();
-  const sources=await db.prepare(`SELECT source_sha256,count(*) AS records FROM external_financial_observations
+  const sources=await store.prepare(`SELECT source_sha256,count(*) AS records FROM external_financial_observations
     WHERE source_system='usaspending' GROUP BY source_sha256 ORDER BY source_sha256`).all();
-  return {sourceSystem:'usaspending',totals:totals.results || [],sources:sources.results || []};
+    return {totals:totals.results||[],sources:sources.results||[]};
+  }));
+  const totals=new Map<string,Record<string,unknown>>(),sources=new Map<string,number>();
+  for(const part of all){
+    for(const row of part.totals){const key=row.dataset+':'+row.fiscal_year,old=totals.get(key);
+      if(!old)totals.set(key,{...row});else{old.records=Number(old.records)+Number(row.records);old.amount_cents=Number(old.amount_cents)+Number(row.amount_cents);old.period_start=String(old.period_start)<String(row.period_start)?old.period_start:row.period_start;old.period_end=String(old.period_end)>String(row.period_end)?old.period_end:row.period_end;}
+      if(!Number.isSafeInteger(totals.get(key)!.amount_cents))throw new EventIntegrationError(503,'Federal total exceeds safe integer range');
+    }
+    for(const row of part.sources)sources.set(String(row.source_sha256),(sources.get(String(row.source_sha256))||0)+Number(row.records));
+  }
+  return {sourceSystem:'usaspending',totals:[...totals].sort(([a],[b])=>a.localeCompare(b)).map(([,row])=>row),sources:[...sources].sort(([a],[b])=>a.localeCompare(b)).map(([source_sha256,records])=>({source_sha256,records}))};
 }

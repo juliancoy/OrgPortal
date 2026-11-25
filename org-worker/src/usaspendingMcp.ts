@@ -5,7 +5,7 @@ import {usaspendingImportSchema,importUsaspending,usaspendingStatus} from './usa
 import type {OrganizationActor} from './organizationIam';
 type Identity={userId:string;scopes:string[];isOperator:boolean};
 const target=z.object({organizationId:z.string().min(1).max(200),previewId:z.string().uuid().optional()}).strict();
-export function registerUsaspendingTools(server:McpServer,db:D1Database,identity:Identity,tenantOrganizationId?:string){
+export function registerUsaspendingTools(server:McpServer,db:D1Database,identity:Identity,tenantOrganizationId?:string,shards:D1Database[]=[]){
  for(const operation of ['preview','apply','status'] as const){
   const writing=operation!=='status';
   const name=operation==='status'?'get_usaspending_import_status':`${operation}_usaspending_import`;
@@ -22,8 +22,8 @@ export function registerUsaspendingTools(server:McpServer,db:D1Database,identity
      throw new EventIntegrationError(403,'This MCP connection is limited to its own organization');
     if(operation==='apply'&&(!('confirm' in args)||args.confirm!==true))throw new EventIntegrationError(409,'Apply requires confirm=true and the reviewed previewId');
     const actor:OrganizationActor={id:identity.userId,name:identity.userId,email:null,isOperator:identity.isOperator};
-    const data=operation==='status'?await usaspendingStatus(db,actor,args.organizationId,args.previewId):
-     await importUsaspending(db,actor,{...args,confirm:operation==='apply'});
+    const data=operation==='status'?await usaspendingStatus(db,actor,args.organizationId,args.previewId,shards):
+     await importUsaspending(db,actor,{...args,confirm:operation==='apply'},shards);
     return {content:[{type:'text' as const,text:JSON.stringify(data)}],structuredContent:data};
    }catch(error){
     const known=error instanceof EventIntegrationError;

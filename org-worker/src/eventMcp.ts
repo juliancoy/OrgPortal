@@ -1,3 +1,4 @@
+import {federalStores} from './federalStorage';
 import {registerUsaspendingTools} from './usaspendingMcp';
 import {registerEcosystemDatasetTools} from './ecosystemPublicMcp';
 import {evidenceGroupOperationSchema,runEvidenceGroupOperation} from './organizationEvidenceGroups';
@@ -758,7 +759,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     const server = new McpServer({ name: config.name ? `${config.name} MCP` : "orgportal-events", version: product.version, ...(config.name === "OrgPortal" ? { icons: [{ src: "https://orgportal.cc/orgportal.svg", mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) }, { instructions: "Search the public organization directory before adding an organization. Use directory_registration for researched third-party listings; it grants no access. Owned creation assigns owner access to the signed-in account and requires explicit ownership intent. Never substitute owned creation when directory registration is unavailable or denied. A claimed record is not verified legal representation. Inspect write receipts after uncertain outcomes before retrying." });
     registerAccountTools(server, env.DB, identity, config);
     registerMarylandComptrollerTools(server,env.DB,identity,config.organizationId);
-    registerUsaspendingTools(server,env.DB,identity,config.organizationId);
+    registerUsaspendingTools(server,env.DB,identity,config.organizationId,federalStores(env));
     registerEcosystemDatasetTools(server,env.DB,identity,config.organizationId);
     const scopedArgs = (args: unknown, operatorAccess = false) => {
       if (!(operatorAccess && identity.isOperator === true) && config.organizationId && (!args || typeof args !== 'object' || !('organizationId' in args)
@@ -847,7 +848,7 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     },async args=>{try{
       if(!identity.scopes.includes(portalReadScope)||!identity.scopes.includes(portalWriteScope))throw new EventIntegrationError(403,'Missing portal scope');
       if(phase==='apply'&&args.confirm!==true)throw new EventIntegrationError(409,'Apply requires confirm=true');
-      const data=await runEvidenceGroupOperation(env.DB,{id:identity.userId,name:identity.userId,email:null,isOperator:identity.isOperator},scopedArgs({...args,confirm:phase==='apply'},true));
+      const data=await runEvidenceGroupOperation(env.DB,{id:identity.userId,name:identity.userId,email:null,isOperator:identity.isOperator},scopedArgs({...args,confirm:phase==='apply'},true),federalStores(env));
       return {content:[{type:'text' as const,text:JSON.stringify(data)}],structuredContent:data};
     }catch(error){return {isError:true,content:[{type:'text' as const,text:await eventErrorResponse(error,env,request).text()}]}}});
     server.registerTool('get_organization_evidence_group_operation',{

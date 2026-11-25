@@ -40,6 +40,10 @@
     { "binding": "CHAT_SERVICE", "service": "chat-codecollective" }
   ],
   "d1_databases": [
+    {"binding": "FEDERAL_0", "database_name": "org-federal-history-0", "database_id": "0865b586-0339-4ce9-88d2-5aecfebe592e", "migrations_dir": "financial-migrations"},
+    {"binding": "FEDERAL_1", "database_name": "org-federal-history-1", "database_id": "269e406f-a74d-46a1-9843-5ba37d68919a", "migrations_dir": "financial-migrations"},
+    {"binding": "FEDERAL_2", "database_name": "org-federal-history-2", "database_id": "a74e1c5d-7b7c-4f6e-a8a4-8b1fb1f4f444", "migrations_dir": "financial-migrations"},
+    {"binding": "FEDERAL_3", "database_name": "org-federal-history-3", "database_id": "5e18e7b6-e2d0-4ec4-85a0-d7199ddb08e3", "migrations_dir": "financial-migrations"},
     {
       "binding": "JOURNAL_DB",
       "database_name": "org-journal",

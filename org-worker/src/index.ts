@@ -1,3 +1,4 @@
+import {federalStores} from './federalStorage';
 import { loadDirectoryIdentities } from './directoryIdentity';
 import {publicEcosystemRecords,publicEcosystemNativeRecords} from './ecosystemPublic';
 import { directoryExcludedAccountIds } from './peopleDirectoryExclusions';
@@ -3284,7 +3285,7 @@ app.get('/api/network/orgs/:organizationId/evidence-group/history',async c=>{
 });
 app.put('/api/network/orgs/:organizationId/evidence-group',bodyLimit({maxSize:4096}),async c=>{
  const user=await currentUser(c.env,c.req.raw);
- try{return c.json({group:await changeOrganizationEvidenceGrouping(c.env.DB,organizationActor(user,c.env),c.req.param('organizationId'),await c.req.json())});}
+ try{return c.json({group:await changeOrganizationEvidenceGrouping(c.env.DB,organizationActor(user,c.env),c.req.param('organizationId'),await c.req.json(),federalStores(c.env))});}
  catch(error){return eventErrorResponse(error,c.env,c.req.raw);}
 });
 
@@ -3313,7 +3314,7 @@ app.get('/api/network/ecosystem/public/:collection',async c=>{
   const after=c.req.query('after')||'';
   if(after.length>2000)return c.json({error:'Invalid public cursor'},400);
   c.header('Cache-Control','no-store');
-  return c.json(c.req.param('collection')==='native' ? await publicEcosystemNativeRecords(c.env.DB,after,c.req.query('limit')===undefined?500:Number(c.req.query('limit'))) :
+  return c.json(c.req.param('collection')==='native' ? await publicEcosystemNativeRecords(c.env.DB,after,c.req.query('limit')===undefined?500:Number(c.req.query('limit')),federalStores(c.env)) :
    await publicEcosystemRecords(c.env.DB,c.req.param('collection'),after,c.req.query('datasetId')));
  }catch(error){return eventErrorResponse(error,c.env,c.req.raw);}
 });
