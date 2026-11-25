@@ -144,3 +144,22 @@ test('large dataset reconciliation streams ordered hash pages and indexed duplic
  assert.ok(!plan.some(r=>/SCAN r\b/.test(String(r.detail))),JSON.stringify(plan));
  }finally{db.sqlite.close();}
 });
+
+test('uncertain stage receipts expose exact immutable row reconciliation only to their authorized owner',async()=>{
+ const db=setup();try{
+  const input=await fixture();const preview=await importEcosystemDataset(db.asD1(),actor,input);
+  const checks=input.rows.map(({collection,key,sha256})=>({collection,key,sha256}));
+  await importEcosystemDataset(db.asD1(),actor,{...input,previewId:preview.previewId,confirm:true});
+  db.sqlite.prepare("UPDATE event_mcp_operations SET status='uncertain' WHERE id=?").run(preview.previewId);
+  const verified=await ecosystemDatasetStatus(db.asD1(),actor,'test-org',input.datasetId,preview.previewId,checks);
+  assert.ok('rowVerification' in verified);assert.equal(verified.status,'uncertain');
+  assert.deepEqual(verified.rowVerification,{datasetId:input.datasetId,requested:3,matched:3,missing:0,conflicting:0});
+  const missing=await ecosystemDatasetStatus(db.asD1(),actor,'test-org','e'.repeat(64),preview.previewId,checks);
+  assert.ok('rowVerification' in missing);assert.equal(missing.rowVerification.missing,3);
+  const conflict=await ecosystemDatasetStatus(db.asD1(),actor,'test-org',input.datasetId,preview.previewId,[{...checks[0],sha256:'f'.repeat(64)}]);
+  assert.ok('rowVerification' in conflict);assert.equal(conflict.rowVerification.conflicting,1);
+  await assert.rejects(ecosystemDatasetStatus(db.asD1(),{...actor,id:'another-operator'},'test-org',input.datasetId,preview.previewId,checks),/not found/);
+  await assert.rejects(ecosystemDatasetStatus(db.asD1(),actor,'other-org',input.datasetId,preview.previewId,checks));
+  await assert.rejects(ecosystemDatasetStatus(db.asD1(),actor,'test-org',input.datasetId,preview.previewId,[checks[0],checks[0]]),/Invalid stage/);
+ }finally{db.sqlite.close();}
+});

@@ -1,10 +1,10 @@
 import type {McpServer} from '@modelcontextprotocol/sdk/server/mcp.js';
 import {z} from 'zod';
 import {EventIntegrationError} from './eventPlatforms';
-import {ecosystemImportSchema,importEcosystemDataset,ecosystemDatasetStatus} from './ecosystemPublic';
+import {ecosystemImportSchema,importEcosystemDataset,ecosystemDatasetStatus,ecosystemRowCheck} from './ecosystemPublic';
 import type {OrganizationActor} from './organizationIam';
 type Identity={userId:string;scopes:string[];isOperator:boolean};
-const target=z.object({organizationId:z.string().min(1).max(200),datasetId:z.string().regex(/^[a-f0-9]{64}$/),previewId:z.string().uuid().optional()}).strict();
+const target=z.object({organizationId:z.string().min(1).max(200),datasetId:z.string().regex(/^[a-f0-9]{64}$/),previewId:z.string().uuid().optional(),verifyRows:z.array(ecosystemRowCheck).min(1).max(200).optional()}).strict();
 export function registerEcosystemDatasetTools(server:McpServer,db:D1Database,identity:Identity,tenantOrganizationId?:string){
  for(const operation of ['preview','apply','status'] as const){
   const writing=operation!=='status';
@@ -14,7 +14,7 @@ export function registerEcosystemDatasetTools(server:McpServer,db:D1Database,ide
    inputSchema:writing?ecosystemImportSchema:target,
    annotations:{readOnlyHint:operation!=='apply',destructiveHint:operation==='apply',openWorldHint:false},
    _meta:{securitySchemes:[{type:'oauth2',scopes:writing?['org:portal.read','org:portal.write']:['org:portal.read']}]},
-  },async args=>{
+  },async (args:z.infer<typeof ecosystemImportSchema>|z.infer<typeof target>)=>{
    try{
     if(!identity.scopes.includes('org:portal.read')||(writing&&!identity.scopes.includes('org:portal.write')))
      throw new EventIntegrationError(403,'Missing portal scope');
@@ -22,7 +22,7 @@ export function registerEcosystemDatasetTools(server:McpServer,db:D1Database,ide
      throw new EventIntegrationError(403,'This MCP connection is limited to its own organization');
     if(operation==='apply'&&(!('confirm' in args)||args.confirm!==true))throw new EventIntegrationError(409,'Apply requires confirm=true and the reviewed previewId');
     const actor:OrganizationActor={id:identity.userId,name:identity.userId,email:null,isOperator:identity.isOperator};
-    const data=operation==='status'?await ecosystemDatasetStatus(db,actor,args.organizationId,args.datasetId,args.previewId):
+    const data=operation==='status'?await ecosystemDatasetStatus(db,actor,args.organizationId,args.datasetId,args.previewId,'verifyRows' in args?args.verifyRows:undefined):
      await importEcosystemDataset(db,actor,{...args,confirm:operation==='apply'});
     return {content:[{type:'text' as const,text:JSON.stringify(data)}],structuredContent:data};
    }catch(error){

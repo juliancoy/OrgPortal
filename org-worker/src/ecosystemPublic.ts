@@ -6,13 +6,26 @@ import {EventIntegrationError} from './eventPlatforms';
 import {canonicalJson,previewFingerprint,prepareEventOperation,claimEventOperation,finishEventOperation,enforceEventRateLimit,eventOperationStatus} from './eventOperationStore';
 export const collections=['organizations','relationships','financing','events','nonprofitProfiles','performanceRecords','performanceAssessments','metadata','positions'] as const;
 const digest=z.string().regex(/^[a-f0-9]{64}$/);
-const row=z.object({collection:z.enum(collections),key:digest,value:z.record(z.string(),z.unknown()),sha256:digest}).strict();
+export const ecosystemRowCheck=z.object({collection:z.enum(collections),key:digest,sha256:digest}).strict();
+const row=ecosystemRowCheck.extend({value:z.record(z.string(),z.unknown())}).strict();
 export const ecosystemImportSchema=z.object({organizationId:z.string().min(1).max(200),datasetId:digest,
  action:z.enum(['stage','publish','delete_archived']),rows:z.array(row).max(200).default([]),previewId:z.string().uuid().optional(),confirm:z.boolean().optional()}).strict();
-export async function ecosystemDatasetStatus(db:D1Database,actor:OrganizationActor,organizationId:string,datasetId:string,previewId?:string){
+export async function ecosystemDatasetStatus(db:D1Database,actor:OrganizationActor,organizationId:string,datasetId:string,previewId?:string,verifyRows?:{collection:string;key:string;sha256:string}[]){
  if(!actor.isOperator)throw new EventIntegrationError(403,'Operator access required');
  await authorizeOrganization(db,actor,'manage',organizationId);
- if(previewId)return eventOperationStatus(db,actor.id,organizationId,previewId);
+ if(verifyRows&&!previewId)throw new EventIntegrationError(400,'Row reconciliation requires an owned preview receipt');
+ if(previewId){
+  const receipt=await eventOperationStatus(db,actor.id,organizationId,previewId);
+  if(!verifyRows)return receipt;
+  if(!verifyRows.length||verifyRows.length>200||new Set(verifyRows.map(row=>row.collection+':'+row.key)).size!==verifyRows.length)throw new EventIntegrationError(400,'Invalid stage reconciliation keys');
+  const stored=await db.prepare(`SELECT r.collection,r.record_key,r.sha256 FROM json_each(?) AS wanted
+   CROSS JOIN ecosystem_public_records AS r ON r.dataset_id=?
+   AND r.collection=json_extract(wanted.value,'$[0]') AND r.record_key=json_extract(wanted.value,'$[1]')`)
+   .bind(JSON.stringify(verifyRows.map(row=>[row.collection,row.key])),datasetId).all<{collection:string;record_key:string;sha256:string}>();
+  const found=new Map(stored.results.map(row=>[row.collection+':'+row.record_key,row.sha256]));
+  const conflicting=verifyRows.filter(row=>found.has(row.collection+':'+row.key)&&found.get(row.collection+':'+row.key)!==row.sha256).length;
+  return {...receipt,rowVerification:{datasetId,requested:verifyRows.length,matched:stored.results.length-conflicting,missing:verifyRows.length-stored.results.length,conflicting}};
+ }
  const dataset=await db.prepare('SELECT * FROM ecosystem_public_datasets WHERE id=?').bind(datasetId).first();
  // Hash in primary-key order with bounded pages. Materializing the full graph
  // and its joined checksum string exhausted Worker memory on historical imports.
