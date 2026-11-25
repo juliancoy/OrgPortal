@@ -47,3 +47,13 @@ TypeScript; read-only deployed service/commit/API checks. Provisioning identitie
 schema digests and publication receipts are recorded separately.
 
 Platform reference: https://developers.cloudflare.com/d1/platform/limits/
+
+Additional primary-store index review: migration 0138 creates covering indexes
+for fiscal reconciliation and source-checksum counts on existing public records.
+Without these indexes, SQLite sorts all 434,193 existing rows and can exhaust
+D1 memory during concurrent imports, even with the shorter date-based key.
+The migration changes no rows, identifiers, balances or permissions. New and old
+code remain compatible; rollback may leave the unused indexes intact. Verify
+query plans avoid temporary sorting and compare counts before/after; apply this
+explicitly, outside the code deployment. Financial stores already have equivalent
+indexes in their initial schema.

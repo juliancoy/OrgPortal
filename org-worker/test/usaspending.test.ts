@@ -152,3 +152,10 @@ test('financial atomic receipts recover a lost primary completion without duplic
   await assert.rejects(importUsaspending(db.asD1(),actor,{...input,confirm:true,previewId:preview.previewId},shards),/already used|changed/);
  }finally{db.sqlite.close();stores.forEach(s=>s.sqlite.close());}
 });
+test('reconciliation uses covering indexes without source-wide temporary sorts',()=>{
+ const db=setup();try{
+  for(const sql of ["SELECT dataset,CAST(CAST(substr(occurred_at,1,4) AS INTEGER)+(substr(occurred_at,6,2)>='10') AS TEXT) AS fiscal_year,count(*),sum(amount_cents),min(occurred_at),max(occurred_at) FROM external_financial_observations WHERE source_system='usaspending' GROUP BY dataset,CAST(CAST(substr(occurred_at,1,4) AS INTEGER)+(substr(occurred_at,6,2)>='10') AS TEXT) ORDER BY dataset,fiscal_year","SELECT source_sha256,count(*) FROM external_financial_observations WHERE source_system='usaspending' GROUP BY source_sha256 ORDER BY source_sha256"]){
+   const plan=db.sqlite.prepare('EXPLAIN QUERY PLAN '+sql).all().map(r=>String(r.detail)).join('\n');assert.doesNotMatch(plan,/TEMP B-TREE/);assert.match(plan,/external_financial_(fiscal_totals|checksums)/);
+  }
+ }finally{db.sqlite.close();}
+});
