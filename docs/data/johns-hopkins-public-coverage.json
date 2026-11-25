@@ -1,0 +1,118 @@
+{
+  "updatedAt": "2026-11-25T01:11:03.793459+00:00",
+  "requestedScope": "All available public Hopkins years; older federal records for every Maryland-related recipient. University, hospital, health system, Bayview and APL identities remain separate.",
+  "sources": [
+    {
+      "source": "NIH RePORTER",
+      "status": "published in production database; website snapshot refresh pending",
+      "years": [
+        1985,
+        2027
+      ],
+      "records": 65173,
+      "parentProjects": 51607,
+      "subprojectsExcludedFromParentTotals": 13566,
+      "datasetId": "4d2ba8107b9b6d3e59ec3c13c47f6ef84bfa9e367d6f4f896ab05b91e2591b71"
+    },
+    {
+      "source": "USAspending Maryland prime transactions",
+      "status": "FY2025\u2013FY2026 and Hopkins historical rows published; all-recipient FY2001\u2013FY2027 archive collected and validated, remaining upload pending",
+      "publishedRecords": 527755,
+      "scope": "Recipient located in Maryland OR primary place of performance in Maryland. Source transaction keys deduplicate overlap. Signed obligations, not cash.",
+      "collectedUnionRecords": 6680805,
+      "unionSha256": "f417a30f10cc2717fd9db12ddf0cbaac0e1669174cd2e53cfc9cd7c9e9dd55a2",
+      "earliestAvailableSourceYear": 2001,
+      "availabilitySource": "https://www.usaspending.gov/data/about-the-data-download.pdf"
+    },
+    {
+      "source": "Hopkins federal recipient search",
+      "status": "93562 additional Maryland-eligible historical transactions published; 409 other-source-geography transactions in expanded evidence package",
+      "scope": "Name search can return related organizations, which retain separate source identities. Not proof of complete alias coverage.",
+      "publishedNewMarylandRecords": 93562
+    },
+    {
+      "source": "IRS Form 990",
+      "status": "FY2011\u20132024 historical statement profiles published; FY2025 already published",
+      "profilesAdded": 56,
+      "scope": "48 electronic detailed filings FY2013\u20132024; 8 IRS summary profiles FY2011\u20132012. Four distinct filers; APL is reported as a disregarded university entity."
+    },
+    {
+      "source": "IRS Form 990 organization grants and contractors",
+      "status": "published in production database; website snapshot refresh pending",
+      "years": [
+        2013,
+        2025
+      ],
+      "records": 9743,
+      "scope": "Organization-only annual Schedule I and independent-contractor details; individuals excluded. Overlaps annual expenses and may overlap federal subawards; not additive cash.",
+      "productionDatasetId": "140541fed0ae5292318f0be5fd12387baba379fe08f903922cb9249752e66239",
+      "productionVerifiedAt": "2026-11-25T01:10:35.696Z"
+    },
+    {
+      "source": "HSCRC scanned hospital and Bayview Form 990",
+      "status": "published in production database; website snapshot refresh pending",
+      "years": [
+        2009,
+        2010
+      ],
+      "profiles": 4,
+      "productionDatasetId": "140541fed0ae5292318f0be5fd12387baba379fe08f903922cb9249752e66239",
+      "productionVerifiedAt": "2026-11-25T01:10:35.696Z"
+    },
+    {
+      "source": "HSCRC and MHCC health-system audits",
+      "status": "published in production database; website snapshot refresh pending",
+      "years": [
+        2009,
+        2025
+      ],
+      "reportingPeriods": 17,
+      "scope": "Separate combined/consolidated reporting group, including affiliates and eliminations. Operating statement only. Audited payer breakdown reconciled for FY2018\u20132025; not a payer cash ledger.",
+      "productionDatasetId": "140541fed0ae5292318f0be5fd12387baba379fe08f903922cb9249752e66239",
+      "productionVerifiedAt": "2026-11-25T01:10:35.696Z"
+    },
+    {
+      "source": "University annual reports",
+      "status": "published in production database; website snapshot refresh pending",
+      "years": [
+        1997,
+        2026
+      ],
+      "reportingPeriods": 30,
+      "scope": "Full operating statements FY2000\u20132026; published historical summaries FY1997\u20131999. Separate reporting group. Text-extract checksums are not original PDF checksums.",
+      "productionDatasetId": "140541fed0ae5292318f0be5fd12387baba379fe08f903922cb9249752e66239",
+      "productionVerifiedAt": "2026-11-25T01:10:35.696Z"
+    },
+    {
+      "source": "USAspending / SAM subaward reports",
+      "status": "all available source exports collected and validated; publication pending",
+      "records": 207174,
+      "rawExportRows": 342472,
+      "quarantinedRecords": 0,
+      "scope": "Maryland recipient OR place of performance. Monthly reports and amendments remain separate, non-additive observations; not cash or additional prime funding.",
+      "sha256": "923e3e1e464dd174b259e6209208f25a17f69f39875d7697e398751113930d06"
+    }
+  ],
+  "unresolved": [
+    "Federal historical collection and source geography discrepancies remain under review. Rejected source rows are retained, never silently counted as imported.",
+    "Older PDF-only nonprofit filings remain partly unavailable to the downloader. No values are inferred for missing filings.",
+    "Private vendor and customer ledgers are not public. Annual revenue, operating expenses, obligations, awards and settled payments cannot be added into one total.",
+    "The source filters returned 3227 unique transactions whose exported geography does not verify Maryland. These are preserved separately as explicit source-geography discrepancies. Another 556 previously rejected rows were recovered from exact source CSV rows using missing-name labels and the source MD state abbreviation.",
+    "Database publication and website snapshot deployment are separate. Collected or staged records are not proof that the website includes them. The larger archive also requires checking the snapshot and topology memory limits before website deployment."
+  ],
+  "rawSourceRetention": {
+    "visibility": "Private local audit cache; excluded from public repositories and snapshots",
+    "reviewBy": "2027-11-24",
+    "automation": "Manual review; no automatic expiry claimed",
+    "deletion": "Remove only the reviewed audit-source files and corresponding private derivatives/backups after correcting or withdrawing dependent published evidence as appropriate. Public minimized organization financial facts follow public-record correction and annual review policy."
+  },
+  "backgroundImport": {
+    "startedAt": "2026-11-25T01:09:54.042333+00:00",
+    "scope": "Remaining all-recipient prime transactions, then subaward reports and source-geography discrepancy evidence",
+    "remainingPrimeTransactions": 6153050,
+    "finalNativeRecords": 6680805,
+    "finalEvidenceDatasetId": "6190c3cae74e3e5943d2ad145e66453fc189cce3018f63163ea7ed7e028653f1",
+    "status": "running; publication counts require final receipts",
+    "websiteSnapshot": "pending separate capacity checks, build and deployment"
+  }
+}

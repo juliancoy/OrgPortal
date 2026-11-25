@@ -62,20 +62,20 @@ test('server-confirmed unclaimed receipt resumes the same preview, retaining exp
 });
 
 test('uncertain staging reconciles source hashes, retains the old receipt and previews only a reviewed retry',async()=>{
- for(const mode of ['stored','missing','conflicting']){
+ for(const mode of ['stored','missing','conflicting','executing-stored','executing-missing']){
   const directory=await mkdtemp(join(tmpdir(),'ecosystem-uncertain-'));let previews=0,applies=0;
   try{
    const rows=[{collection:'organizations',key:'k',sha256:'hash',value:{id:'1'}}];
    const call=async(name,payload)=>{
     if(name==='preview_ecosystem_dataset')return {previewId:'p'+(++previews),records:1};
-    if(name==='get_ecosystem_dataset_status')return {status:'uncertain',...(payload.verifyRows?{rowVerification:{datasetId:'dataset',requested:1,matched:mode==='stored'?1:0,missing:mode==='missing'?1:0,conflicting:mode==='conflicting'?1:0}}:{})};
+    if(name==='get_ecosystem_dataset_status')return {status:mode.startsWith('executing')?'executing':'uncertain',...(payload.verifyRows?{rowVerification:{datasetId:'dataset',requested:1,matched:mode.endsWith('stored')?1:0,missing:mode.endsWith('missing')?1:0,conflicting:mode==='conflicting'?1:0}}:{})};
     if(++applies===1)throw Error('reply uncertain');return {recorded:1,existing:0};
    };
    const options={rows,offset:0,datasetId:'dataset',organizationId:'org',directory,concurrency:1,call};
    await assert.rejects(stageBatches(options),/reply uncertain/);
-   if(mode==='conflicting'){await assert.rejects(stageBatches(options),/could not be reconciled/);assert.equal(applies,1);}
+   if(mode==='conflicting'||mode==='executing-missing'){await assert.rejects(stageBatches(options),/could not be reconciled|still executing/);assert.equal(applies,1);}
    else{
-    assert.equal(await stageBatches(options),1);assert.equal(applies,mode==='stored'?1:2);assert.equal(previews,mode==='stored'?1:2);
+    assert.equal(await stageBatches(options),1);assert.equal(applies,mode.endsWith('stored')?1:2);assert.equal(previews,mode.endsWith('stored')?1:2);
     assert.ok((await readdir(directory)).includes('0.json.uncertain-p1'));
    }
   }finally{await rm(directory,{recursive:true,force:true});}

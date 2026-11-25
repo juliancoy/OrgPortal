@@ -6,11 +6,12 @@ import {once} from 'node:events';
 import {basename} from 'node:path';
 import {createHash} from 'node:crypto';
 import {canonicalJson} from '../org-worker/src/eventOperationStore.ts';
+import {readEcosystemImport} from '../org-worker/scripts/ecosystem-import-source.mjs';
 const [baselinePath,baselineSha,additionsPath,additionsSha,output]=process.argv.slice(2);
 if(!output)throw Error('Supply baseline file/SHA256, additions file/SHA256, output file');
 const hash=value=>createHash('sha256').update(value).digest('hex');
 async function verified(path,expected){const bytes=await readFile(path);if(hash(bytes)!==expected)throw Error('Input checksum mismatch');return JSON.parse(bytes);}
-const baseline=await verified(baselinePath,baselineSha),additions=await verified(additionsPath,additionsSha);
+const baseline=await readEcosystemImport(baselinePath,baselineSha),additions=await verified(additionsPath,additionsSha);
 const rows=[...baseline.rows];const compare=(a,b)=>(a.collection+'\t'+a.key)<(b.collection+'\t'+b.key)?-1:1;
 const digest=()=>hash(rows.map(row=>`${row.collection}\t${row.key}\t${row.sha256}\n`).join(''));
 for(const row of rows)if(hash(canonicalJson(row.value))!==row.sha256)throw Error('Baseline source checksum mismatch');

@@ -20,10 +20,11 @@ export async function stageBatches({rows,offset,datasetId,organizationId,directo
   if(receipt&&receipt.hash!==hash)throw Error('Stage receipt does not match reviewed batch');
   if(receipt&&!receipt.completed){
    const status=await call('get_ecosystem_dataset_status',{organizationId,datasetId,previewId:receipt.previewId});
-   if(status.status==='uncertain'){
+   if(['uncertain','executing'].includes(status.status)){
     const verified=await call('get_ecosystem_dataset_status',{organizationId,datasetId,previewId:receipt.previewId,verifyRows:batch.map(({collection,key,sha256})=>({collection,key,sha256}))});
     const check=verified.rowVerification;
-    if(verified.status!=='uncertain'||check?.datasetId!==datasetId||check.requested!==batch.length||check.conflicting||check.matched+check.missing!==batch.length)throw Error('Uncertain stage rows could not be reconciled; inspect before replay');
+    if(verified.status!==status.status||check?.datasetId!==datasetId||check.requested!==batch.length||check.conflicting||check.matched+check.missing!==batch.length)throw Error('Uncertain stage rows could not be reconciled; inspect before replay');
+    if(status.status==='executing'&&check.matched!==batch.length)throw Error('Stage is still executing with missing rows; inspect before replay');
     await save(path+'.uncertain-'+receipt.previewId,{...receipt,verification:verified});
     if(check.matched===batch.length){receipt={...receipt,completed:true,recovered:true,verification:verified};await save(path,receipt);}
     else receipt=null; // New exact preview inserts only verified missing immutable rows.
