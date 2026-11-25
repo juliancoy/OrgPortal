@@ -84,3 +84,17 @@ test('MCP applies only within live scopes, tenant and operator grant, with an ex
   }finally{await c.close();}
  }finally{db.sqlite.close();}
 });
+
+// Dates, not source JSON text, determine the validated federal fiscal year.
+test('status reconciles fiscal-year boundaries and signed totals without sorting source metadata',async()=>{
+ const db=setup();try{
+ const dates=['2000-09-30','2000-10-01','2024-09-30','2024-10-01','2025-09-30','2025-10-01'];
+ const rows=dates.map((date,i)=>{const key='BOUNDARY_'+i;return {...row,id:'usaspending:transaction:'+createHash('sha256').update(key).digest('hex'),external_id:key,occurred_at:date,amount_cents:i%2?-500:1200,metadata:{...row.metadata,transaction_key:key,fiscal_year:String(Number(date.slice(0,4))+(date.slice(5,7)>='10'?1:0))}}});
+ const input={organizationId:'federal-test',rows};const preview=await importUsaspending(db.asD1(),actor,input);
+ await importUsaspending(db.asD1(),actor,{...input,confirm:true,previewId:preview.previewId});
+ const expected=db.sqlite.prepare(`SELECT dataset,json_extract(metadata_json,'$.fiscal_year') AS fiscal_year,count(*) AS records,sum(amount_cents) AS amount_cents,min(occurred_at) AS period_start,max(occurred_at) AS period_end FROM external_financial_observations WHERE source_system='usaspending' GROUP BY dataset,json_extract(metadata_json,'$.fiscal_year') ORDER BY dataset,fiscal_year`).all();
+ const status=await usaspendingStatus(db.asD1(),actor,input.organizationId);assert.ok('totals' in status);
+ assert.deepEqual(status.totals,expected);assert.equal(status.totals.find(r=>r.fiscal_year==='2025')!.amount_cents,700);
+ assert.equal(status.sources[0].records,6);
+ }finally{db.sqlite.close();}
+});

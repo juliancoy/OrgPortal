@@ -96,9 +96,11 @@ export async function usaspendingStatus(db:D1Database,actor:OrganizationActor,or
   if(!actor.isOperator) throw new EventIntegrationError(403,'Operator access required for USAspending observations');
   await authorizeOrganization(db,actor,'manage',organizationId);
   if(previewId) return eventOperationStatus(db,actor.id,organizationId,previewId);
-  const totals=await db.prepare(`SELECT dataset,json_extract(metadata_json,'$.fiscal_year') AS fiscal_year,count(*) AS records,sum(amount_cents) AS amount_cents,
+  // Import validation requires fiscal_year to match occurred_at. Group the small
+  // date column: sorting metadata_json for every row exhausts D1 memory at scale.
+  const totals=await db.prepare(`SELECT dataset,CAST(CAST(substr(occurred_at,1,4) AS INTEGER)+(substr(occurred_at,6,2)>='10') AS TEXT) AS fiscal_year,count(*) AS records,sum(amount_cents) AS amount_cents,
     min(occurred_at) AS period_start,max(occurred_at) AS period_end
-    FROM external_financial_observations WHERE source_system='usaspending' GROUP BY dataset,json_extract(metadata_json,'$.fiscal_year') ORDER BY dataset,fiscal_year`).all();
+    FROM external_financial_observations WHERE source_system='usaspending' GROUP BY dataset,CAST(CAST(substr(occurred_at,1,4) AS INTEGER)+(substr(occurred_at,6,2)>='10') AS TEXT) ORDER BY dataset,fiscal_year`).all();
   const sources=await db.prepare(`SELECT source_sha256,count(*) AS records FROM external_financial_observations
     WHERE source_system='usaspending' GROUP BY source_sha256 ORDER BY source_sha256`).all();
   return {sourceSystem:'usaspending',totals:totals.results || [],sources:sources.results || []};
