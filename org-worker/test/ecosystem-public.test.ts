@@ -116,3 +116,31 @@ test('bounded native export preserves every public master field and cursor acros
  assert.deepEqual(await publicEcosystemNativeRecords(db.asD1(),'zzzzzz'),{records:[],next:null});
  }finally{db.sqlite.close();}
 });
+
+test('large dataset reconciliation streams ordered hash pages and indexed duplicate checks preserve exact keys',async()=>{
+ const db=setup();try{
+ const datasetId='d'.repeat(64);db.sqlite.prepare("INSERT INTO ecosystem_public_datasets(id,state,created_at) VALUES(?,'staging','2026-11-24')").run(datasetId);
+ const insert=db.sqlite.prepare('INSERT INTO ecosystem_public_records(dataset_id,collection,record_key,payload_json,sha256) VALUES(?,?,?,?,?)');
+ const expected:{collection:string;record_key:string;sha256:string}[]=[];
+ for(let i=0;i<4107;i++){
+  const collection=i%2?'relationships':'organizations';const key=i.toString(16).padStart(64,'0');const sha256='a'.repeat(64);
+  insert.run(datasetId,collection,key,JSON.stringify({id:key}),sha256);expected.push({collection,record_key:key,sha256});
+ }
+ expected.sort((a,b)=>(a.collection+'\t'+a.record_key)<(b.collection+'\t'+b.record_key)?-1:1);
+ const bytes=new TextEncoder().encode(expected.map(r=>`${r.collection}\t${r.record_key}\t${r.sha256}\n`).join(''));
+ const digest=Buffer.from(await crypto.subtle.digest('SHA-256',bytes)).toString('hex');
+ const original=db.prepare.bind(db);const queries:string[]=[];
+ db.prepare=((sql:string)=>{queries.push(sql);return original(sql);}) as typeof db.prepare;
+ const status=await ecosystemDatasetStatus(db.asD1(),actor,'test-org',datasetId);assert.ok('digest' in status);
+ assert.equal(status.digest,digest);assert.deepEqual(status.counts,[{collection:'organizations',records:2054},{collection:'relationships',records:2053}]);
+ const pages=queries.filter(q=>q.includes('SELECT collection,record_key,sha256'));assert.equal(pages.length,3);
+ for(const q of pages){assert.match(q,/LIMIT 2000/);assert.doesNotMatch(q,/OFFSET/);}
+ const empty=await ecosystemDatasetStatus(db.asD1(),actor,'test-org','f'.repeat(64));assert.ok('digest' in empty);
+ assert.equal(empty.digest,'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');assert.deepEqual(empty.counts,[]);
+ const input=await fixture();await apply(db,input);const replay=await apply(db,input);assert.equal(replay.existing,3);assert.equal(replay.recorded,0);
+ const sql=queries.find(q=>q.includes('CROSS JOIN ecosystem_public_records'));assert.ok(sql);
+ const plan=db.sqlite.prepare('EXPLAIN QUERY PLAN '+sql).all(JSON.stringify(input.rows.map(r=>[r.collection,r.key])),input.datasetId);
+ assert.ok(plan.some(r=>/SEARCH r USING INDEX.*dataset_id=\? AND collection=\? AND record_key=\?/.test(String(r.detail))),JSON.stringify(plan));
+ assert.ok(!plan.some(r=>/SCAN r\b/.test(String(r.detail))),JSON.stringify(plan));
+ }finally{db.sqlite.close();}
+});

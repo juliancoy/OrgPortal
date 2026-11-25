@@ -66,7 +66,7 @@ test('MCP transports full-size images without weakening other envelopes or write
     const empty = body(name,{padding:''});
     return body(name,{padding:'x'.repeat(size-Buffer.byteLength(empty))});
   };
-  for (const [name,limit] of [['get_event',64*1024],['preview_email_history_import',1024*1024],['preview_organization_image_upload',12*1024*1024]] as const) {
+  for (const [name,limit] of [['get_event',64*1024],['preview_email_history_import',1024*1024],['preview_ecosystem_dataset',1024*1024],['preview_usaspending_import',4*1024*1024],['apply_usaspending_import',4*1024*1024],['preview_organization_image_upload',12*1024*1024]] as const) {
     assert.equal((await send(sizedBody(name,limit))).status,200,name);
     assert.equal((await send(sizedBody(name,limit+1))).status,413,name);
   }

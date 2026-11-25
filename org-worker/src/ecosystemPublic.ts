@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {federalPublicProjection} from './federalStorage';
 import {z} from 'zod';
 import {authorizeOrganization,type OrganizationActor} from './organizationIam';
@@ -13,13 +14,22 @@ export async function ecosystemDatasetStatus(db:D1Database,actor:OrganizationAct
  await authorizeOrganization(db,actor,'manage',organizationId);
  if(previewId)return eventOperationStatus(db,actor.id,organizationId,previewId);
  const dataset=await db.prepare('SELECT * FROM ecosystem_public_datasets WHERE id=?').bind(datasetId).first();
- const counts=await db.prepare('SELECT collection,count(*) AS records FROM ecosystem_public_records WHERE dataset_id=? GROUP BY collection ORDER BY collection').bind(datasetId).all();
- const hashes=await db.prepare('SELECT collection,record_key,sha256 FROM ecosystem_public_records WHERE dataset_id=? ORDER BY collection,record_key').bind(datasetId).all<{collection:string;record_key:string;sha256:string}>();
- return {dataset,counts:counts.results,digest:await hashRows(hashes.results)};
-}
-async function hashRows(rows:{collection:string;record_key:string;sha256:string}[]){
- const bytes=new TextEncoder().encode(rows.map(r=>`${r.collection}\t${r.record_key}\t${r.sha256}\n`).join(''));
- return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');
+ // Hash in primary-key order with bounded pages. Materializing the full graph
+ // and its joined checksum string exhausted Worker memory on historical imports.
+ const hash=createHash('sha256');const counts=new Map<string,number>();
+ let collection='',key='';
+ while(true){
+  const page=await db.prepare(`SELECT collection,record_key,sha256 FROM ecosystem_public_records
+   WHERE dataset_id=? AND (collection,record_key)>(?,?) ORDER BY collection,record_key LIMIT 2000`)
+   .bind(datasetId,collection,key).all<{collection:string;record_key:string;sha256:string}>();
+  for(const row of page.results){
+   hash.update(`${row.collection}\t${row.record_key}\t${row.sha256}\n`);
+   counts.set(row.collection,(counts.get(row.collection)??0)+1);
+  }
+  if(page.results.length<2000)break;
+  const last=page.results.at(-1)!;collection=last.collection;key=last.record_key;
+ }
+ return {dataset,counts:[...counts].map(([collection,records])=>({collection,records})),digest:hash.digest('hex')};
 }
 export async function importEcosystemDataset(db:D1Database,actor:OrganizationActor,input:unknown){
  if(!actor.isOperator)throw new EventIntegrationError(403,'Operator access required');
@@ -37,8 +47,9 @@ export async function importEcosystemDataset(db:D1Database,actor:OrganizationAct
  const current=await db.prepare('SELECT state FROM ecosystem_public_datasets WHERE id=?').bind(changes.datasetId).first<{state:string}>();
  if(changes.action==='delete_archived'&&current?.state!=='archived')throw new EventIntegrationError(409,'Only superseded archived datasets can be deleted; publish a reviewed correction first');
  if(changes.action!=='delete_archived'&&current&&current.state!=='staging')throw new EventIntegrationError(409,'Published datasets are immutable; use a new reviewed version');
- const previous=await db.prepare(`SELECT collection,record_key,sha256 FROM ecosystem_public_records WHERE dataset_id=?
- AND (collection || ':' || record_key) IN (SELECT value FROM json_each(?))`).bind(changes.datasetId,JSON.stringify([...keys])).all<{collection:string;record_key:string;sha256:string}>();
+ const previous=await db.prepare(`SELECT r.collection,r.record_key,r.sha256 FROM json_each(?) AS wanted
+ CROSS JOIN ecosystem_public_records AS r ON r.dataset_id=?
+ AND r.collection=json_extract(wanted.value,'$[0]') AND r.record_key=json_extract(wanted.value,'$[1]')`).bind(JSON.stringify(changes.rows.map(r=>[r.collection,r.key])),changes.datasetId).all<{collection:string;record_key:string;sha256:string}>();
  const prior=new Map(previous.results.map(r=>[r.collection+':'+r.record_key,r.sha256]));
  for(const r of changes.rows)if(prior.has(r.collection+':'+r.key)&&prior.get(r.collection+':'+r.key)!==r.sha256)throw new EventIntegrationError(409,'Source key changed within dataset');
  let publishedCount=0;

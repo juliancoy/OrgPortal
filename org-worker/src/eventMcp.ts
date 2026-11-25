@@ -744,15 +744,16 @@ async function handleEventMcpRequest(request: Request, env: Env, observation: { 
     let parsedBody: unknown;
     try { parsedBody = JSON.parse(new TextDecoder().decode(bytes)); }
     catch { return new Response("Invalid JSON", { status: 400 }); }
-    // Only image-capable tools need the larger envelope. Keep existing limits
-    // for evidence imports and ordinary operations; tool schemas still bound
-    // decoded images to 8 MiB and enforce permissions and preview receipts.
+    // Federal imports allow up to 1000 source observations per reviewed batch.
+    // Keep their bounded envelope separate from other evidence and ordinary
+    // operations; all schemas, permissions and one-use receipts still apply.
     if(size>65536){
       const envelope=parsedBody as {method?:unknown;params?:{name?:unknown}};
       const name=envelope?.method==='tools/call'?envelope.params?.name:undefined;
       const imageTool=['preview_organization_image_upload','apply_organization_image_upload','preview_organization_profile','apply_organization_profile'].includes(String(name));
-      const evidenceTool=['preview_email_history_import','apply_email_history_import','preview_maryland_comptroller_import','apply_maryland_comptroller_import','preview_ecosystem_dataset','apply_ecosystem_dataset','preview_usaspending_import','apply_usaspending_import'].includes(String(name));
-      if(!imageTool&&!(evidenceTool&&size<=1024*1024))return new Response(null,{status:413});
+      const evidenceTool=['preview_email_history_import','apply_email_history_import','preview_maryland_comptroller_import','apply_maryland_comptroller_import','preview_ecosystem_dataset','apply_ecosystem_dataset'].includes(String(name));
+      const federalTool=['preview_usaspending_import','apply_usaspending_import'].includes(String(name));
+      if(!imageTool&&!(evidenceTool&&size<=1024*1024)&&!(federalTool&&size<=4*1024*1024))return new Response(null,{status:413});
     }
     const method = parsedBody && typeof parsedBody === 'object' && 'method' in parsedBody ? parsedBody.method : undefined;
     observation.method = typeof method === 'string' && ['initialize', 'notifications/initialized', 'tools/list', 'tools/call', 'ping'].includes(method) ? method : 'other';
