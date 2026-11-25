@@ -21,7 +21,7 @@ export async function organizationGroup(read,readRows,manifest,params){
   for(const profile of profiles)for(const [year,indices] of Object.entries(profile.recordFiscalYears))recordFiscalYears[year]=[...new Set([...(recordFiscalYears[year]||[]),...indices])].sort((a,b)=>a-b)
  }
  const financialMembers=[...new Set(profiles.flatMap(p=>p.financialMembers||[p.organization.id]))].sort()
- return {...root,recordFiscalYears,financialMembers,financialTotalsByYear:undefined,financialTotals:undefined,organization:{...root.organization,recordCount:recordIndices.length},parents:relatives('parents'),children:relatives('children'),
+ return {...root,recordFiscalYears,financialMembers,financialTotalsByYear:undefined,financialTotals:undefined,cashRelationships:undefined,cashRelationshipsByYear:undefined,organization:{...root.organization,recordCount:recordIndices.length},parents:relatives('parents'),children:relatives('children'),
   groups:Object.entries(recordKinds).map(([kind,indices])=>({kind,count:indices.length})),recordIndices,recordKinds,
   members:profiles.map(p=>p.organization),missingMembers:missing}
 }

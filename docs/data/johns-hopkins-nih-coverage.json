@@ -13,10 +13,15 @@
     "unresolved": 5
   },
   "measurement": "Reported project award amounts; not disbursements. Parent rows only; subprojects excluded. Do not add these to USAspending obligations or Form 990 expenses.",
-  "productionImported": false,
+  "productionImported": true,
   "pageCount": 155,
   "pageManifestSha256": "ac1be856267b2f2decba50243a596313ab30dd3be39d1be9eb29943443407500",
   "annualCsvSha256": "d533a2c3f63f56d5c7e8e1933597e1a51d8095bff9833770b68850acc1f73a6c",
   "scope": "Hopkins organization-name search only; historical aliases and all public sources are not yet fully reconciled.",
-  "rawRetention": "Original responses and checksummed page manifest retained in the private local audit workspace."
+  "rawRetention": "Original responses and checksummed page manifest retained in the private local audit workspace.",
+  "productionDatasetId": "4d2ba8107b9b6d3e59ec3c13c47f6ef84bfa9e367d6f4f896ab05b91e2591b71",
+  "productionVerifiedAt": "2026-11-24T23:49:07.284Z",
+  "parentProjects": 51607,
+  "subprojects": 13566,
+  "subprojectsExcludedFromAwardTotals": true
 }

@@ -1,6 +1,6 @@
 import {financialEvidence} from '../src/features/ecosystem/financial-evidence.js'
 // Awards and payments are separate observations, never additive cash flow.
-export function summarizeOrganizationTransfers(records, memberIds, seen=new Set()) {
+export function summarizeOrganizationTransfers(records, memberIds, seen=new Set(), onCash) {
  const members=new Set(memberIds),currencies=new Map(),awards=new Map()
  let missingAmounts=0,missingAwardAmounts=0
  for(const row of records){
@@ -12,6 +12,7 @@ export function summarizeOrganizationTransfers(records, memberIds, seen=new Set(
   if(key&&seen.has(key))continue
   if(key)seen.add(key)
   const currency=row.currency||(/^\$/.test(row.amountLabel||'')?'USD':null)
+  if(!award)onCash?.(row,incoming,currency)
   if(!currency||!Number.isFinite(row.amount)){if(award)missingAwardAmounts++;else missingAmounts++;continue}
   const bucket=award?awards:currencies
   const total=bucket.get(currency)||{currency,received:0,disbursed:0}

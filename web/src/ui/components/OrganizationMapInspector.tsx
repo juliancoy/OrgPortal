@@ -8,6 +8,7 @@ const dollars=(amount:number|null|undefined)=>typeof amount==='number'&&Number.i
 
 export function OrganizationMapInspector({data,node,hovered,onClear,onPin,onMinimize}:{data:MapPage;node?:MapNode;hovered:boolean;onClear:()=>void;onPin:()=>void;onMinimize:()=>void}){
  const panel=useRef<HTMLElement>(null)
+ const anchorName=data.organizations.find(org=>org.id===data.anchor)?.name||'selected organization'
  useEffect(()=>{if(panel.current)panel.current.scrollTop=0},[node?.id,data.fy])
  const connections=useMemo(()=>{
   const parents=new Set<string>(),children=new Set<string>();let records=0
@@ -27,6 +28,15 @@ export function OrganizationMapInspector({data,node,hovered,onClear,onPin,onMini
    <h3>{node.name}</h3>
    <p>{node.category.replaceAll('-',' ')}{node.type?` · ${node.type}`:''}</p>
    <p className="muted">{data.fy&&/^\d{4}$/.test(data.fy)?`FY${data.fy}`:data.fy==='unassigned'?'Year unavailable':'All years'}</p>
+   {node.relationshipCash&&<section aria-label="Payments with selected organization">
+    <h4>Payments with {anchorName}</h4>
+    <dl className="organization-map-inspector-totals">
+     <div><dt>Paid to {anchorName} (USD)</dt><dd>{dollars(node.relationshipCash.disbursedUsd)}</dd></div>
+     <div><dt>Received from {anchorName} (USD)</dt><dd>{dollars(node.relationshipCash.receivedUsd)}</dd></div>
+    </dl>
+    {!!node.relationshipCash.missingAmounts&&<p>{node.relationshipCash.missingAmounts} records with unavailable amounts or currency excluded.</p>}
+   </section>}
+   <h4>Organization-wide totals</h4>
    <dl className="organization-map-inspector-totals">
     <div><dt>Recorded cash received (USD)</dt><dd>{dollars(node.receivedUsd)}</dd></div>
     <div><dt>Recorded cash disbursed (USD)</dt><dd>{dollars(node.disbursedUsd)}</dd></div>

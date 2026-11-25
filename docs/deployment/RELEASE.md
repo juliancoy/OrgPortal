@@ -89,6 +89,24 @@ delete the old Worker or any of its static-site resources. Authenticated login
 checks use the isolated local deployment per AGENTS.md; live checks are public
 and read-only.
 
+## Code releases with a pinned evidence snapshot
+
+When a data backfill is incomplete, a code release may explicitly retain a
+reviewed query snapshot instead of exporting the partially imported dataset.
+Place exactly one version directory and its original `manifest.json` in a
+separate directory within the release checkout. Set
+`ORGPORTAL_ECOSYSTEM_QUERY_SNAPSHOT` to that directory (relative to `web`) and
+`ORGPORTAL_ECOSYSTEM_QUERY_SHA256` to its tree digest from
+`digestPaths(source, ['.'])` in `web/scripts/release-cache.mjs`.
+Use the normal pinned-container release build and deployment commands.
+
+This input is checksum-verified before and after copying; missing hashes,
+symlinks, mixed versions and conflicting fresh-export settings fail the build.
+The snapshot's export timestamp and manifest remain unchanged. The deployment
+metadata records its version, dates, digest and explicit selection. This does
+not claim fresh data or completion of a backfill. Default builds still perform
+the normal export and retain the existing 15-minute cache freshness limit.
+
 ## Identity mount and research access
 
 The public MCP resource is `https://orgportal.cc/mcp`. Its OAuth issuer is

@@ -4,6 +4,7 @@ from nonprofits_test import xml,ROW
 from irs_nonprofits import normalize_filing
 from nonprofit_statements import statement_evidence
 from rendered_990_statement import normalize_rendered_statement
+from legacy_990_statement import normalize_legacy_statement
 FORM='''<IRS990><CYContributionsGrantsAmt>20</CYContributionsGrantsAmt><CYProgramServiceRevenueAmt>80</CYProgramServiceRevenueAmt><CYInvestmentIncomeAmt>-5</CYInvestmentIncomeAmt><CYOtherRevenueAmt>5</CYOtherRevenueAmt><CYTotalRevenueAmt>100</CYTotalRevenueAmt><ProgramServiceRevenueGrp><Desc>TUITION</Desc><TotalRevenueColumnAmt>30</TotalRevenueColumnAmt></ProgramServiceRevenueGrp><ProgramServiceRevenueGrp><Desc>RESEARCH</Desc><TotalRevenueColumnAmt>40</TotalRevenueColumnAmt></ProgramServiceRevenueGrp><TotalOthProgramServiceRevGrp><TotalRevenueColumnAmt>10</TotalRevenueColumnAmt></TotalOthProgramServiceRevGrp><CYGrantsAndSimilarPaidAmt>5</CYGrantsAndSimilarPaidAmt><CYSalariesCompEmpBnftPaidAmt>65</CYSalariesCompEmpBnftPaidAmt><CYOtherExpensesAmt>10</CYOtherExpensesAmt><CYTotalExpensesAmt>80</CYTotalExpensesAmt></IRS990>'''
 class StatementTests(unittest.TestCase):
  def summary(self,form=FORM):return normalize_filing(xml(form),ROW,'https://apps.irs.gov/archive.zip','2026-11-24')[0]
@@ -42,4 +43,15 @@ class StatementTests(unittest.TestCase):
   s=normalize_rendered_statement(raw,ROW,'https://example.org/IRS990','today');self.assertEqual(s['revenue'],1000);self.assertTrue(s['statements']['revenue']['reconciled']);self.assertEqual(s['sourceFormat'],'irs_efile_rendered_html')
   self.assertEqual(s['filedAt'],'');self.assertIsNone(s['amended'])
   with self.assertRaisesRegex(ValueError,'EIN'):normalize_rendered_statement(raw,{**ROW,'EIN':'999999999'},'','')
+  transitional=raw.replace(b'BusinessNameLine1Txt',b'BusinessNameLine1')
+  self.assertEqual(normalize_rendered_statement(transitional,ROW,'','today')['name'],'Example')
+ def test_legacy_fields_reconcile_and_preserve_original_paths(self):
+  prefix='/AppData/SubmissionHeaderAndDocument/'
+  values={'ReturnHeader[1]/Filer[1]/EIN[1]':'01-2345678','ReturnHeader[1]/Filer[1]/Name[1]/BusinessNameLine1[1]':'Example','ReturnHeader[1]/TaxPeriodBeginDate[1]':'01-01-2024','ReturnHeader[1]/TaxPeriodEndDate[1]':'12-31-2024','SubmissionDocument/IRS990[1]/TotalRevenueCurrentYear[1]':'1,000','SubmissionDocument/IRS990[1]/ProgramServiceRevenueCY[1]':'1,000','SubmissionDocument/IRS990[1]/OtherExpensesCurrentYear[1]':'700','SubmissionDocument/IRS990[1]/TotalExpensesCurrentYear[1]':'700'}
+  raw=''.join(f'<span id="{prefix+k}">{v}</span>' for k,v in values.items()).encode()
+  s=normalize_legacy_statement(raw,ROW,'https://example.org/IRS990','today')
+  self.assertTrue(all(x['reconciled'] for x in s['statements'].values()))
+  self.assertEqual(s['statements']['revenue']['lines'][0]['sourceLine'],'ProgramServiceRevenueCY')
+  self.assertEqual(s['expenses'],700);self.assertIsNone(s['assets'])
+  with self.assertRaisesRegex(ValueError,'EIN'):normalize_legacy_statement(raw,{**ROW,'EIN':'999999999'},'','')
 if __name__=='__main__':unittest.main()

@@ -41,6 +41,8 @@ if (action === 'build') {
       VITE_PUBLIC_BASE: '/', VITE_PIDP_BASE_URL: '/pidp', VITE_CHAT_API_BASE_URL: '/api/chat',
       VITE_UPDATE_MANIFEST_URL: '/mobile-update.json', VITE_APP_BUILD_NUMBER: buildNumber,
     });
+    const evidence=JSON.parse(readFileSync('web/public/ecosystem-data/query/manifest.json','utf8'));
+    metadata.evidenceSnapshot={version:evidence.version,generatedAt:evidence.generatedAt,exportedAt:evidence.transactionalCoverage?.exportedAt,input:process.env.ORGPORTAL_ECOSYSTEM_QUERY_SNAPSHOT?'explicit-pinned-query':'generated',...(process.env.ORGPORTAL_ECOSYSTEM_QUERY_SHA256?{sha256:process.env.ORGPORTAL_ECOSYSTEM_QUERY_SHA256}:{})};
     rmSync('.release/site', { recursive: true, force: true });
     mkdirSync('.release/site', { recursive: true });
     cpSync('web/dist', '.release/site/__portal_root', { recursive: true });

@@ -1,6 +1,7 @@
 import {summarizeNodeObservations} from '../src/features/ecosystem/node-financial-observations.js'
 // Public evidence profiles: no directory writes, inferred owners, or name matching.
 import {summarizeOrganizationTransfers} from '../server/organization-financial-totals.mjs'
+import {cashRelationshipAccumulator} from '../server/organization-cash-relationships.mjs'
 import {receivedUsdFromTotals,disbursedUsdFromTotals} from '../src/features/ecosystem/received-amount.js'
 export function organizationEvidenceProfiles(data) {
  const nodes = new Map(data.organizations.map(org => [org.id, org])), children = new Map(), parents = new Map()
@@ -62,13 +63,20 @@ export function organizationEvidenceProfiles(data) {
    entry.groups=Object.entries(entry.recordKinds).map(([kind,indices])=>({kind,count:indices.length}))
   }
   const transfers=(entry.recordKinds.transfer||[]).map(index=>data.relationships[index])
-  entry.financialTotals=summarizeOrganizationTransfers(transfers,members)
+  const cash=cashRelationshipAccumulator()
+  entry.financialTotals=summarizeOrganizationTransfers(transfers,members,new Set(),cash.add)
+  entry.cashRelationships=cash.result()
   // Every organization needs indexed yearly totals. Otherwise each map page
   // scans the complete year's payment evidence again in request-scoped runtimes.
   {
    const years=new Map()
    for(const row of transfers){const year=row.fiscalYear||'unassigned';if(!years.has(year))years.set(year,[]);years.get(year).push(row)}
-   entry.financialTotalsByYear=Object.fromEntries([...years].map(([year,rows])=>[year,summarizeOrganizationTransfers(rows,members)]))
+   entry.cashRelationshipsByYear=Object.create(null)
+   entry.financialTotalsByYear=Object.fromEntries([...years].map(([year,rows])=>{
+    const cash=cashRelationshipAccumulator(),totals=summarizeOrganizationTransfers(rows,members,new Set(),cash.add)
+    entry.cashRelationshipsByYear[year]=cash.result()
+    return [year,totals]
+   }))
   }
   entry.recordFiscalYears=Object.create(null)
   for(const index of entry.recordIndices)(entry.recordFiscalYears[data.relationships[index].fiscalYear||'unassigned']??=[]).push(index)

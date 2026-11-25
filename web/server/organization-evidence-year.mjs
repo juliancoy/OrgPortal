@@ -23,5 +23,6 @@ export async function organizationEvidenceYear(read,readRows,manifest,profile,fy
  }
  const recordIndices=indices||[],included=new Set(recordIndices),recordKinds=Object.fromEntries(Object.entries(profile.recordKinds).map(([kind,ids])=>[kind,ids.filter(id=>included.has(id))]).filter(([,ids])=>ids.length))
  const financialTotals=profile.financialTotalsByYear?(profile.financialTotalsByYear[fy]||{currencies:[],missingAmounts:0}):undefined
- return {...profile,financialTotals,organization:{...profile.organization,recordCount:recordIndices.length},recordIndices,recordKinds,groups:Object.entries(recordKinds).map(([kind,ids])=>({kind,count:ids.length}))}
+ const cashRelationships=profile.cashRelationshipsByYear?(profile.cashRelationshipsByYear[fy]||{}):undefined
+ return {...profile,financialTotals,cashRelationships,organization:{...profile.organization,recordCount:recordIndices.length},recordIndices,recordKinds,groups:Object.entries(recordKinds).map(([kind,ids])=>({kind,count:ids.length}))}
 }

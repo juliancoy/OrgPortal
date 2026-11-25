@@ -2,6 +2,7 @@ import {readTopology} from './topology.mjs'
 import {organizationGroup} from './organization-group.mjs'
 import {organizationEvidenceYear} from './organization-evidence-year.mjs'
 import {organizationFinancialTotals} from './organization-financial-totals.mjs'
+import {organizationCashRelationships} from './organization-cash-relationships.mjs'
 import {fiscalMatches} from '../src/features/ecosystem/transaction-time.js'
 import {receivedUsdFromTotals,disbursedUsdFromTotals} from '../src/features/ecosystem/received-amount.js'
 // Keep only compact public neighborhoods, scoped to the artifact reader and
@@ -53,7 +54,9 @@ export async function organizationMap(read, readRows, manifest, params, meta) {
  if(fy&&fy!=='all'&&(fy==='unassigned'||manifest.fiscalYears?.map(String).includes(fy)))await Promise.all([...new Set(selected.map(i=>Math.floor(i/100)))].map(async shard=>metrics.set(shard,await read(`${manifest.version}/fiscal/${fy}/metrics/${shard}.json`))))
  const organizations=(await readRows(read,manifest.version,'organizations',selected)).map((org,i)=>{
   const metric=fy&&fy!=='all'?metrics.get(Math.floor(selected[i]/100))?.[selected[i]%100]:org.networkMetrics
-  return projectOrganization(org,metric?.amount,metric?.receivedUsd,metric?.disbursedUsd,metric?.financialObservations)
+  const node=projectOrganization(org,metric?.amount,metric?.receivedUsd,metric?.disbursedUsd,metric?.financialObservations)
+  if(org.id!==map.anchor?.id)node.relationshipCash={anchorId:map.anchor.id,...(map.cashRelationships?.[org.id]||{receivedUsd:null,disbursedUsd:null,missingAmounts:0})}
+  return node
  })
  // A displayed group has one cash volume, including its attached source nodes.
  if(params.has('members')&&map.financialTotals){const anchor=organizations.find(org=>org.id===map.anchor?.id),usd=map.financialTotals.currencies.find(total=>total.currency==='USD');if(anchor)anchor.financialAmount=usd?Math.max(0,usd.received+usd.disbursed):0}
@@ -91,6 +94,7 @@ async function buildNeighborhood(read,readRows,manifest,params){
  // adjustments. Cache the summary with the neighborhood, never sum map edges.
  const financialProfile=profile.recordKinds?await organizationEvidenceYear(read,readRows,manifest,profile,fy):null
  const financialTotals=financialProfile?await organizationFinancialTotals(read,readRows,manifest,financialProfile,fy):undefined
+ const cashRelationships=financialProfile?await organizationCashRelationships(read,readRows,manifest,financialProfile):{}
  // Profiles are needed only for the focus's financial summary. Expansion uses
  // indexed compact adjacency, with no evidence-detail reads per expanded node.
  if(!topology.organizationLinks)for(const row of await readRows(read,version,'relationships',profile.recordKinds?.terms||[]))if(row.status!=='voided'&&fiscalMatches(row,fy))rootLinks.push([row.source,row.target,'terms'])
@@ -134,5 +138,5 @@ async function buildNeighborhood(read,readRows,manifest,params){
  const positions=new Map(index.rows.map((row,i)=>[row.id,i]))
  if(ids.some(id=>!positions.has(id)))throw Error('Organization map contains an unresolved endpoint')
  ids.pop()
- return {anchor:{id:selected,position:positions.get(selected)},financialTotals,ids,positions:ids.map(id=>positions.get(id)),parentPositions:[...incoming].sort().map(id=>positions.get(id)),relationships:[...pairs.values()],incoming:incoming.size,outgoing:outgoing.size}
+ return {anchor:{id:selected,position:positions.get(selected)},financialTotals,cashRelationships,ids,positions:ids.map(id=>positions.get(id)),parentPositions:[...incoming].sort().map(id=>positions.get(id)),relationships:[...pairs.values()],incoming:incoming.size,outgoing:outgoing.size}
 }

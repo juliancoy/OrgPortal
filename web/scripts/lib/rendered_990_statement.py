@@ -43,7 +43,7 @@ def normalize_rendered_statement(data,row,source_url,retrieved_at):
             if current not in elements:elements[current]=ET.SubElement(parent,match[1])
             parent=elements[current]
         parent.text=value.strip().replace(',','') if re.fullmatch(r'[\d,.-]+',value.strip()) else value.strip()
-    name=h('Filer[1]/BusinessName[1]/BusinessNameLine1Txt[1]')
+    name=h('Filer[1]/BusinessName[1]/BusinessNameLine1Txt[1]') or h('Filer[1]/BusinessName[1]/BusinessNameLine1[1]')
     if not name:raise ValueError('Missing filer name')
     return {'id':row['OBJECT_ID'],'ein':filer,'name':name,'formType':'990','periodStart':start,'periodEnd':end,
             'filedAt':'','amended':None,'accountingBasis':'accrual' if text(form,'MethodOfAccountingAccrualInd')=='1' else 'cash' if text(form,'MethodOfAccountingCashInd')=='1' else 'unspecified',

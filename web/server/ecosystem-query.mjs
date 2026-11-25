@@ -58,7 +58,7 @@ export async function queryEcosystem(read,section,params){
   if(aliases[handle]===null)throw Error('Invalid ambiguous organization reference')
   const position=aliases[handle];if(!Number.isSafeInteger(position)||position<0)throw Error('Invalid evidence index')
   const sourceProfile=params.has('members')?await organizationGroup(read,readRows,manifest,params):manifest.organizationEvidenceIndexVersion===1?(await readRows(read,version,'organization-evidence',[position]))[0]:await read(`${version}/organization-evidence/${position}.json`)
-  const {recordIndices,recordKinds,recordFiscalYears,...profile}=await organizationEvidenceYear(read,readRows,manifest,sourceProfile,fy)
+  const {recordIndices,recordKinds,recordFiscalYears,cashRelationships,cashRelationshipsByYear,...profile}=await organizationEvidenceYear(read,readRows,manifest,sourceProfile,fy)
   const offset=integer(params,'offset',0,1e7),limit=integer(params,'limit',25,MAX_PAGE);if(!limit)throw Error('Invalid limit')
   const kind=params.get('kind');if(kind&&kind.length>80)throw Error('Invalid evidence filter')
   let ids=kind?(Object.hasOwn(recordKinds,kind)?recordKinds[kind]:[]):recordIndices

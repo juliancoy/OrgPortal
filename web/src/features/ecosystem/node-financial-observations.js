@@ -35,6 +35,10 @@ export function observationAmount(row,format=value=>compact.format(value)){
  return row.nonAdditive?'See individual records':directions(row.received,row.disbursed,format)||'Amount unavailable'
 }
 export function nodeAmountLabel(node){
+ if(node.relationshipCash){
+  const cash=node.relationshipCash,label=directions(cash.receivedUsd,cash.disbursedUsd,value=>compact.format(value))
+  return label?`Cash ${label}${cash.missingAmounts?'*':''}`:cash.missingAmounts?'Amount unavailable':'No direct cash'
+ }
  const labels=[]
  if(valid(node.receivedUsd)||valid(node.disbursedUsd)){
   const bothZero=node.receivedUsd===0&&node.disbursedUsd===0

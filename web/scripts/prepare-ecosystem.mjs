@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url'
 import {resolve,dirname,extname} from 'node:path'
 import ts from 'typescript'
 import {cachedStep} from './release-cache.mjs'
+import {installPinnedQuerySnapshot} from './pinned-query-snapshot.mjs'
 
 const root=fileURLToPath(new URL('..',import.meta.url))
 export async function moduleInputs(entry,seen=new Set()){
@@ -25,6 +26,10 @@ export async function moduleInputs(entry,seen=new Set()){
  return [...seen]
 }
 export async function prepareEcosystem(){
+ if(process.env.ORGPORTAL_ECOSYSTEM_QUERY_SNAPSHOT){
+  if(process.env.ORGPORTAL_ECOSYSTEM_BUILD_SNAPSHOT||process.env.ORGPORTAL_REFRESH_ECOSYSTEM==='1')throw Error('Pinned query input cannot be combined with a fresh export or source snapshot')
+  return installPinnedQuerySnapshot(resolve(root,process.env.ORGPORTAL_ECOSYSTEM_QUERY_SNAPSHOT),resolve(root,'public/ecosystem-data/query'),process.env.ORGPORTAL_ECOSYSTEM_QUERY_SHA256)
+ }
  const entry=resolve(root,'scripts/build-ecosystem-query.mjs')
  const run=()=>new Promise((yes,no)=>{const child=spawn(process.execPath,[entry],{cwd:root,stdio:'inherit',env:{...process.env,ORGPORTAL_REBUILD_ECOSYSTEM:'1'}});child.once('error',no);child.once('exit',code=>code===0?yes():no(Error('Ecosystem preparation failed ('+code+')')))})
  // Explicit snapshots are caller-selected inputs; never substitute a cached export.

@@ -4,6 +4,14 @@ import {summarizeNodeObservations,nodeAmountLabel} from '../src/features/ecosyst
 import {receivedUsdFromTotals,disbursedUsdFromTotals} from '../src/features/ecosystem/received-amount.js'
 import {organizationEvidenceProfiles,consolidatedFinancialMetrics} from './organization-evidence.mjs'
 const row=(id,kind,amount,extra={})=>({id,kind,financialFactType:kind,source:'public',target:'university',currency:'USD',fiscalYear:2025,amount,...extra})
+test('map labels use payments with the focus, never a neighbor\'s own totals or statements',()=>{
+ const node={receivedUsd:999999,disbursedUsd:999999,financialObservations:[{fact:'revenue',received:1e9,fiscalYear:2025}]}
+ assert.equal(nodeAmountLabel({...node,relationshipCash:{receivedUsd:null,disbursedUsd:1000,missingAmounts:0}}),'Cash ↑1K')
+ assert.equal(nodeAmountLabel({...node,relationshipCash:{receivedUsd:25,disbursedUsd:-5,missingAmounts:1}}),'Cash ↓25 · ↑-5*')
+ assert.equal(nodeAmountLabel({...node,relationshipCash:{receivedUsd:null,disbursedUsd:0,missingAmounts:0}}),'Cash ↑0')
+ assert.equal(nodeAmountLabel({...node,relationshipCash:{receivedUsd:null,disbursedUsd:null,missingAmounts:0}}),'No direct cash')
+ assert.equal(nodeAmountLabel({...node,relationshipCash:{receivedUsd:null,disbursedUsd:null,missingAmounts:1}}),'Amount unavailable')
+})
 test('absence is not a zero; actual net-zero cash and signed adjustments are preserved',()=>{
  assert.equal(receivedUsdFromTotals({currencies:[],missingAmounts:0}),null)
  assert.equal(disbursedUsdFromTotals({currencies:[{currency:'EUR',received:99,disbursed:0}],missingAmounts:0}),null)

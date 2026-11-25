@@ -2,7 +2,7 @@ import type {FinancialObservation} from './node-financial-observations.js'
 import {settleOrganizationHubs} from './organization-hub-particles.js'
 export type OrganizationMapLayoutStyle='radial'|'hubs'
 export type OrganizationMapLayoutOptions={groupAttraction?:number;layout?:OrganizationMapLayoutStyle;hubSpacing?:number}
-export type MapNode={id:string;name:string;slug:string|null;category:string;type?:string;financialAmount?:number|null;receivedUsd?:number|null;disbursedUsd?:number|null;financialObservations?:FinancialObservation[]}
+export type MapNode={id:string;name:string;slug:string|null;category:string;type?:string;financialAmount?:number|null;receivedUsd?:number|null;disbursedUsd?:number|null;financialObservations?:FinancialObservation[];relationshipCash?:{anchorId:string;receivedUsd:number|null;disbursedUsd:number|null;missingAmounts:number}}
 export type MapEdge={id:string;source:string;target:string;recordCount:number;kinds:string[];hierarchy?:boolean}
 export type MapPage={parentDepth?:number;childDepth?:number;version:string;generatedAt:string;fy?:string;fiscalYears?:number[];financialTotals?:{currencies:{currency:string;received:number;disbursed:number}[];missingAmounts:number};anchor:string|null;hiddenParent?:MapNode|null;organizations:MapNode[];relationships:MapEdge[];total:number;incoming:number;outgoing:number;offset:number;nextOffset:number|null}
 export async function loadOrganizationMap(fetchPage:(offset:number,version?:string)=>Promise<MapPage>,progress:(loaded:number,total:number)=>void=()=>{},preview:(data:MapPage)=>void=()=>{}) {
